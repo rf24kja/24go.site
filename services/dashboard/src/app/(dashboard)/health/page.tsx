@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 
+function getApiBase(): string {
+  if (typeof window === "undefined") return "";
+  if (window.location.hostname === "localhost") return "http://localhost:8000";
+  return ""; // Use Vercel proxy
+}
+
 type HealthData = {
   status: string;
   ws_connections: number;
@@ -24,20 +30,21 @@ export default function HealthPage() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [workers, setWorkers] = useState<WorkerInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [systemInfo, setSystemInfo] = useState<any>(null);
 
   useEffect(() => {
     if (!auth?.token) return;
     setLoading(true);
+    const base = getApiBase();
+    const headers = { Authorization: `Bearer ${auth.token}` };
 
-    // Fetch health + listener status (has worker info)
     Promise.all([
-      fetch("http://localhost:8000/health").then((r) => r.json()),
-      fetch("http://localhost:8000/api/v1/listeners/status", {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      }).then((r) => r.json()).catch(() => ({})),
-    ]).then(([healthData, listenerData]) => {
+      fetch(`${base}/health`).then((r) => r.json()).catch(() => ({ status: "error" })),
+      fetch(`${base}/api/v1/listeners/status`, { headers }).then((r) => r.json()).catch(() => ({})),
+      fetch(`${base}/api/v1/system/info`, { headers }).then((r) => r.json()).catch(() => null),
+    ]).then(([healthData, listenerData, sysInfo]) => {
       setHealth(healthData);
-      // Parse worker info from listener status
+      setSystemInfo(sysInfo);
       const active = listenerData?.active_workers || [];
       setWorkers(active.map((w: any) => ({
         name: w.worker_name || w.name || "unknown",
@@ -50,6 +57,8 @@ export default function HealthPage() {
 
   if (loading) return <div className="p-8"><p className="text-zinc-500">Loading health data...</p></div>;
 
+  const apiBase = getApiBase();
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">System Health</h1>
@@ -57,8 +66,8 @@ export default function HealthPage() {
       {/* Status cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatusCard label="API" status={health?.status === "ok" ? "healthy" : "error"} />
-        <StatusCard label="Database" status="healthy" />
-        <StatusCard label="Redis" status="healthy" />
+        <StatusCard label="Database" status={health?.db_status === "connected" || health?.status === "ok" ? "healthy" : "unknown"} />
+        <StatusCard label="Redis" status={health?.redis_status === "connected" || health?.status === "ok" ? "healthy" : "unknown"} />
         <StatusCard label="WebSocket" value={`${health?.ws_connections ?? 0} connections`} />
       </div>
 
@@ -85,9 +94,24 @@ export default function HealthPage() {
         )}
       </div>
 
+      {/* System info (from /system/info) */}
+      {systemInfo && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">Record Counts</h2>
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+            {Object.entries(systemInfo.record_counts || {}).map(([table, count]) => (
+              <div key={table} className="bg-zinc-800 rounded-lg px-3 py-2">
+                <div className="text-zinc-400 text-xs">{table}</div>
+                <div className="text-zinc-100 font-medium">{String(count)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick links */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-        <h2 className="text-sm font-medium text-zinc-400 mb-4">Quick Info</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-4">Endpoints</h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-zinc-500">API Version:</span>
@@ -95,11 +119,11 @@ export default function HealthPage() {
           </div>
           <div>
             <span className="text-zinc-500">Dashboard:</span>
-            <span className="text-zinc-300 ml-2">http://localhost:3000</span>
+            <span className="text-zinc-300 ml-2">{apiBase || window.location.origin}</span>
           </div>
           <div>
             <span className="text-zinc-500">API:</span>
-            <span className="text-zinc-300 ml-2">http://localhost:8000</span>
+            <span className="text-zinc-300 ml-2">{apiBase || "via proxy"}</span>
           </div>
           <div>
             <span className="text-zinc-500">Bot:</span>
@@ -113,9 +137,9 @@ export default function HealthPage() {
 
 function StatusCard({ label, status, value }: { label: string; status?: "healthy" | "error" | "unknown"; value?: string }) {
   const colors = {
-    healthy: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    error: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-    unknown: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    healthy: "text-emerald-400",
+    error: "text-rose-400",
+    unknown: "text-zinc-400",
   };
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
@@ -123,7 +147,7 @@ function StatusCard({ label, status, value }: { label: string; status?: "healthy
       {status ? (
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-emerald-400" : status === "error" ? "bg-rose-400" : "bg-zinc-500"}`} />
-          <span className={`text-sm font-medium ${colors[status].split(" ")[1]}`}>{status}</span>
+          <span className={`text-sm font-medium ${colors[status]}`}>{status}</span>
         </div>
       ) : (
         <p className="text-sm text-zinc-300">{value}</p>
