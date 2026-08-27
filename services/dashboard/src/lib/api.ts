@@ -247,3 +247,26 @@ export async function changePassword(token: string, currentPassword: string, new
     token,
   });
 }
+
+// ── System ───────────────────────────────────────────────────────────
+
+export async function getSystemInfo(token: string) {
+  return api<any>("/api/v1/system/info", { token });
+}
+
+export async function seedDemoData(token: string) {
+  return api<any>("/api/v1/system/seed-demo", { method: "POST", token });
+}
+
+export async function backupLeads(token: string) {
+  const res = await fetch(`${API_URL || ""}/api/v1/system/backup/leads`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.blob();
+}
+
+// ── Campaign Analytics ───────────────────────────────────────────────
+
+export async function getCampaignStats(token: string, campaignId: string) {
+  return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
+}

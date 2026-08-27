@@ -126,3 +126,17 @@ async def system_info(
         }
     finally:
         await conn.close()
+
+
+@router.post("/seed-demo")
+async def seed_demo(
+    current_user: User = Depends(get_current_user),
+):
+    """Seed demo data for the tenant (targets, accounts, campaigns, leads)."""
+    if current_user.role not in ("owner", "admin"):
+        raise HTTPException(403, "Admin only")
+
+    url = settings.DATABASE_URL.replace("+asyncpg", "")
+    from app.seed import seed_demo_data
+    result = await seed_demo_data(url, current_user.tenant_id)
+    return result
