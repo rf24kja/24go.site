@@ -82,8 +82,8 @@ class TargetResponse(BaseModel):
 class AccountCreate(BaseModel):
     platform: str
     account_identifier: str
-    session_data: str
-    device_fingerprint: dict
+    session_data: str = ""
+    device_fingerprint: dict = {}
 
 
 class AccountResponse(BaseModel):
