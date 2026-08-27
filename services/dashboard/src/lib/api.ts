@@ -3,7 +3,13 @@
  * Uses server-side fetch for RSC, client-side fetch for mutations.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:8000";
+const API_URL = (() => {
+  // On Vercel / production: use relative URLs (proxied via vercel.json rewrites)
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return "";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+})();
 
 interface FetchOptions extends RequestInit {
   token?: string;

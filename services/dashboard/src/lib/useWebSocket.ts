@@ -11,8 +11,14 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const WS_URL = API_URL.replace(/^http/, "ws");
+const getWsUrl = () => {
+  if (typeof window === "undefined") return "ws://localhost:8000";
+  if (window.location.hostname === "localhost") return "ws://localhost:8000";
+  // On Vercel: use same host with ws protocol
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}`;
+};
+const WS_URL = getWsUrl();
 
 export interface WsEvent {
   type: string;
@@ -36,6 +42,12 @@ function detectWebSocketSupport(): Promise<boolean> {
   });
 }
 
+function getApiUrl() {
+  if (typeof window === "undefined") return "http://localhost:8000";
+  if (window.location.hostname === "localhost") return "http://localhost:8000";
+  return ""; // relative URLs on Vercel
+}
+
 export function useWebSocket(tenantId: string | null) {
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<WsEvent | null>(null);
@@ -55,7 +67,7 @@ export function useWebSocket(tenantId: string | null) {
       if (!tenantId) return;
       try {
         const res = await fetch(
-          `${API_URL}/api/v1/events/poll?tenant_id=${tenantId}&since=${sinceRef.current}`,
+          `${getApiUrl()}/api/v1/events/poll?tenant_id=${tenantId}&since=${sinceRef.current}`,
         );
         const data = await res.json();
         if (data.events?.length) {
