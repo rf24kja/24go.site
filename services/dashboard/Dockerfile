@@ -3,7 +3,12 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+
+# Inject standalone output for Docker
+RUN echo 'const cfg = require("./next.config.js"); module.exports = { ...cfg, output: "standalone" };' > next.config.build.js
+RUN mv next.config.js next.config.original.js && mv next.config.build.js next.config.js
+RUN npx next build
+RUN mv next.config.original.js next.config.js
 
 FROM node:20-alpine AS runner
 WORKDIR /app
