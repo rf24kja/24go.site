@@ -1,0 +1,166 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+      POSTGRES_USER: ${POSTGRES_USER:-app_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app_user} -d ${POSTGRES_DB:-app_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  fastapi:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/backend:/app
+
+  # ── Celery Beat Scheduler ────────────────────────────────────────────
+  celery-beat:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery beat -l info
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Worker Pools (one per queue) ─────────────────────────────────────
+  worker-parser:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery worker -l info -Q parser -c 4
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/worker:/app
+
+  worker-poster:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery worker -l info -Q poster -c 2 --prefetch-multiplier=1
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/worker:/app
+
+  worker-warmup:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery worker -l info -Q warmup -c 2
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/worker:/app
+
+  worker-listener:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery worker -l info -Q listener -c 1
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/worker:/app
+
+  worker-billing:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app:celery worker -l info -Q billing -c 1
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/worker:/app
+
+  # ── Web Dashboard (Next.js) ───────────────────────────────────────────
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  # ── Telegram Mini-Bot ───────────────────────────────────────────────
+  bot:
+    build:
+      context: ./services/bot
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - fastapi
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      API_URL: http://fastapi:8000
+      OWNER_CHAT_ID: ${OWNER_CHAT_ID:-0}
+
+volumes:
+  pgdata:

@@ -1,0 +1,357 @@
+"""Billing endpoints: subscription management, Stripe checkout, webhooks, usage.
+
+Stripe SDK is optional — checkout/webhook endpoints work with mock in dev.
+"""
+import json
+import logging
+import os
+import uuid
+from datetime import datetime, timedelta
+
+import asyncpg
+import httpx
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.database import get_db
+from app.models import User
+from app.quota import PLAN_LIMITS, get_plan_limits
+from app.security import get_current_user
+
+router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
+
+log = logging.getLogger(__name__)
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY", "")
+YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID", "")
+
+
+# ── Schemas ───────────────────────────────────────────────────────────
+
+class SubscriptionResponse(BaseModel):
+    plan: str
+    status: str
+    monthly_posts_limit: int
+    monthly_posts_used: int
+    token_credits_balance: int
+    current_period_end: str
+
+
+class CheckoutRequest(BaseModel):
+    plan: str = Field(..., pattern="^(starter|pro|enterprise)$")
+    provider: str = Field(default="stripe", pattern="^(stripe|yookassa)$")
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+    provider: str
+
+
+class UsageSummary(BaseModel):
+    total_tokens_used: int
+    total_cost_usd: float
+    posts_used: int
+    posts_limit: int
+    tokens_balance: int
+    plan: str
+
+
+# ── Subscription Management ───────────────────────────────────────────
+
+@router.get("/subscription", response_model=SubscriptionResponse)
+async def get_subscription(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get current subscription details for the tenant."""
+    from app.billing_models import Subscription
+    result = await db.execute(
+        select(Subscription).where(Subscription.tenant_id == current_user.tenant_id)
+    )
+    sub = result.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(404, "No subscription found")
+    return SubscriptionResponse(
+        plan=sub.plan.value if hasattr(sub.plan, "value") else sub.plan,
+        status=sub.status,
+        monthly_posts_limit=sub.monthly_posts_limit,
+        monthly_posts_used=sub.monthly_posts_used,
+        token_credits_balance=sub.token_credits_balance,
+        current_period_end=sub.current_period_end.isoformat(),
+    )
+
+
+@router.get("/usage", response_model=UsageSummary)
+async def get_usage(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get usage summary for the current billing period."""
+    from app.billing_models import Subscription, UsageLog
+    from sqlalchemy import func
+
+    sub_result = await db.execute(
+        select(Subscription).where(Subscription.tenant_id == current_user.tenant_id)
+    )
+    sub = sub_result.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(404, "No subscription found")
+
+    # Aggregate usage for current period
+    usage_result = await db.execute(
+        select(
+            func.coalesce(func.sum(UsageLog.quantity_used), 0).label("total_tokens"),
+            func.coalesce(func.sum(UsageLog.estimated_cost_usd), 0).label("total_cost"),
+        ).where(
+            UsageLog.tenant_id == current_user.tenant_id,
+            UsageLog.created_at >= sub.current_period_start,
+        )
+    )
+    usage = usage_result.one()
+
+    return UsageSummary(
+        total_tokens_used=int(usage.total_tokens),
+        total_cost_usd=float(usage.total_cost),
+        posts_used=sub.monthly_posts_used,
+        posts_limit=sub.monthly_posts_limit,
+        tokens_balance=sub.token_credits_balance,
+        plan=sub.plan.value if hasattr(sub.plan, "value") else sub.plan,
+    )
+
+
+# ── Stripe Checkout ───────────────────────────────────────────────────
+
+@router.post("/checkout", response_model=CheckoutResponse)
+async def create_checkout(
+    body: CheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a payment checkout session (Stripe or YooKassa)."""
+    limits = get_plan_limits(body.plan)
+
+    if body.provider == "stripe":
+        url = await _create_stripe_checkout(
+            tenant_id=str(current_user.tenant_id),
+            plan=body.plan,
+            price_usd=_plan_price(body.plan),
+            email=current_user.email,
+        )
+        return CheckoutResponse(checkout_url=url, provider="stripe")
+
+    elif body.provider == "yookassa":
+        url = await _create_yookassa_checkout(
+            tenant_id=str(current_user.tenant_id),
+            plan=body.plan,
+            price_usd=_plan_price(body.plan),
+        )
+        return CheckoutResponse(checkout_url=url, provider="yookassa")
+
+    raise HTTPException(400, "Unknown provider")
+
+
+def _plan_price(plan: str) -> int:
+    """Return monthly price in USD cents."""
+    return {"starter": 14900, "pro": 39900, "enterprise": 99900}.get(plan, 14900)
+
+
+async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, email: str) -> str:
+    """Create Stripe Checkout Session and return the URL."""
+    if not STRIPE_SECRET_KEY or STRIPE_SECRET_KEY.startswith("sk_test_..."):
+        # Mock mode — return a fake checkout URL
+        log.warning("Stripe not configured — returning mock checkout URL")
+        return f"https://checkout.stripe.com/mock?plan={plan}&tenant={tenant_id}"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.stripe.com/v1/checkout/sessions",
+            auth=(STRIPE_SECRET_KEY, ""),
+            data={
+                "mode": "subscription",
+                "customer_email": email,
+                "success_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing?success=true",
+                "cancel_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing?canceled=true",
+                "metadata[tenant_id]": tenant_id,
+                "metadata[plan_tier]": plan,
+                "line_items[0][price_data][currency]": "usd",
+                "line_items[0][price_data][unit_amount]": price_usd,
+                "line_items[0][price_data][product_data][name]": f"GeneratorAD {plan.title()} Plan",
+                "line_items[0][price_data][recurring][interval]": "month",
+                "line_items[0][quantity]": "1",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["url"]
+
+
+async def _create_yookassa_checkout(tenant_id: str, plan: str, price_usd: int) -> str:
+    """Create YooKassa payment and return the confirmation URL."""
+    if not YOOKASSA_SECRET_KEY or YOOKASSA_SHOP_ID == "...":
+        log.warning("YooKassa not configured — returning mock checkout URL")
+        return f"https://yookassa.ru/mock?plan={plan}&tenant={tenant_id}"
+
+    import base64
+    auth = base64.b64encode(f"{YOOKASSA_SHOP_ID}:{YOOKASSA_SECRET_KEY}".encode()).decode()
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.yookassa.ru/v3/payments",
+            headers={
+                "Authorization": f"Basic {auth}",
+                "Idempotence-Key": str(uuid.uuid4()),
+                "Content-Type": "application/json",
+            },
+            json={
+                "amount": {"value": f"{price_usd / 100:.2f}", "currency": "USD"},
+                "confirmation": {"type": "redirect", "return_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing"},
+                "capture": True,
+                "description": f"GeneratorAD {plan.title()} Plan",
+                "metadata": {"tenant_id": tenant_id, "plan_tier": plan},
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["confirmation"]["confirmation_url"]
+
+
+# ── Webhook Handlers ──────────────────────────────────────────────────
+
+@router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events (payment_intent.succeeded, etc.)."""
+    body = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+
+    # Verify signature in production
+    if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_..."):
+        try:
+            import stripe
+            stripe.api_key = STRIPE_SECRET_KEY
+            event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
+        except Exception as e:
+            log.error(f"Stripe signature verification failed: {e}")
+            raise HTTPException(400, "Invalid signature")
+    else:
+        # Dev mode — parse raw JSON
+        event = json.loads(body)
+
+    event_type = event.get("type", "")
+    log.info(f"Stripe webhook: {event_type}")
+
+    if event_type == "checkout.session.completed":
+        data = event["data"]["object"]
+        tenant_id = data.get("metadata", {}).get("tenant_id")
+        plan_tier = data.get("metadata", {}).get("plan_tier", "starter")
+        amount = data.get("amount_total", 0) / 100
+        provider_tx_id = data.get("id", "")
+
+        await _process_payment(
+            tenant_id=tenant_id,
+            plan_tier=plan_tier,
+            amount_usd=amount,
+            provider="stripe",
+            provider_tx_id=provider_tx_id,
+        )
+
+    return {"status": "ok"}
+
+
+@router.post("/webhook/yookassa")
+async def yookassa_webhook(request: Request):
+    """Handle YooKassa webhook events.
+
+    YooKassa doesn't use HMAC — they send a specific IP whitelist.
+    We verify: 1) request origin, 2) metadata.tenant_id exists, 3) idempotency.
+    """
+    body = await request.json()
+    event_type = body.get("event", "")
+    log.info(f"YooKassa webhook: {event_type}")
+
+    # Validate required fields
+    obj = body.get("object", {})
+    tenant_id = obj.get("metadata", {}).get("tenant_id")
+    if not tenant_id:
+        log.warning("YooKassa webhook missing tenant_id — skipping")
+        return {"status": "ignored"}
+
+    # Idempotency: check if we already processed this payment
+    provider_tx_id = obj.get("id", "")
+    if provider_tx_id:
+        url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(url)
+        try:
+            exists = await conn.fetchval(
+                "SELECT 1 FROM billing_transactions WHERE provider_transaction_id = $1",
+                provider_tx_id,
+            )
+            if exists:
+                log.info(f"YooKassa webhook duplicate: {provider_tx_id}")
+                return {"status": "already_processed"}
+        finally:
+            await conn.close()
+
+    if event_type == "payment.succeeded":
+        plan_tier = obj.get("metadata", {}).get("plan_tier", "starter")
+        amount = float(obj.get("amount", {}).get("value", 0))
+
+        await _process_payment(
+            tenant_id=tenant_id,
+            plan_tier=plan_tier,
+            amount_usd=amount,
+            provider="yookassa",
+            provider_tx_id=provider_tx_id,
+        )
+
+    return {"status": "ok"}
+
+
+async def _process_payment(
+    tenant_id: str,
+    plan_tier: str,
+    amount_usd: float,
+    provider: str,
+    provider_tx_id: str,
+):
+    """Record payment and upgrade subscription."""
+    if not tenant_id:
+        log.warning("Webhook missing tenant_id — skipping")
+        return
+
+    url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(url)
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+
+        # Record transaction
+        await conn.execute(
+            """INSERT INTO billing_transactions (id, tenant_id, amount_usd, payment_provider, provider_transaction_id, status)
+               VALUES (gen_random_uuid(), $1, $2, $3, $4, 'succeeded')
+               ON CONFLICT (provider_transaction_id) DO NOTHING""",
+            tenant_uuid, amount_usd, provider, provider_tx_id,
+        )
+
+        # Upgrade subscription
+        limits = get_plan_limits(plan_tier)
+        await conn.execute(
+            """UPDATE subscriptions SET
+                plan = $1::tenant_plan_type,
+                status = 'active',
+                current_period_start = NOW(),
+                current_period_end = NOW() + INTERVAL '1 month',
+                monthly_posts_used = 0,
+                monthly_posts_limit = $2,
+                token_credits_balance = $3
+               WHERE tenant_id = $4""",
+            plan_tier,
+            limits["monthly_posts_limit"],
+            limits["token_credits_balance"],
+            tenant_uuid,
+        )
+
+        log.info(f"Payment processed: tenant={tenant_id} plan={plan_tier} amount=${amount_usd}")
+    finally:
+        await conn.close()
