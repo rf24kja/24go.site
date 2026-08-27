@@ -32,6 +32,8 @@ const COLUMNS = [
   { key: "rejected", label: "Rejected", color: "border-zinc-500/30" },
 ] as const;
 
+const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;
+
 const FILTERS = ["ALL", "HOT", "WARM", "COLD"] as const;
 
 export default function LeadsPage() {
@@ -47,6 +49,8 @@ export default function LeadsPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const { connected, lastEvent } = useWebSocket(auth?.user?.tenant_id ?? null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [detailSaving, setDetailSaving] = useState(false);
 
   // Real-time: when a new lead event arrives, add it to the list
   useEffect(() => {
@@ -54,7 +58,6 @@ export default function LeadsPage() {
     if (lastEvent.type === "lead_created" || lastEvent.type === "lead_qualified") {
       const newLead = lastEvent.data as Lead;
       setLeads((prev) => {
-        // Deduplicate by id
         if (prev.some((l) => l.id === newLead.id)) return prev;
         return [newLead, ...prev];
       });
@@ -68,6 +71,14 @@ export default function LeadsPage() {
       .then(setLeads)
       .finally(() => setLoading(false));
   }, [auth?.token, filter]);
+
+  // Keep selected lead in sync with list
+  useEffect(() => {
+    if (selectedLead) {
+      const updated = leads.find((l) => l.id === selectedLead.id);
+      if (updated) setSelectedLead(updated);
+    }
+  }, [leads, selectedLead?.id]);
 
   async function handleQualify(e: React.FormEvent) {
     e.preventDefault();
@@ -104,19 +115,35 @@ export default function LeadsPage() {
     setDraggingId(null);
     setDragOverCol(null);
     if (!auth?.token || !leadId) return;
-    // Optimistic update
     setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status: newStatus } : l));
     try {
       await updateLeadStatus(auth.token, leadId, newStatus);
     } catch {
-      // Revert on error — reload
       getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then(setLeads);
     }
   }, [auth?.token, filter]);
 
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    if (!auth?.token) return;
+    setDetailSaving(true);
+    try {
+      await updateLeadStatus(auth.token, leadId, newStatus);
+      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status: newStatus } : l));
+    } finally {
+      setDetailSaving(false);
+    }
+  };
+
   function groupedLeads(colKey: string) {
     return leads.filter((l) => l.status === colKey);
   }
+
+  const summaryCounts = {
+    HOT: leads.filter((l) => l.intent_score === "HOT").length,
+    WARM: leads.filter((l) => l.intent_score === "WARM").length,
+    COLD: leads.filter((l) => l.intent_score === "COLD").length,
+    total: leads.length,
+  };
 
   return (
     <div className="space-y-6">
@@ -166,12 +193,22 @@ export default function LeadsPage() {
         </div>
       </div>
 
+      {/* Quick stats */}
+      {leads.length > 0 && (
+        <div className="flex gap-4 text-sm">
+          <span className="text-zinc-500">{summaryCounts.total} total</span>
+          <span className="text-rose-400">{summaryCounts.HOT} hot</span>
+          <span className="text-amber-400">{summaryCounts.WARM} warm</span>
+          <span className="text-sky-400">{summaryCounts.COLD} cold</span>
+        </div>
+      )}
+
       {/* Qualify form */}
       <form onSubmit={handleQualify} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3">
         <input type="text" value={testHandle} onChange={(e) => setTestHandle(e.target.value)}
-          className="w-40 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" placeholder="@handle" />
+          className="w-40 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" placeholder="@handle" />
         <input type="text" value={testMessage} onChange={(e) => setTestMessage(e.target.value)}
-          className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500"
+          className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
           placeholder="Type a message to classify..." />
         <button type="submit" disabled={qualifying || !testMessage.trim()}
           className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
@@ -193,7 +230,6 @@ export default function LeadsPage() {
       )}
 
       {view === "table" ? (
-        /* ── Table View ── */
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -210,12 +246,13 @@ export default function LeadsPage() {
               {loading ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
               ) : leads.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">No leads found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                  No leads yet. Run a scan, import a CSV, or use the qualify form above.
+                </td></tr>
               ) : (
                 leads.map((lead) => (
-                  <tr key={lead.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30"
-                    draggable onDragStart={(e) => handleDragStart(e, lead.id)}
-                    onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}>
+                  <tr key={lead.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30 cursor-pointer"
+                    onClick={() => setSelectedLead(lead)}>
                     <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{lead.user_handle}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${INTENT_STYLES[lead.intent_score] ?? ""}`}>
@@ -224,7 +261,7 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-4 py-3 text-zinc-400 max-w-[300px] truncate">{lead.message_text}</td>
                     <td className="px-4 py-3 text-zinc-400">{lead.geo_tag}</td>
-                    <td className="px-4 py-3 text-zinc-400">{lead.status}</td>
+                    <td className="px-4 py-3 text-zinc-400 capitalize">{lead.status.replace("_", " ")}</td>
                     <td className="px-4 py-3 text-zinc-400">{new Date(lead.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))
@@ -233,8 +270,7 @@ export default function LeadsPage() {
           </table>
         </div>
       ) : (
-        /* ── Kanban View ── */
-        <div className="grid grid-cols-4 gap-4 min-h-[500px]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">
           {COLUMNS.map((col) => {
             const colLeads = groupedLeads(col.key);
             const isOver = dragOverCol === col.key;
@@ -250,9 +286,10 @@ export default function LeadsPage() {
                 </div>
                 {colLeads.map((lead) => (
                   <div key={lead.id}
-                    className={`bg-zinc-800 border border-zinc-700 rounded-lg p-3 cursor-grab active:cursor-grabbing transition-opacity ${draggingId === lead.id ? "opacity-40" : ""}`}
+                    className={`bg-zinc-800 border border-zinc-700 rounded-lg p-3 cursor-grab active:cursor-grabbing transition-opacity hover:border-zinc-600 ${draggingId === lead.id ? "opacity-40" : ""}`}
                     draggable onDragStart={(e) => handleDragStart(e, lead.id)}
-                    onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}>
+                    onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }}>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-mono text-xs text-zinc-200 truncate">{lead.user_handle}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${INTENT_STYLES[lead.intent_score] ?? ""}`}>
@@ -278,6 +315,80 @@ export default function LeadsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lead detail drawer */}
+      {selectedLead && (
+        <div className="fixed inset-0 bg-black/60 flex justify-end z-50" onClick={() => setSelectedLead(null)}>
+          <div className="w-full max-w-md bg-zinc-900 border-l border-zinc-800 h-full overflow-y-auto p-6 space-y-6 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-zinc-100">Lead Detail</h2>
+              <button onClick={() => setSelectedLead(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
+            </div>
+
+            {/* Handle + intent */}
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-sm text-zinc-100 bg-zinc-800 px-3 py-1.5 rounded-lg">{selectedLead.user_handle}</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${INTENT_STYLES[selectedLead.intent_score] ?? ""}`}>
+                {selectedLead.intent_score}
+              </span>
+            </div>
+
+            {/* Info grid */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-zinc-500 text-xs block mb-1">Full Name</span>
+                <span className="text-zinc-200">{selectedLead.user_full_name || "—"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 text-xs block mb-1">Platform</span>
+                <span className="text-zinc-200 capitalize">{selectedLead.platform || "—"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 text-xs block mb-1">Geo</span>
+                <span className="text-zinc-200">{selectedLead.geo_tag || "—"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 text-xs block mb-1">Created</span>
+                <span className="text-zinc-200">{new Date(selectedLead.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div>
+              <span className="text-zinc-500 text-xs block mb-1">Message</span>
+              <p className="text-sm text-zinc-300 bg-zinc-800 rounded-lg p-3 whitespace-pre-wrap">{selectedLead.message_text || "No message"}</p>
+            </div>
+
+            {/* Dialog URL */}
+            {selectedLead.dialog_url && (
+              <div>
+                <span className="text-zinc-500 text-xs block mb-1">Dialog</span>
+                <a href={selectedLead.dialog_url} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-emerald-400 hover:text-emerald-300 underline">{selectedLead.dialog_url}</a>
+              </div>
+            )}
+
+            {/* Status change */}
+            <div>
+              <span className="text-zinc-500 text-xs block mb-2">Status</span>
+              <div className="flex flex-wrap gap-2">
+                {STATUS_OPTIONS.map((s) => (
+                  <button key={s} disabled={detailSaving || selectedLead.status === s}
+                    onClick={() => handleStatusChange(selectedLead.id, s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition disabled:opacity-40 ${
+                      selectedLead.status === s
+                        ? "bg-zinc-100 text-zinc-900 border-zinc-100"
+                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500"
+                    }`}>
+                    {s.replace("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
