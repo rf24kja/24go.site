@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
@@ -85,7 +86,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-zinc-600">
-          <a href="/" className="hover:text-zinc-400 transition">&larr; Back to home</a>
+          <Link href="/" className="hover:text-zinc-400 transition">&larr; Back to home</Link>
         </p>
       </div>
     </div>
