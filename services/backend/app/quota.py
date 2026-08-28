@@ -5,6 +5,7 @@ Ponytail: Redis fast-path for quota checks, PostgreSQL for persistence.
 import json
 import logging
 import time
+import uuid
 from datetime import datetime, timedelta
 
 import asyncpg
@@ -83,7 +84,7 @@ async def check_quota(
         row = await conn.fetchrow(
             "SELECT plan, status, monthly_posts_limit, monthly_posts_used, "
             "token_credits_balance FROM subscriptions WHERE tenant_id = $1",
-            __import__("uuid").UUID(tenant_id),
+            uuid.UUID(tenant_id),
         )
         if not row:
             return {"allowed": False, "reason": "no_subscription"}
@@ -130,7 +131,7 @@ async def record_usage(
     url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
     conn = await asyncpg.connect(url)
     try:
-        tenant_uuid = __import__("uuid").UUID(tenant_id)
+        tenant_uuid = uuid.UUID(tenant_id)
 
         # Insert usage log
         await conn.execute(
@@ -168,7 +169,7 @@ async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
     url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
     conn = await asyncpg.connect(url)
     try:
-        tenant_uuid = __import__("uuid").UUID(tenant_id)
+        tenant_uuid = uuid.UUID(tenant_id)
         row = await conn.fetchrow(
             """UPDATE subscriptions SET monthly_posts_used = monthly_posts_used + 1
                WHERE tenant_id = $1 RETURNING monthly_posts_used, monthly_posts_limit""",

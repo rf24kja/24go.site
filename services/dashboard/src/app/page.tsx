@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -16,16 +17,16 @@ export default function LandingPage() {
       {/* ── Nav ──────────────────────────────────────────────────── */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrollY > 50 ? "bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/50 shadow-xl shadow-black/20" : ""}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 lg:px-12 py-5">
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight">24<span className="text-emerald-400">GO</span></span>
-          </a>
+          </Link>
           <div className="flex items-center gap-6 text-sm">
             <a href="#features" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">Features</a>
             <a href="#how" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">How it works</a>
-            <a href="/login" className="text-zinc-400 hover:text-zinc-100 transition">Sign in</a>
-            <a href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/20">
+            <Link href="/login" className="text-zinc-400 hover:text-zinc-100 transition">Sign in</Link>
+            <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/20">
               Get Started
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
@@ -54,9 +55,9 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="/login" className="w-full sm:w-auto px-8 py-3.5 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-base shadow-xl shadow-emerald-500/25">
+            <Link href="/login" className="w-full sm:w-auto px-8 py-3.5 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-base shadow-xl shadow-emerald-500/25">
               Start Free Trial
-            </a>
+            </Link>
             <a href="#features" className="w-full sm:w-auto px-8 py-3.5 bg-zinc-800/80 text-zinc-300 rounded-xl font-medium hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 transition text-base">
               See Features
             </a>
@@ -120,9 +121,9 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl lg:text-4xl font-bold mb-6">Ready to automate your lead generation?</h2>
           <p className="text-zinc-400 mb-10 max-w-lg mx-auto">Start your free trial today. No credit card required.</p>
-          <a href="/login" className="inline-block px-10 py-4 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-lg shadow-xl shadow-emerald-500/25">
+          <Link href="/login" className="inline-block px-10 py-4 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-lg shadow-xl shadow-emerald-500/25">
             Get Started Free
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -134,7 +135,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-sm text-zinc-500">
             <a href="#features" className="hover:text-zinc-300 transition">Features</a>
-            <a href="/login" className="hover:text-zinc-300 transition">Sign in</a>
+            <Link href="/login" className="hover:text-zinc-300 transition">Sign in</Link>
           </div>
           <span className="text-xs text-zinc-600">&copy; {new Date().getFullYear()} 24GO. All rights reserved.</span>
         </div>

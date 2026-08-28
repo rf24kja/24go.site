@@ -30,19 +30,6 @@ export interface WsEvent {
   timestamp?: number;
 }
 
-function detectWebSocketSupport(wsBase: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      const test = new WebSocket(`${wsBase}/ws/__probe?token=__probe`);
-      const timer = setTimeout(() => { test.close(); resolve(false); }, 2000);
-      test.onopen = () => { clearTimeout(timer); test.close(); resolve(true); };
-      test.onerror = () => { clearTimeout(timer); resolve(false); };
-    } catch {
-      resolve(false);
-    }
-  });
-}
-
 export function useWebSocket(tenantId: string | null, token: string | null = null) {
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<WsEvent | null>(null);
@@ -89,8 +76,20 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
       const ws = new WebSocket(`${wsBase}/ws/${tenantId}?token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
 
-      ws.onopen = () => { modeRef.current = "ws"; setConnected(true); };
+      // ponytail: no probe — just try the real WS; if it fails, fall back to polling
+      const fallbackTimer = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          ws.close();
+        }
+      }, 3000);
+
+      ws.onopen = () => {
+        clearTimeout(fallbackTimer);
+        modeRef.current = "ws";
+        setConnected(true);
+      };
       ws.onclose = () => {
+        clearTimeout(fallbackTimer);
         setConnected(false);
         wsRef.current = null;
         if (modeRef.current === "ws") {
@@ -98,7 +97,7 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
           startPolling();
         }
       };
-      ws.onerror = () => ws.close();
+      ws.onerror = () => { clearTimeout(fallbackTimer); ws.close(); };
       ws.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data) as WsEvent;
@@ -118,19 +117,13 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
     if (!tenantId || !token) return;
 
     modeRef.current = "detecting";
-    detectWebSocketSupport(wsBase).then((wsOk) => {
-      if (wsOk) {
-        connectWs();
-      } else {
-        startPolling();
-      }
-    });
+    connectWs();
 
     return () => {
       if (pollTimer.current) clearTimeout(pollTimer.current);
       wsRef.current?.close();
     };
-  }, [tenantId, token, wsBase, connectWs, startPolling]);
+  }, [tenantId, token, connectWs]);
 
   return { connected, lastEvent };
 }

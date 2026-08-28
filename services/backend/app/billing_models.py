@@ -1,6 +1,6 @@
 """SQLAlchemy models for billing tables (from BILLING_AND_LIMITS.md)."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -22,7 +22,7 @@ class Subscription(Base):
     monthly_posts_limit = Column(Integer, nullable=False, default=500)
     monthly_posts_used = Column(Integer, nullable=False, default=0)
     token_credits_balance = Column(Integer, nullable=False, default=200000)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("tenant_id", name="unique_tenant_subscription"),
@@ -39,7 +39,7 @@ class UsageLog(Base):
     quantity_used = Column(Integer, nullable=False)
     estimated_cost_usd = Column(Numeric(10, 6), nullable=False)
     meta_info = Column("metadata", JSONB, default={})
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_usage_logs_tenant_date", "tenant_id", "created_at"),
@@ -55,4 +55,4 @@ class BillingTransaction(Base):
     payment_provider = Column(String(50), nullable=False)
     provider_transaction_id = Column(String(255), unique=True, nullable=False)
     status = Column(String(50), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

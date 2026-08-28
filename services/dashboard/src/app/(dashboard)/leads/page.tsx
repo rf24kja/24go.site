@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useToast } from "@/components/Toast";
+import { Skeleton } from "@/components/Skeleton";
 
 type Lead = {
   id: string;
@@ -247,7 +248,20 @@ export default function LeadsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8">
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex gap-4">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 flex-1" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </td></tr>
               ) : leads.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
                   No leads yet. Run a scan, import a CSV, or use the qualify form above.

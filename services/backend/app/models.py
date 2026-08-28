@@ -1,7 +1,7 @@
 """SQLAlchemy models mirroring ARCHITECTURE.md DDL exactly."""
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Enum, ForeignKey, Index, Integer, BigInteger,
@@ -64,8 +64,8 @@ class Tenant(Base):
     company_name = Column(String(255), nullable=False)
     plan = Column(Enum(TenantPlanType, name="tenant_plan_type"), nullable=False, default=TenantPlanType.trial)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=datetime.utcnow)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
     proxies = relationship("Proxy", back_populates="tenant", cascade="all, delete-orphan")
@@ -85,7 +85,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(550), nullable=False)
     role = Column(String(50), nullable=False, default="operator")
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="users")
 
@@ -99,7 +99,7 @@ class Proxy(Base):
     rotation_api_url = Column(String(550))
     geo_location = Column(String(100))
     is_active = Column(Boolean, default=True)
-    last_rotated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    last_rotated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="proxies")
 
@@ -119,7 +119,7 @@ class Target(Base):
     engagement_rate = Column(Numeric(5, 2), default=0.0)
     is_active = Column(Boolean, default=True)
     last_parsed_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "platform", "target_id_code", name="unique_tenant_target"),
@@ -146,7 +146,7 @@ class AccountPool(Base):
     daily_action_limit = Column(Integer, nullable=False, default=15)
     actions_today = Column(Integer, nullable=False, default=0)
     cooldown_until = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_account_pool_status", "tenant_id", "status", "actions_today"),
@@ -167,7 +167,7 @@ class Campaign(Base):
     target_niches = Column(JSONB, nullable=False)
     media_urls = Column(JSONB, default="[]")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="campaigns")
     posting_logs = relationship("PostingLog", back_populates="campaign")
@@ -185,7 +185,7 @@ class PostingLog(Base):
     utm_url = Column(String(700), nullable=False)
     status = Column(String(50), nullable=False)
     error_trace = Column(Text)
-    executed_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    executed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_posting_logs_tenant", "tenant_id", "executed_at"),
@@ -212,7 +212,7 @@ class Lead(Base):
     intent_score = Column(Enum(LeadIntentLevel, name="lead_intent_level"), nullable=False, default=LeadIntentLevel.WARM)
     status = Column(Enum(LeadStatus, name="lead_status"), nullable=False, default=LeadStatus.new)
     dialog_url = Column(String(550), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_leads_tenant_status", "tenant_id", "status", "intent_score"),
