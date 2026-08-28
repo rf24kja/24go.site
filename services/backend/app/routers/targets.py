@@ -15,11 +15,13 @@ from app.schemas import TargetCreate, TargetResponse
 router = APIRouter(prefix="/api/v1/targets", tags=["targets"])
 
 
-@router.get("/", response_model=list[TargetResponse])
+@router.get("/")
 async def list_targets(
     geo_tag: str | None = None,
     niche: str | None = None,
     platform: str | None = None,
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -30,8 +32,13 @@ async def list_targets(
         q = q.where(Target.niche == niche)
     if platform:
         q = q.where(Target.platform == platform)
-    result = await db.execute(q.order_by(Target.created_at.desc()))
-    return result.scalars().all()
+    
+    from sqlalchemy import func
+    count_q = select(func.count()).select_from(q.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+    
+    result = await db.execute(q.order_by(Target.created_at.desc()).limit(limit).offset(offset))
+    return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("/", response_model=TargetResponse, status_code=201)

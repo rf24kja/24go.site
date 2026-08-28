@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
+import { useToast } from "@/components/Toast";
 
 type Lead = {
   id: string;
@@ -38,6 +39,7 @@ const FILTERS = ["ALL", "HOT", "WARM", "COLD"] as const;
 
 export default function LeadsPage() {
   const { auth } = useAuth();
+  const toast = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [testHandle, setTestHandle] = useState("@test_user");
@@ -68,7 +70,7 @@ export default function LeadsPage() {
     if (!auth?.token) return;
     setLoading(true);
     getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter })
-      .then(setLeads)
+      .then((res) => setLeads(res.items || res))
       .finally(() => setLoading(false));
   }, [auth?.token, filter]);
 
@@ -119,7 +121,7 @@ export default function LeadsPage() {
     try {
       await updateLeadStatus(auth.token, leadId, newStatus);
     } catch {
-      getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then(setLeads);
+      getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
     }
   }, [auth?.token, filter]);
 
@@ -185,8 +187,9 @@ export default function LeadsPage() {
               if (!file || !auth?.token) return;
               const text = await file.text();
               const result = await importLeadsCsv(auth.token, text);
-              alert(`Imported: ${result.imported}, Skipped: ${result.skipped}` + (result.errors?.length ? `\nErrors: ${result.errors.slice(0,3).join("; ")}` : ""));
-              getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then(setLeads);
+              const msg = `Imported: ${result.imported}, Skipped: ${result.skipped}` + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
+              toast(msg, result.errors?.length ? "warning" : "success");
+              getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
               e.target.value = "";
             }} />
           </label>

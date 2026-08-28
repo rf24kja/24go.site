@@ -76,9 +76,9 @@ export async function getMe(token: string) {
 
 // ── Leads ─────────────────────────────────────────────────────────────
 
-export async function getLeads(token: string, params?: { intent_score?: string; status?: string }) {
-  const qs = new URLSearchParams(params).toString();
-  return api<any[]>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
+export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
 }
 
 export async function qualifyLead(token: string, data: {
@@ -90,8 +90,9 @@ export async function qualifyLead(token: string, data: {
 
 // ── Accounts ──────────────────────────────────────────────────────────
 
-export async function getAccounts(token: string) {
-  return api<any[]>("/api/v1/accounts/", { token });
+export async function getAccounts(token: string, params?: { status_filter?: string; limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/accounts/${qs ? `?${qs}` : ""}`, { token });
 }
 
 export async function createAccount(token: string, data: { platform: string; account_identifier: string }) {
@@ -100,8 +101,9 @@ export async function createAccount(token: string, data: { platform: string; acc
 
 // ── Campaigns ─────────────────────────────────────────────────────────
 
-export async function getCampaigns(token: string) {
-  return api<any[]>("/api/v1/campaigns/", { token });
+export async function getCampaigns(token: string, params?: { limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/campaigns/${qs ? `?${qs}` : ""}`, { token });
 }
 
 export async function createCampaign(token: string, data: any) {
@@ -118,8 +120,9 @@ export async function deleteCampaign(token: string, campaignId: string) {
 
 // ── Targets ───────────────────────────────────────────────────────────
 
-export async function getTargets(token: string) {
-  return api<any[]>("/api/v1/targets/", { token });
+export async function getTargets(token: string, params?: { limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/targets/${qs ? `?${qs}` : ""}`, { token });
 }
 
 // ── Billing ───────────────────────────────────────────────────────────

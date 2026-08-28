@@ -18,11 +18,12 @@ from app.schemas import LeadResponse
 router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
 
 
-@router.get("/", response_model=list[LeadResponse])
+@router.get("/")
 async def list_leads(
     intent_score: str | None = None,
     status_filter: str | None = None,
     limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -31,8 +32,14 @@ async def list_leads(
         q = q.where(Lead.intent_score == intent_score)
     if status_filter:
         q = q.where(Lead.status == status_filter)
-    result = await db.execute(q.order_by(Lead.created_at.desc()).limit(limit))
-    return result.scalars().all()
+    
+    # Get total count for pagination
+    from sqlalchemy import func
+    count_q = select(func.count()).select_from(q.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+    
+    result = await db.execute(q.order_by(Lead.created_at.desc()).limit(limit).offset(offset))
+    return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 
 
 class QualifyRequest(BaseModel):

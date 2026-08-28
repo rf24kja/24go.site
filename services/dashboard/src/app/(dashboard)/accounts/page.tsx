@@ -59,7 +59,7 @@ export default function AccountsPage() {
       getAccounts(auth.token),
       getListenerStatus(auth.token).catch(() => ({})),
     ]).then(([accts, listeners_]) => {
-      setAccounts(accts);
+      setAccounts(accts.items || accts);
       const raw = listeners_ as any;
       setListeners(raw?.active_workers ?? []);
     }).finally(() => setLoading(false));

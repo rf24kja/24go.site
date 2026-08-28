@@ -1,7 +1,7 @@
 """Campaign CRUD endpoints."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,17 +16,21 @@ from app.schemas import CampaignCreate, CampaignResponse
 router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
 
 
-@router.get("/", response_model=list[CampaignResponse])
+@router.get("/")
 async def list_campaigns(
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Campaign)
-        .where(Campaign.tenant_id == current_user.tenant_id, Campaign.is_active == True)
-        .order_by(Campaign.created_at.desc())
-    )
-    return result.scalars().all()
+    q = select(Campaign).where(Campaign.tenant_id == current_user.tenant_id, Campaign.is_active == True)
+    
+    from sqlalchemy import func
+    count_q = select(func.count()).select_from(q.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+    
+    result = await db.execute(q.order_by(Campaign.created_at.desc()).limit(limit).offset(offset))
+    return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("/", response_model=CampaignResponse, status_code=201)

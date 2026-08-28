@@ -1,10 +1,13 @@
-"""Time-series analytics endpoint for charts."""
+"""Time-series analytics endpoint for charts.
+
+ponytail: single GROUP BY queries, fill gaps in Python. 
+"""
 import uuid
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -54,7 +57,23 @@ async def get_analytics(
     tenant_id = current_user.tenant_id
     since = date.today() - timedelta(days=days)
 
-    # Funnel metrics
+    # ── Funnel: 5 queries → 2 ───────────────────────────────────────
+    # Combined funnel query (leads + hot + warm in one pass)
+    funnel_q = await db.execute(
+        select(
+            func.count(Lead.id).label("total"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.WARM, 1))).label("warm"),
+        ).where(
+            Lead.tenant_id == tenant_id,
+            Lead.created_at >= since,
+        )
+    )
+    row = funnel_q.one()
+    total_leads = row.total
+    hot = row.hot
+    warm = row.warm
+
     targets_q = await db.execute(
         select(func.count(Target.id)).where(
             Target.tenant_id == tenant_id, Target.is_active == True
@@ -70,35 +89,13 @@ async def get_analytics(
     )
     published = posts_q.scalar() or 0
 
-    leads_q = await db.execute(
-        select(func.count(Lead.id)).where(
-            Lead.tenant_id == tenant_id,
-            Lead.created_at >= since,
-        )
-    )
-    total_leads = leads_q.scalar() or 0
-
-    hot_q = await db.execute(
-        select(func.count(Lead.id)).where(
-            Lead.tenant_id == tenant_id,
-            Lead.intent_score == LeadIntentLevel.HOT,
-            Lead.created_at >= since,
-        )
-    )
-    hot = hot_q.scalar() or 0
-
-    warm_q = await db.execute(
-        select(func.count(Lead.id)).where(
-            Lead.tenant_id == tenant_id,
-            Lead.intent_score == LeadIntentLevel.WARM,
-            Lead.created_at >= since,
-        )
-    )
-    warm = warm_q.scalar() or 0
-
-    # Geo breakdown
+    # ── Geo breakdown: 1 query with FILTER ──────────────────────────
     geo_q = await db.execute(
-        select(Lead.geo_tag, func.count(Lead.id).label("leads"))
+        select(
+            Lead.geo_tag,
+            func.count(Lead.id).label("leads"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot_leads"),
+        )
         .where(
             Lead.tenant_id == tenant_id,
             Lead.created_at >= since,
@@ -108,61 +105,57 @@ async def get_analytics(
         .order_by(func.count(Lead.id).desc())
         .limit(10)
     )
-    geo_rows = geo_q.all()
+    geo_breakdown = [
+        GeoBreakdown(geo_tag=r.geo_tag, leads=r.leads, hot_leads=r.hot_leads)
+        for r in geo_q.all()
+    ]
 
-    geo_breakdown = []
-    for row in geo_rows:
-        hot_geo_q = await db.execute(
-            select(func.count(Lead.id)).where(
-                Lead.tenant_id == tenant_id,
-                Lead.geo_tag == row.geo_tag,
-                Lead.intent_score == LeadIntentLevel.HOT,
-                Lead.created_at >= since,
-            )
+    # ── Time-series: 2 queries (posts + leads) instead of 3×N ──────
+    # Leads per day with hot filter
+    ts_leads_q = await db.execute(
+        select(
+            func.date_trunc("day", Lead.created_at).label("day"),
+            func.count(Lead.id).label("leads"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
         )
-        geo_breakdown.append(GeoBreakdown(
-            geo_tag=row.geo_tag,
-            leads=row.leads,
-            hot_leads=hot_geo_q.scalar() or 0,
-        ))
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.created_at >= since,
+        )
+        .group_by(text("day"))
+        .order_by(text("day"))
+    )
+    leads_by_day = {r.day.date().isoformat(): (r.leads, r.hot) for r in ts_leads_q.all()}
 
-    # Time-series: daily aggregation
+    # Posts per day
+    ts_posts_q = await db.execute(
+        select(
+            func.date_trunc("day", PostingLog.executed_at).label("day"),
+            func.count(PostingLog.id).label("posts"),
+        )
+        .where(
+            PostingLog.tenant_id == tenant_id,
+            PostingLog.executed_at >= since,
+        )
+        .group_by(text("day"))
+        .order_by(text("day"))
+    )
+    posts_by_day = {r.day.date().isoformat(): r.posts for r in ts_posts_q.all()}
+
+    # Fill gaps
     time_series = []
     for day_offset in range(days, -1, -1):
-        day = date.today() - timedelta(days=day_offset)
-        next_day = day + timedelta(days=1)
-
-        day_posts_q = await db.execute(
-            select(func.count(PostingLog.id)).where(
-                PostingLog.tenant_id == tenant_id,
-                PostingLog.executed_at >= day,
-                PostingLog.executed_at < next_day,
-            )
-        )
-        day_leads_q = await db.execute(
-            select(func.count(Lead.id)).where(
-                Lead.tenant_id == tenant_id,
-                Lead.created_at >= day,
-                Lead.created_at < next_day,
-            )
-        )
-        day_hot_q = await db.execute(
-            select(func.count(Lead.id)).where(
-                Lead.tenant_id == tenant_id,
-                Lead.intent_score == LeadIntentLevel.HOT,
-                Lead.created_at >= day,
-                Lead.created_at < next_day,
-            )
-        )
+        day = (date.today() - timedelta(days=day_offset)).isoformat()
+        leads, hot_count = leads_by_day.get(day, (0, 0))
         time_series.append(TimeSeriesPoint(
-            date=day.isoformat(),
+            date=day,
             targets=discovered,
-            posts=day_posts_q.scalar() or 0,
-            leads=day_leads_q.scalar() or 0,
-            hot_leads=day_hot_q.scalar() or 0,
+            posts=posts_by_day.get(day, 0),
+            leads=leads,
+            hot_leads=hot_count,
         ))
 
-    # Cost aggregates
+    # ── Cost aggregates ──────────────────────────────────────────────
     cost_q = await db.execute(
         select(
             func.coalesce(func.sum(DailyAnalytic.llm_tokens_spent), 0),
@@ -174,7 +167,6 @@ async def get_analytics(
     total_tokens = cost_q.scalar() or 0
 
     try:
-        from sqlalchemy import text
         usage_q = await db.execute(
             text("SELECT COALESCE(SUM(estimated_cost_usd), 0) FROM usage_logs WHERE tenant_id = :tid AND created_at >= :since"),
             {"tid": tenant_id, "since": str(since)},
