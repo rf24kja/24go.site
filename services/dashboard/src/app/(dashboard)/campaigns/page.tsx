@@ -112,10 +112,30 @@ export default function CampaignsPage() {
         </button>
       </div>
 
+      {/* How campaigns work */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h2 className="text-sm font-medium text-zinc-300 mb-2">How posting works</h2>
+        <p className="text-xs text-zinc-500">
+          Campaigns automatically post to your target channels on schedule.
+          Use <strong className="text-zinc-400">spintax</strong> for unique variations: <code className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-400">{'{Hello|Hi|Hey}'}</code> rotates each post.
+          After posting, the system automatically scrapes comments to capture more leads.
+        </p>
+      </div>
+
       {loading ? (
         <CardSkeleton count={6} />
       ) : campaigns.length === 0 ? (
-        <p className="text-zinc-500 text-sm">No campaigns yet. Create one to start posting.</p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
+          <p className="text-zinc-300 font-medium mb-2">No campaigns yet</p>
+          <p className="text-xs text-zinc-500 mb-4 max-w-md mx-auto">
+            Create a campaign to start posting to your target channels.
+            Each campaign has a name, target channel, posting schedule, and message text with spintax.
+          </p>
+          <button onClick={openCreate}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">
+            + Create your first campaign
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {campaigns.map((c) => (

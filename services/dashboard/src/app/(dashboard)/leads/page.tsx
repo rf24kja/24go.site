@@ -38,6 +38,10 @@ const COLUMNS = [
 
 const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;
 
+const STATUS_LABELS: Record<string, string> = {
+  new: "New", in_progress: "In Progress", converted: "Converted", rejected: "Rejected",
+};
+
 const FILTERS = ["ALL", "HOT", "WARM", "COLD"] as const;
 const SOURCE_FILTERS = ["all", "dm", "comment", "manual"] as const;
 const SOURCE_ICONS: Record<string, string> = { dm: "💬", comment: "💭", manual: "✏️", import: "📥", webhook: "🔗" };
@@ -294,7 +298,9 @@ export default function LeadsPage() {
                 </td></tr>
               ) : leads.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                  No leads yet. Run a scan, import a CSV, or use the qualify form above.
+                  <p className="text-zinc-300 font-medium mb-2">No leads yet</p>
+                  <p className="text-xs text-zinc-500 mb-1">Leads appear here when someone sends a DM to your connected Telegram account, or when comments are scraped from your posts.</p>
+                  <p className="text-xs text-zinc-600">You can also test with the qualify form above, or import leads from a CSV file.</p>
                 </td></tr>
               ) : (
                 leads.map((lead) => (
@@ -308,7 +314,7 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-4 py-3 text-zinc-400 max-w-[300px] truncate">{lead.message_text}</td>
                     <td className="px-4 py-3 text-zinc-400">{lead.geo_tag}</td>
-                    <td className="px-4 py-3 text-zinc-400 capitalize">{lead.status.replace("_", " ")}</td>
+                    <td className="px-4 py-3 text-zinc-400">{STATUS_LABELS[lead.status] ?? lead.status}</td>
                     <td className="px-4 py-3 text-zinc-400">{new Date(lead.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))
@@ -441,7 +447,7 @@ export default function LeadsPage() {
                         ? "bg-zinc-100 text-zinc-900 border-zinc-100"
                         : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500"
                     }`}>
-                    {s.replace("_", " ")}
+                    {STATUS_LABELS[s] ?? s}
                   </button>
                 ))}
               </div>

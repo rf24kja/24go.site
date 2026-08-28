@@ -87,6 +87,16 @@ export default function TargetsPage() {
         <h1 className="text-2xl font-bold">Target Discovery</h1>
       </div>
 
+      {/* How targets work */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h2 className="text-sm font-medium text-zinc-300 mb-2">How targets work</h2>
+        <p className="text-xs text-zinc-500">
+          Targets are Telegram groups and channels where your audience hangs out.
+          Scan by <strong className="text-zinc-400">GEO</strong> (city/country) and <strong className="text-zinc-400">niche</strong> to discover them.
+          Once found, connect an account and start a listener to intercept DMs, or post campaigns and scrape comments.
+        </p>
+      </div>
+
       {/* Scan controls */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-400 mb-3">Discover New Targets</h2>
@@ -134,7 +144,11 @@ export default function TargetsPage() {
                 </div>
               </td></tr>
             ) : targets.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-500">No targets discovered yet. Run a scan above.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-500">
+                <p className="text-zinc-300 font-medium mb-2">No targets discovered yet</p>
+                <p className="text-xs text-zinc-500 mb-1">Use the scan above to find Telegram groups and channels in your GEO and niche.</p>
+                <p className="text-xs text-zinc-600">Example: GEO = &quot;Moscow&quot;, Niche = &quot;thailand_travel&quot;</p>
+              </td></tr>
             ) : (
               targets.map((t) => (
                 <tr key={t.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">

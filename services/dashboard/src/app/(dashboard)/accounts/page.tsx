@@ -184,6 +184,29 @@ export default function AccountsPage() {
         </button>
       </div>
 
+      {/* How it works */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h2 className="text-sm font-medium text-zinc-300 mb-3">How Telegram accounts work</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-zinc-400">
+          <div className="flex items-start gap-2">
+            <span className="text-emerald-400 font-bold text-sm">1</span>
+            <div><strong className="text-zinc-300">Add account</strong> — enter your Telegram phone number</div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-emerald-400 font-bold text-sm">2</span>
+            <div><strong className="text-zinc-300">Connect</strong> — Telegram sends a code to your app, enter it here</div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-emerald-400 font-bold text-sm">3</span>
+            <div><strong className="text-zinc-300">Warm up</strong> — the system gradually builds your account&apos;s reputation (2-5 days)</div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-emerald-400 font-bold text-sm">4</span>
+            <div><strong className="text-zinc-300">Listen</strong> — start intercepting DMs as leads automatically</div>
+          </div>
+        </div>
+      </div>
+
       {/* Add Account Form */}
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
@@ -254,8 +277,9 @@ export default function AccountsPage() {
               </td></tr>
             ) : accounts.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
-                <p className="mb-2">No accounts yet.</p>
-                <p className="text-xs text-zinc-600">Add a Telegram account to start receiving leads.</p>
+                <p className="mb-2 text-zinc-300 font-medium">No accounts connected yet</p>
+                <p className="text-xs text-zinc-500 mb-3">Click <strong>&quot;+ Add Account&quot;</strong> above to add your first Telegram account.</p>
+                <p className="text-xs text-zinc-600">You&apos;ll need access to the Telegram app on your phone to receive the verification code.</p>
               </td></tr>
             ) : (
               accounts.map((acct) => {
@@ -324,9 +348,9 @@ export default function AccountsPage() {
                             </button>
                             <button onClick={() => handleDisconnect(acct.id)}
                               disabled={actionBusy === acct.id || listenerActive}
-                              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 transition disabled:opacity-40"
-                              title="Disconnect Telegram">
-                              ⏏
+                              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
+                              title="Disconnect Telegram account (stops listener first)">
+                              Disconnect
                             </button>
                           </>
                         )}
