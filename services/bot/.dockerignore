@@ -1,0 +1,8 @@
+.env
+.git
+.agent
+__pycache__
+*.pyc
+venv/
+.venv/
+*.session

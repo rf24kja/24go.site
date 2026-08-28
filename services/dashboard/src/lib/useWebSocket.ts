@@ -4,21 +4,25 @@
  * Falls back to HTTP polling when WebSocket is unavailable (e.g. Vercel).
  *
  * Usage:
- *   const { connected, lastEvent } = useWebSocket(tenantId);
+ *   const { connected, lastEvent } = useWebSocket(tenantId, token);
  *   // lastEvent = { type: "lead_created", data: {...} }
  */
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const getWsUrl = () => {
+function getWsUrl() {
   if (typeof window === "undefined") return "ws://localhost:8000";
   if (window.location.hostname === "localhost") return "ws://localhost:8000";
-  // On Vercel: use same host with ws protocol
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${window.location.host}`;
-};
-const WS_URL = getWsUrl();
+}
+
+function getApiUrl() {
+  if (typeof window === "undefined") return "http://localhost:8000";
+  if (window.location.hostname === "localhost") return "http://localhost:8000";
+  return "";
+}
 
 export interface WsEvent {
   type: string;
@@ -26,14 +30,11 @@ export interface WsEvent {
   timestamp?: number;
 }
 
-function detectWebSocketSupport(): Promise<boolean> {
+function detectWebSocketSupport(wsBase: string): Promise<boolean> {
   return new Promise((resolve) => {
     try {
-      const test = new WebSocket(`${WS_URL}/ws/__probe`);
-      const timer = setTimeout(() => {
-        test.close();
-        resolve(false);
-      }, 2000);
+      const test = new WebSocket(`${wsBase}/ws/__probe?token=__probe`);
+      const timer = setTimeout(() => { test.close(); resolve(false); }, 2000);
       test.onopen = () => { clearTimeout(timer); test.close(); resolve(true); };
       test.onerror = () => { clearTimeout(timer); resolve(false); };
     } catch {
@@ -42,32 +43,28 @@ function detectWebSocketSupport(): Promise<boolean> {
   });
 }
 
-function getApiUrl() {
-  if (typeof window === "undefined") return "http://localhost:8000";
-  if (window.location.hostname === "localhost") return "http://localhost:8000";
-  return ""; // relative URLs on Vercel
-}
-
-export function useWebSocket(tenantId: string | null) {
+export function useWebSocket(tenantId: string | null, token: string | null = null) {
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<WsEvent | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
   const pollTimer = useRef<NodeJS.Timeout | null>(null);
   const sinceRef = useRef<number>(0);
   const modeRef = useRef<"ws" | "poll" | "detecting">("detecting");
+
+  const wsBase = getWsUrl();
+  const apiBase = getApiUrl();
 
   // ── Polling fallback ──────────────────────────────────────────────
   const startPolling = useCallback(() => {
     if (modeRef.current === "poll") return;
     modeRef.current = "poll";
-    setConnected(true); // optimistic
+    setConnected(true);
 
     const poll = async () => {
-      if (!tenantId) return;
+      if (!tenantId || !token) return;
       try {
         const res = await fetch(
-          `${getApiUrl()}/api/v1/events/poll?tenant_id=${tenantId}&since=${sinceRef.current}`,
+          `${apiBase}/api/v1/events/poll?since=${sinceRef.current}&token=${encodeURIComponent(token)}`,
         );
         const data = await res.json();
         if (data.events?.length) {
@@ -79,27 +76,23 @@ export function useWebSocket(tenantId: string | null) {
           }
         }
       } catch { /* ignore */ }
-      pollTimer.current = setTimeout(poll, 1000); // poll every 1s
+      pollTimer.current = setTimeout(poll, 1000);
     };
     poll();
-  }, [tenantId]);
+  }, [tenantId, token, apiBase]);
 
   // ── WebSocket mode ────────────────────────────────────────────────
   const connectWs = useCallback(() => {
-    if (!tenantId || modeRef.current !== "detecting") return;
+    if (!tenantId || !token || modeRef.current !== "detecting") return;
 
     try {
-      const ws = new WebSocket(`${WS_URL}/ws/${tenantId}`);
+      const ws = new WebSocket(`${wsBase}/ws/${tenantId}?token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
 
-      ws.onopen = () => {
-        modeRef.current = "ws";
-        setConnected(true);
-      };
+      ws.onopen = () => { modeRef.current = "ws"; setConnected(true); };
       ws.onclose = () => {
         setConnected(false);
         wsRef.current = null;
-        // If WS disconnected quickly, fall back to polling
         if (modeRef.current === "ws") {
           modeRef.current = "detecting";
           startPolling();
@@ -118,14 +111,14 @@ export function useWebSocket(tenantId: string | null) {
     } catch {
       startPolling();
     }
-  }, [tenantId, startPolling]);
+  }, [tenantId, token, wsBase, startPolling]);
 
-  // ── Init: detect WS support, connect or poll ──────────────────────
+  // ── Init ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || !token) return;
 
     modeRef.current = "detecting";
-    detectWebSocketSupport().then((wsOk) => {
+    detectWebSocketSupport(wsBase).then((wsOk) => {
       if (wsOk) {
         connectWs();
       } else {
@@ -134,11 +127,10 @@ export function useWebSocket(tenantId: string | null) {
     });
 
     return () => {
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (pollTimer.current) clearTimeout(pollTimer.current);
       wsRef.current?.close();
     };
-  }, [tenantId, connectWs, startPolling]);
+  }, [tenantId, token, wsBase, connectWs, startPolling]);
 
   return { connected, lastEvent };
 }

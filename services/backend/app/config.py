@@ -6,9 +6,11 @@ class Settings(BaseSettings):
     DATABASE_URL_SYNC: str = "postgresql://app_user:secure_password@postgres:5432/app_db"
     REDIS_URL: str = "redis://redis:6379/0"
 
-    JWT_SECRET: str = "change-me"
+    JWT_SECRET: str = ""  # REQUIRED — app refuses to start without it
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    INTERNAL_API_KEY: str = ""  # Required for /internal/broadcast
 
     ENCRYPTION_KEY: str = ""
 

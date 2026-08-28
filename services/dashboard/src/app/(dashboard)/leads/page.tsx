@@ -48,7 +48,7 @@ export default function LeadsPage() {
   const [view, setView] = useState<"table" | "kanban">("kanban");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  const { connected, lastEvent } = useWebSocket(auth?.user?.tenant_id ?? null);
+  const { connected, lastEvent } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSaving, setDetailSaving] = useState(false);
 

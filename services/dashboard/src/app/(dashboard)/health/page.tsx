@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-
-function getApiBase(): string {
-  if (typeof window === "undefined") return "";
-  if (window.location.hostname === "localhost") return "http://localhost:8000";
-  return ""; // Use Vercel proxy
-}
+import { getApiBase } from "@/lib/api";
 
 type HealthData = {
   status: string;

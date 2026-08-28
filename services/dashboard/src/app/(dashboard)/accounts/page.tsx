@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getAccounts, startListener, stopListener, getListenerStatus } from "@/lib/api";
+import { getAccounts, createAccount, startListener, stopListener, getListenerStatus } from "@/lib/api";
 
 type Account = {
   id: string;
@@ -103,22 +103,14 @@ export default function AccountsPage() {
     if (!auth?.token) return;
     setAddSaving(true);
     try {
-      // Use the accounts endpoint directly — create via raw POST
-      const res = await fetch(`${window.location.origin.includes("localhost") ? "http://localhost:8000" : ""}/api/v1/accounts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
-        body: JSON.stringify({
-          account_identifier: addPhone || addUsername,
-          platform: addPlatform,
-          daily_action_limit: 20,
-        }),
+      await createAccount(auth.token, {
+        account_identifier: addPhone || addUsername,
+        platform: addPlatform,
       });
-      if (res.ok) {
-        setShowAdd(false);
-        setAddPhone("");
-        setAddUsername("");
-        load();
-      }
+      setShowAdd(false);
+      setAddPhone("");
+      setAddUsername("");
+      load();
     } finally {
       setAddSaving(false);
     }

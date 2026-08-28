@@ -4,6 +4,7 @@ Dispatches Celery tasks to the listener queue. The worker handles
 Telethon connection lifecycle.
 """
 import logging
+import uuid as _uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -15,6 +16,10 @@ from app.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/listeners", tags=["listeners"])
 log = logging.getLogger(__name__)
+
+# Track active task IDs per account for targeted revoke
+# ponytail: in-memory, single-process. Upgrade to Redis if multi-worker.
+_active_tasks: dict[str, str] = {}  # account_id -> task_id
 
 
 class ListenerStatus(BaseModel):
@@ -28,15 +33,10 @@ async def start_listener(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Start a Telegram listener for a specific account.
-
-    Dispatches a Celery task to the listener queue. The worker will
-    establish a Telethon connection and begin monitoring DMs.
-    """
-    import uuid
+    """Start a Telegram listener for a specific account."""
     # Verify account belongs to this tenant
     q = select(AccountPool).where(
-        AccountPool.id == uuid.UUID(account_id),
+        AccountPool.id == _uuid.UUID(account_id),
         AccountPool.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -44,15 +44,20 @@ async def start_listener(
     if not account:
         raise HTTPException(404, "Account not found")
 
+    # Check if already running
+    if account_id in _active_tasks:
+        return ListenerStatus(account_id=account_id, status="already_running")
+
     # Dispatch to listener worker
     from app.celery_app import celery
-    celery.send_task(
+    task = celery.send_task(
         "app.tasks.listener.start_lead_listener",
         args=[str(current_user.tenant_id), account_id],
         queue="listener",
     )
+    _active_tasks[account_id] = task.id
 
-    log.info(f"Listener started for account {account_id} (tenant={current_user.tenant_id})")
+    log.info(f"Listener started for account {account_id} (task={task.id})")
     return ListenerStatus(account_id=account_id, status="started")
 
 
@@ -61,13 +66,17 @@ async def stop_listener(
     account_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Stop a running listener. Sends a revoke signal to the Celery worker."""
+    """Stop a running listener. Revokes the specific Celery task."""
+    task_id = _active_tasks.pop(account_id, None)
+
     from app.celery_app import celery
+    if task_id:
+        celery.control.revoke(task_id, terminate=True)
+        log.info(f"Revoked task {task_id} for account {account_id}")
+    else:
+        # No tracked task — try to revoke any task with matching args
+        log.warning(f"No tracked task for account {account_id}, cannot targeted revoke")
 
-    # Revoke all tasks for this account on the listener queue
-    celery.control.purge()  # ponytail: purge all pending, targeted revoke needs task IDs
-
-    log.info(f"Listener stop requested for account {account_id}")
     return {"status": "stopped", "account_id": account_id}
 
 

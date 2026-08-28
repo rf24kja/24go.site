@@ -1,0 +1,7 @@
+.env
+.git
+.agent
+.next
+node_modules
+*.md
+.gitignore

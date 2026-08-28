@@ -9,6 +9,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 import redis.asyncio as redis
 
+from app.config import settings
+
 log = logging.getLogger(__name__)
 
 # ponytail: in-memory fallback if Redis is down. One process only.
@@ -18,7 +20,7 @@ _redis: redis.Redis | None = None
 async def get_redis() -> redis.Redis:
     global _redis
     if _redis is None:
-        _redis = redis.from_url("redis://redis:6379/1", decode_responses=True)
+        _redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
     return _redis
 
 

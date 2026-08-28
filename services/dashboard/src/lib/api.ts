@@ -1,15 +1,16 @@
 /**
  * API client for LeadGen Control Plane.
- * Uses server-side fetch for RSC, client-side fetch for mutations.
+ * Centralized — all API calls go through this module.
  */
 
-const API_URL = (() => {
-  // On Vercel / production: use relative URLs (proxied via vercel.json rewrites)
+export function getApiBase(): string {
   if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
-    return "";
+    return ""; // Use Vercel proxy on production
   }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-})();
+}
+
+const API_URL = getApiBase();
 
 interface FetchOptions extends RequestInit {
   token?: string;
@@ -30,9 +31,25 @@ export async function api<T = any>(path: string, opts: FetchOptions = {}): Promi
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  // 401 interceptor — session expired, redirect to login
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    throw new ApiError(401, "Session expired");
+  }
+
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(res.status, body);
+    // Try to extract a clean error message from the response
+    let message = body;
+    try {
+      const parsed = JSON.parse(body);
+      message = parsed.detail || parsed.error || body;
+    } catch { /* use raw body */ }
+    throw new ApiError(res.status, message);
   }
   return res.json();
 }
@@ -75,6 +92,10 @@ export async function qualifyLead(token: string, data: {
 
 export async function getAccounts(token: string) {
   return api<any[]>("/api/v1/accounts/", { token });
+}
+
+export async function createAccount(token: string, data: { platform: string; account_identifier: string }) {
+  return api<any>("/api/v1/accounts/", { method: "POST", body: JSON.stringify(data), token });
 }
 
 // ── Campaigns ─────────────────────────────────────────────────────────
@@ -259,7 +280,7 @@ export async function seedDemoData(token: string) {
 }
 
 export async function backupLeads(token: string) {
-  const res = await fetch(`${API_URL || ""}/api/v1/system/backup/leads`, {
+  const res = await fetch(`${API_URL}/api/v1/system/backup/leads`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.blob();

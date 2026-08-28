@@ -1,22 +1,28 @@
+"""FastAPI application — LeadGen Control Plane v0.3.1."""
 import asyncio
 import logging
 import time
 from collections import deque
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from jose import JWTError, jwt
 
+from app.config import settings
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
 from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system
 
-app = FastAPI(title="LeadGen Control Plane", version="0.3.0")
+# ── Startup guard ─────────────────────────────────────────────────────
+if not settings.JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
+
+app = FastAPI(title="LeadGen Control Plane", version="0.3.1")
 
 # ── Middleware ──────────────────────────────────────────────────────────
-import os
 ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # local dev
-    "http://localhost:8080",  # docker dashboard
+    "http://localhost:3000",
+    "http://localhost:8080",
     "https://24go.site",
     "https://www.24go.site",
     "https://app.24go.site",
@@ -30,6 +36,7 @@ app.add_middleware(
 )
 app.add_middleware(TenantRLSMiddleware)
 app.add_middleware(RateLimitMiddleware)
+
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────
 # ponytail: simple in-memory pub/sub, one process only. Add Redis pub/sub if multi-worker.
@@ -67,20 +74,39 @@ class ConnectionManager:
 ws_manager = ConnectionManager()
 
 
+def _decode_ws_token(token: str) -> dict | None:
+    """Validate JWT and return payload, or None if invalid."""
+    try:
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
+        return None
+
+
 @app.websocket("/ws/{tenant_id}")
 async def websocket_endpoint(websocket: WebSocket, tenant_id: str):
+    """Authenticated WebSocket — tenant_id must match JWT claim."""
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        return
+    payload = _decode_ws_token(token)
+    if not payload:
+        await websocket.close(code=4001, reason="Invalid token")
+        return
+    # Enforce tenant isolation: JWT tenant_id must match URL
+    jwt_tenant = payload.get("tenant_id")
+    if str(jwt_tenant) != str(tenant_id):
+        await websocket.close(code=4003, reason="Tenant mismatch")
+        return
     await ws_manager.connect(tenant_id, websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            # Client can send ping, ignore for now
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(tenant_id, websocket)
 
 
 # ── Broadcast helper (call from workers/tasks) ────────────────────────
-
-import asyncio
 _event_queue: asyncio.Queue | None = None
 
 
@@ -102,21 +128,34 @@ async def _event_processor():
 @app.on_event("startup")
 async def start_event_processor():
     asyncio.create_task(_event_processor())
-    # Init audit table
-    from app.config import settings
+    # Init tables
     from app.audit import init_audit_table
     from app.scoring import init_scoring_rules
+    from app.db_pool import get_pool
     try:
         url = settings.DATABASE_URL.replace("+asyncpg", "")
         await init_audit_table(url)
         await init_scoring_rules(url)
+        await get_pool()  # warm up connection pool
     except Exception as e:
         logging.getLogger(__name__).warning(f"Init skipped: {e}")
 
 
+@app.on_event("shutdown")
+async def shutdown_pool():
+    from app.db_pool import close_pool
+    await close_pool()
+
+
 @app.post("/internal/broadcast")
-async def broadcast_event(tenant_id: str, event: dict):
-    """Internal endpoint for workers to broadcast events via HTTP (no auth)."""
+async def broadcast_event(
+    tenant_id: str,
+    event: dict,
+    x_internal_key: str = Header(default=""),
+):
+    """Internal endpoint for workers — requires X-Internal-Key header."""
+    if not settings.INTERNAL_API_KEY or x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(403, "Invalid internal key")
     queue = get_event_queue()
     await queue.put((tenant_id, event))
     return {"queued": True}
@@ -129,28 +168,29 @@ _BUFFER_TTL = 300  # 5 minutes
 
 
 @app.get("/api/v1/events/poll")
-async def poll_events(tenant_id: str, since: float = 0):
-    """Long-poll endpoint for Vercel clients without WebSocket.
+async def poll_events(
+    since: float = 0,
+    token: str = Query(...),
+):
+    """Authenticated long-poll — token required, tenant from JWT."""
+    payload = _decode_ws_token(token)
+    if not payload:
+        raise HTTPException(401, "Invalid token")
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(401, "Token missing tenant_id")
 
-    Returns events newer than `since` (unix timestamp).
-    If no events, holds connection for up to 25s then returns empty.
-    """
     cutoff = time.time() - _BUFFER_TTL
-    events = []
-
-    # Check buffer for events since cutoff
-    buf = _event_buffer.get(tenant_id, deque())
-    for ev in buf:
-        if ev.get("timestamp", 0) > since and ev.get("timestamp", 0) > cutoff:
-            events.append(ev)
+    buf = _event_buffer.get(str(tenant_id), deque())
+    events = [ev for ev in buf if ev.get("timestamp", 0) > since and ev.get("timestamp", 0) > cutoff]
 
     if events:
         return {"events": events}
 
     # Long-poll: wait up to 25s for new events
-    for _ in range(50):  # 50 * 0.5s = 25s
+    for _ in range(50):
         await asyncio.sleep(0.5)
-        buf = _event_buffer.get(tenant_id, deque())
+        buf = _event_buffer.get(str(tenant_id), deque())
         new_events = [ev for ev in buf if ev.get("timestamp", 0) > since and ev.get("timestamp", 0) > cutoff]
         if new_events:
             return {"events": new_events}
@@ -163,16 +203,12 @@ _orig_broadcast = ConnectionManager.broadcast
 
 
 async def _broadcast_with_buffer(self, tenant_id: str, event: dict):
-    # Add timestamp
     event_with_ts = {**event, "timestamp": time.time()}
-    # Write to ring buffer
     buf = _event_buffer.setdefault(tenant_id, deque(maxlen=50))
     buf.append(event_with_ts)
-    # Prune old entries
     cutoff = time.time() - _BUFFER_TTL
     while buf and buf[0].get("timestamp", 0) < cutoff:
         buf.popleft()
-    # Original broadcast
     await _orig_broadcast(self, tenant_id, event)
 
 

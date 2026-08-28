@@ -1,5 +1,5 @@
 """Campaign analytics: per-campaign stats."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +28,7 @@ async def campaign_stats(
     )
     campaign = result.scalar_one_or_none()
     if not campaign:
-        return {"error": "Campaign not found"}
+        raise HTTPException(404, "Campaign not found")
 
     # Get leads for this campaign (matched by geo + niche tags)
     lead_q = select(Lead).where(Lead.tenant_id == current_user.tenant_id)

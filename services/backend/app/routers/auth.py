@@ -131,7 +131,8 @@ async def invite_user(
         raise HTTPException(409, "Email already registered")
 
     # Create user with temporary password (must change on first login)
-    temp_password = f"Temp{datetime.now().strftime('%H%M%S')}!"
+    import secrets
+    temp_password = secrets.token_urlsafe(12) + "!"  # e.g. "xK9mN2pL!"
     user = User(
         tenant_id=current_user.tenant_id,
         email=body.email,

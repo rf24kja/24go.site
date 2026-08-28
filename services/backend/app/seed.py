@@ -12,31 +12,29 @@ import asyncpg
 log = logging.getLogger(__name__)
 
 TARGETS = [
-    {"name": "Phuket Real Estate", "group_url": "https://t.me/+phuket_realestate", "platform": "telegram", "geo": "Phuket"},
-    {"name": "Phuket Tours", "group_url": "https://t.me/+phuket_tours", "platform": "telegram", "geo": "Phuket"},
-    {"name": "Thailand Property", "group_url": "https://t.me/+thai_property", "platform": "telegram", "geo": "Bangkok"},
-    {"name": "Phuket Rentals", "group_url": "https://t.me/+phuket_rentals", "platform": "telegram", "geo": "Phuket"},
+    {"title": "Phuket Real Estate", "target_id_code": "phuket_realestate", "platform": "telegram", "geo": "Phuket", "niche": "real_estate", "access": "open_comments", "members": 5200},
+    {"title": "Phuket Tours", "target_id_code": "phuket_tours", "platform": "telegram", "geo": "Phuket", "niche": "travel", "access": "open_comments", "members": 8100},
+    {"title": "Thailand Property", "target_id_code": "thai_property", "platform": "telegram", "geo": "Bangkok", "niche": "real_estate", "access": "open_wall", "members": 12000},
+    {"title": "Phuket Rentals", "target_id_code": "phuket_rentals", "platform": "telegram", "geo": "Phuket", "niche": "rentals", "access": "open_comments", "members": 3400},
 ]
 
 ACCOUNTS = [
-    {"phone": "+66123456789", "username": "agent_anna"},
-    {"phone": "+66987654321", "username": "agent_mike"},
+    {"identifier": "+66123456789"},
+    {"identifier": "+66987654321"},
 ]
 
 CAMPAIGNS = [
     {
         "name": "Phuket Villa Promo",
-        "description": "Promote luxury villas to Phuket buyers",
-        "template": "🏠 Luxury villas in Phuket from $200K. {spintax_greeting} Interested in viewing?",
-        "schedule_cron": "0 10,14,18 * * *",
-        "posts_per_day": 3,
+        "base_text": "Luxury villas in Phuket from $200K. {spintax_greeting} Interested in viewing?",
+        "geos": ["Phuket"],
+        "niches": ["real_estate"],
     },
     {
         "name": "Tour Packages",
-        "description": "Monthly tour packages promotion",
-        "template": "🌴 Exclusive tours to Phuket — {spintax_offer}! DM for details.",
-        "schedule_cron": "0 9,17 * * *",
-        "posts_per_day": 2,
+        "base_text": "Exclusive tours to Phuket - {spintax_offer}! DM for details.",
+        "geos": ["Phuket", "Bangkok"],
+        "niches": ["travel"],
     },
 ]
 
@@ -61,7 +59,6 @@ async def seed_demo_data(url: str, tenant_id: str | uuid.UUID) -> dict:
     tid = uuid.UUID(str(tenant_id))
     conn = await asyncpg.connect(url)
     try:
-        # Check if already seeded
         count = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE tenant_id = $1", tid)
         if count > 0:
             return {"status": "already_seeded", "leads": count}
@@ -74,50 +71,44 @@ async def seed_demo_data(url: str, tenant_id: str | uuid.UUID) -> dict:
         for t in TARGETS:
             tid_row = uuid.uuid4()
             await conn.execute(
-                """INSERT INTO targets (id, tenant_id, name, group_url, platform, geo_tag, is_active)
-                   VALUES ($1, $2, $3, $4, $5, $6, true)""",
-                tid_row, tid, t["name"], t["group_url"], t["platform"], t["geo"],
+                """INSERT INTO targets (id, tenant_id, platform, target_id_code, title, geo_tag, niche, access, members_count, engagement_rate, is_active)
+                   VALUES ($1, $2, $3::platform_type, $4, $5, $6, $7, $8::access_level, $9, $10, true)""",
+                tid_row, tid, t["platform"], t["target_id_code"], t["title"], t["geo"], t["niche"], t["access"], t["members"], round(random.uniform(1.0, 8.0), 2),
             )
             target_ids.append(tid_row)
             result["targets"] += 1
 
         # 2. Accounts
-        account_ids = []
         for a in ACCOUNTS:
             aid = uuid.uuid4()
             await conn.execute(
-                """INSERT INTO account_pool (id, tenant_id, phone_number, username, status, daily_action_limit, warmup_stage)
-                   VALUES ($1, $2, $3, $4, 'active', 20, 3)""",
-                aid, tid, a["phone"], a["username"],
+                """INSERT INTO account_pool (id, tenant_id, platform, account_identifier, session_data, device_fingerprint, status, daily_action_limit, warmup_stage)
+                   VALUES ($1, $2, 'telegram'::platform_type, $3, '', '{}', 'active'::account_status, 20, 3)""",
+                aid, tid, a["identifier"],
             )
-            account_ids.append(aid)
             result["accounts"] += 1
 
         # 3. Campaigns
-        campaign_ids = []
         for c in CAMPAIGNS:
             cid = uuid.uuid4()
             await conn.execute(
-                """INSERT INTO campaigns (id, tenant_id, name, description, template, schedule_cron, posts_per_day, is_active)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, true)""",
-                cid, tid, c["name"], c["description"], c["template"], c["schedule_cron"], c["posts_per_day"],
+                """INSERT INTO campaigns (id, tenant_id, name, base_text, target_geos, target_niches, is_active)
+                   VALUES ($1, $2, $3, $4, $5, $6, true)""",
+                cid, tid, c["name"], c["base_text"],
+                c["geos"], c["niches"],
             )
-            campaign_ids.append(cid)
             result["campaigns"] += 1
 
-        # 4. Leads (spread over last 7 days)
-        for i, (handle, name, msg, intent, geo) in enumerate(LEAD_HANDLES):
+        # 4. Leads
+        for handle, name, msg, intent, geo in LEAD_HANDLES:
             lid = uuid.uuid4()
             created = now - timedelta(hours=random.randint(0, 168))
             status = random.choice(["new", "new", "new", "in_progress", "converted"]) if intent != "SPAM" else "rejected"
-            target = random.choice(target_ids) if target_ids else None
-            account = random.choice(account_ids) if account_ids else None
 
             await conn.execute(
-                """INSERT INTO leads (id, tenant_id, platform, target_id, account_id, user_handle,
-                   user_full_name, geo_tag, message_text, intent_score, status, dialog_url, created_at)
-                   VALUES ($1, $2, 'telegram', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)""",
-                lid, tid, target, account, handle, name, geo, msg, intent, status,
+                """INSERT INTO leads (id, tenant_id, platform, user_handle, user_full_name, geo_tag, message_text, intent_score, status, dialog_url, created_at)
+                   VALUES ($1, $2, 'telegram'::platform_type, $3, $4, $5, $6, $7::lead_intent_level, $8::lead_status, $9, $10)""",
+                lid, tid, handle, name, geo, msg, intent, status,
                 f"https://t.me/{handle.lstrip('@')}", created,
             )
             result["leads"] += 1

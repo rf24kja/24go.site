@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -23,8 +23,11 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   const { auth, logout } = useAuth();
-  const { connected } = useWebSocket(auth?.user?.tenant_id ?? null);
+  const { connected } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Auto-close mobile sidebar on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (!auth.token) return null;
 
