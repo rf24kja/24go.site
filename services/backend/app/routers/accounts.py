@@ -46,8 +46,9 @@ async def list_accounts(
     
     result = await db.execute(q.order_by(AccountPool.created_at.desc()).limit(limit).offset(offset))
     accounts = result.scalars().all()
+    # Strip session_data from list response (sensitive)
     for a in accounts:
-        a.session_data = decrypt(a.session_data)
+        a.session_data = None
     return {"items": accounts, "total": total, "limit": limit, "offset": offset}
 
 
@@ -68,7 +69,7 @@ async def create_account(
     db.add(account)
     await db.commit()
     await db.refresh(account)
-    account.session_data = decrypt(account.session_data)
+    account.session_data = None  # Never expose session in API
     await log_event(
         url=settings.DATABASE_URL.replace("+asyncpg", ""),
         tenant_id=current_user.tenant_id, action="created", entity_type="account",
@@ -93,7 +94,7 @@ async def get_account(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    account.session_data = decrypt(account.session_data)
+    account.session_data = None  # Never expose session in API
     return account
 
 
@@ -134,9 +135,16 @@ async def connect_telegram(
 
         client = TelegramClient(StringSession(), api_id, api_hash)
         await client.connect()
-        await client.send_code_request(body.phone)
-        # Disconnect but don't destroy — we'll reconnect in confirm step
+        sent_code = await client.send_code_request(body.phone)
         await client.disconnect()
+
+        # Store phone_code_hash in Redis for confirm step (expires in 5 min)
+        import redis, json
+        r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+        r.setex(f"tg_code:{account_id}", 300, json.dumps({
+            "phone": body.phone,
+            "phone_code_hash": sent_code.phone_code_hash,
+        }))
 
         log.info(f"Code request sent to {body.phone} for account {account_id}")
         await log_event(
@@ -184,12 +192,22 @@ async def confirm_telegram(
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
+        # Retrieve phone_code_hash from Redis
+        import redis as _redis, json as _json
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+        raw = r.get(f"tg_code:{account_id}")
+        if not raw:
+            raise HTTPException(400, "Code expired. Please request a new code via /connect.")
+        stored = _json.loads(raw)
+        phone_code_hash = stored["phone_code_hash"]
+
         client = TelegramClient(StringSession(), api_id, api_hash)
         await client.connect()
-        await client.sign_in(body.phone, body.code)
+        await client.sign_in(body.phone, code=body.code, phone_code_hash=phone_code_hash)
 
         session_string = await client.export_session_string()
         await client.disconnect()
+        r.delete(f"tg_code:{account_id}")
 
         # Save session to DB (account_sessions table)
         import uuid as _uuid

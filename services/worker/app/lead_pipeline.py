@@ -4,10 +4,12 @@ Ponytail: single function orchestrates the full flow.
 Uses SELECT → INSERT/UPDATE instead of ON CONFLICT (no unique constraint on leads).
 """
 import logging
+import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import asyncpg
+import httpx
 
 from app.config import DATABASE_URL
 DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")  # asyncpg needs plain postgresql://
@@ -20,11 +22,11 @@ INSERT_SQL = """
 INSERT INTO leads (
     id, tenant_id, platform, target_id, account_id, user_handle,
     user_full_name, geo_tag, message_text, intent_score, status,
-    dialog_url, created_at
+    dialog_url, source, post_id, created_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, 'new',
-    $11, NOW()
+    $11, $12, $13, NOW()
 ) RETURNING id;
 """
 
@@ -53,6 +55,8 @@ async def process_incoming_message(
     user_full_name: str,
     message_text: str,
     geo_tag: str = "",
+    source: str = "dm",
+    post_id: str | None = None,
 ) -> dict:
     """Full pipeline: classify → upsert → dispatch webhook.
 
@@ -103,6 +107,8 @@ async def process_incoming_message(
                     message_text,
                     intent_score,
                     dialog_url,
+                    source,
+                    post_id,
                 )
                 lead_id = str(row["id"])
 
@@ -127,12 +133,41 @@ async def process_incoming_message(
             "extracted_parameters": classification.get("extracted_parameters", {}),
             "message_text": message_text[:500],
             "dialog_url": dialog_url,
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
             await notify_lead_captured(tenant_id, lead_payload)
         except Exception as e:
             log.warning(f"Webhook dispatch failed (non-blocking): {e}")
+
+    # 5. Broadcast to backend WebSocket for real-time dashboard
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://fastapi:8000")
+        internal_key = os.getenv("INTERNAL_API_KEY", "")
+        if backend_url and internal_key:
+            async with httpx.AsyncClient(timeout=5) as hx:
+                await hx.post(
+                    f"{backend_url}/internal/broadcast",
+                    json={
+                        "tenant_id": tenant_id,
+                        "event": {
+                            "type": "lead_qualified",
+                            "data": {
+                                "id": lead_id,
+                                "user_handle": user_handle,
+                                "intent_score": intent_score,
+                                "source": source,
+                                "message_text": message_text[:200],
+                                "geo_tag": geo_tag,
+                                "status": "new",
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                            },
+                        },
+                    },
+                    headers={"X-Internal-Key": internal_key},
+                )
+    except Exception as e:
+        log.debug(f"Broadcast failed (non-blocking): {e}")
 
     return {
         "status": "processed",

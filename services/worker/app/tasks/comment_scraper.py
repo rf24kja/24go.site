@@ -108,6 +108,8 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
                 user_full_name=user_full_name,
                 message_text=comment.text,
                 geo_tag="",
+                source="comment",
+                post_id=post_id,
             )
 
             intent = result.get("intent_score", "COLD")

@@ -20,6 +20,7 @@ celery.conf.update(
         "app.tasks.poster.*": {"queue": "poster"},
         "app.tasks.warmup.*": {"queue": "warmup"},
         "app.tasks.listener.*": {"queue": "listener"},
+        "app.tasks.comment_scraper.*": {"queue": "parser"},
         "app.tasks.billing.*": {"queue": "billing"},
     },
     # ── Periodic Task Schedule (Celery Beat) ──────────────────────────
