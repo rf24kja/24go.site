@@ -4,10 +4,11 @@
  */
 
 export function getApiBase(): string {
-  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
-    return ""; // Use Vercel proxy on production
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  // Ponytail: env var takes precedence. Fallback: production domain hardcoded.
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window === "undefined") return ""; // SSR
+  if (window.location.hostname === "localhost") return "http://localhost:8000";
+  return "https://api.24go.site"; // ponytail: hardcoded, change if domain changes
 }
 
 const API_URL = getApiBase();

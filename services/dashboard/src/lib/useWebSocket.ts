@@ -12,16 +12,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 function getWsUrl() {
-  if (typeof window === "undefined") return "ws://localhost:8000";
+  if (typeof window === "undefined") return "wss://api.24go.site";
   if (window.location.hostname === "localhost") return "ws://localhost:8000";
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}`;
+  return "wss://api.24go.site"; // ponytail: hardcoded, same as getApiBase
 }
 
 function getApiUrl() {
-  if (typeof window === "undefined") return "http://localhost:8000";
+  if (typeof window === "undefined") return "https://api.24go.site";
   if (window.location.hostname === "localhost") return "http://localhost:8000";
-  return "";
+  return "https://api.24go.site"; // ponytail: hardcoded
 }
 
 export interface WsEvent {
