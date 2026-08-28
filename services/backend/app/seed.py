@@ -2,10 +2,11 @@
 
 Called after first registration or via POST /api/v1/system/seed-demo.
 """
+import json
 import logging
 import uuid
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -60,10 +61,11 @@ async def seed_demo_data(url: str, tenant_id: str | uuid.UUID) -> dict:
     conn = await asyncpg.connect(url)
     try:
         count = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE tenant_id = $1", tid)
-        if count > 0:
-            return {"status": "already_seeded", "leads": count}
+        target_count = await conn.fetchval("SELECT COUNT(*) FROM targets WHERE tenant_id = $1", tid)
+        if count > 0 or target_count > 0:
+            return {"status": "already_seeded", "leads": count, "targets": target_count}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         result = {"targets": 0, "accounts": 0, "campaigns": 0, "leads": 0}
 
         # 1. Targets
@@ -83,7 +85,7 @@ async def seed_demo_data(url: str, tenant_id: str | uuid.UUID) -> dict:
             aid = uuid.uuid4()
             await conn.execute(
                 """INSERT INTO account_pool (id, tenant_id, platform, account_identifier, session_data, device_fingerprint, status, daily_action_limit, warmup_stage)
-                   VALUES ($1, $2, 'telegram'::platform_type, $3, '', '{}', 'active'::account_status, 20, 3)""",
+                   VALUES ($1, $2, 'telegram'::platform_type, $3, '', '{}'::jsonb, 'active'::account_status, 20, 3)""",
                 aid, tid, a["identifier"],
             )
             result["accounts"] += 1
@@ -95,7 +97,7 @@ async def seed_demo_data(url: str, tenant_id: str | uuid.UUID) -> dict:
                 """INSERT INTO campaigns (id, tenant_id, name, base_text, target_geos, target_niches, is_active)
                    VALUES ($1, $2, $3, $4, $5, $6, true)""",
                 cid, tid, c["name"], c["base_text"],
-                c["geos"], c["niches"],
+                json.dumps(c["geos"]), json.dumps(c["niches"]),
             )
             result["campaigns"] += 1
 
