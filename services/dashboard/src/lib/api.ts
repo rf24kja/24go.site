@@ -100,6 +100,26 @@ export async function createAccount(token: string, data: { platform: string; acc
   return api<any>("/api/v1/accounts/", { method: "POST", body: JSON.stringify(data), token });
 }
 
+export async function connectTelegram(token: string, accountId: string, phone: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/connect`, {
+    method: "POST", body: JSON.stringify({ phone }), token,
+  });
+}
+
+export async function confirmTelegram(token: string, accountId: string, phone: string, code: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/confirm`, {
+    method: "POST", body: JSON.stringify({ phone, code }), token,
+  });
+}
+
+export async function disconnectTelegram(token: string, accountId: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/disconnect`, { method: "POST", token });
+}
+
+export async function getTelegramStatus(token: string, accountId: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/tg-status`, { token });
+}
+
 // ── Campaigns ─────────────────────────────────────────────────────────
 
 export async function getCampaigns(token: string, params?: { limit?: number; offset?: number }) {

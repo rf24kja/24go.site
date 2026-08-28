@@ -16,6 +16,8 @@ type Lead = {
   message_text: string;
   geo_tag: string;
   status: string;
+  source?: string;
+  post_id?: string;
   dialog_url?: string;
   created_at: string;
 };
@@ -37,12 +39,15 @@ const COLUMNS = [
 const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;
 
 const FILTERS = ["ALL", "HOT", "WARM", "COLD"] as const;
+const SOURCE_FILTERS = ["all", "dm", "comment", "manual"] as const;
+const SOURCE_ICONS: Record<string, string> = { dm: "💬", comment: "💭", manual: "✏️", import: "📥", webhook: "🔗" };
 
 export default function LeadsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [testHandle, setTestHandle] = useState("@test_user");
   const [testMessage, setTestMessage] = useState("");
   const [testResult, setTestResult] = useState<any>(null);
@@ -73,10 +78,16 @@ export default function LeadsPage() {
   useEffect(() => {
     if (!auth?.token) return;
     setLoading(true);
-    getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: 0 })
-      .then((res) => { setLeads(res.items || res); setTotal(res.total || (res.items || res).length); })
-      .finally(() => setLoading(false));
-  }, [auth?.token, filter]);
+    getLeads(auth.token, {
+      intent_score: filter === "ALL" ? undefined : filter,
+      limit: PAGE_SIZE, offset: 0,
+    } as any).then((res) => {
+      let items = res.items || res;
+      if (sourceFilter !== "all") items = items.filter((l: Lead) => (l.source || "dm") === sourceFilter);
+      setLeads(items);
+      setTotal(res.total || items.length);
+    }).finally(() => setLoading(false));
+  }, [auth?.token, filter, sourceFilter]);
 
   function loadMore() {
     if (!auth?.token || loadingMore) return;
@@ -169,6 +180,14 @@ export default function LeadsPage() {
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-sm transition ${filter === f ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
                 {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 text-xs">
+            {SOURCE_FILTERS.map((s) => (
+              <button key={s} onClick={() => setSourceFilter(s)}
+                className={`px-2 py-1 rounded transition ${sourceFilter === s ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"}`}>
+                {s === "all" ? "All sources" : s === "dm" ? "💬 DM" : s === "comment" ? "💭 Comments" : "✏️ Manual"}
               </button>
             ))}
           </div>
@@ -327,7 +346,10 @@ export default function LeadsPage() {
                     onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
                     onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono text-xs text-zinc-200 truncate">{lead.user_handle}</span>
+                      <span className="font-mono text-xs text-zinc-200 truncate">
+                        <span className="mr-1">{SOURCE_ICONS[lead.source || "dm"] || "💬"}</span>
+                        {lead.user_handle}
+                      </span>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${INTENT_STYLES[lead.intent_score] ?? ""}`}>
                         {lead.intent_score}
                       </span>
