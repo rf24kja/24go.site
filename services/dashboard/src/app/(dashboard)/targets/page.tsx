@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTargets, dispatchParser } from "@/lib/api";
+import { Skeleton } from "@/components/Skeleton";
 
 type Target = {
   id: string;
@@ -102,7 +103,22 @@ export default function TargetsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </td></tr>
             ) : targets.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500">No targets discovered yet. Run a scan above.</td></tr>
             ) : (

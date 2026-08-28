@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign } from "@/lib/api";
+import { CardSkeleton } from "@/components/Skeleton";
 
 type Campaign = {
   id: string;
@@ -112,7 +113,7 @@ export default function CampaignsPage() {
       </div>
 
       {loading ? (
-        <p className="text-zinc-500 text-sm">Loading...</p>
+        <CardSkeleton count={6} />
       ) : campaigns.length === 0 ? (
         <p className="text-zinc-500 text-sm">No campaigns yet. Create one to start posting.</p>
       ) : (

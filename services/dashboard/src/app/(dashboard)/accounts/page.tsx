@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getAccounts, createAccount, startListener, stopListener, getListenerStatus } from "@/lib/api";
+import { Skeleton } from "@/components/Skeleton";
 
 type Account = {
   id: string;
@@ -200,7 +201,20 @@ export default function AccountsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </td></tr>
             ) : accounts.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
                 <p className="mb-2">No accounts yet. Add a Telegram or VK account to start.</p>

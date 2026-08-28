@@ -48,12 +48,15 @@ export default function LeadsPage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [qualifying, setQualifying] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [total, setTotal] = useState(0);
   const [view, setView] = useState<"table" | "kanban">("kanban");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const { connected, lastEvent } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSaving, setDetailSaving] = useState(false);
+  const PAGE_SIZE = 50;
 
   // Real-time: when a new lead event arrives, add it to the list
   useEffect(() => {
@@ -70,10 +73,18 @@ export default function LeadsPage() {
   useEffect(() => {
     if (!auth?.token) return;
     setLoading(true);
-    getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter })
-      .then((res) => setLeads(res.items || res))
+    getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: 0 })
+      .then((res) => { setLeads(res.items || res); setTotal(res.total || (res.items || res).length); })
       .finally(() => setLoading(false));
   }, [auth?.token, filter]);
+
+  function loadMore() {
+    if (!auth?.token || loadingMore) return;
+    setLoadingMore(true);
+    getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: leads.length })
+      .then((res) => { setLeads((prev) => [...prev, ...(res.items || res)]); setTotal(res.total || total); })
+      .finally(() => setLoadingMore(false));
+  }
 
   // Keep selected lead in sync with list
   useEffect(() => {
@@ -285,6 +296,14 @@ export default function LeadsPage() {
               )}
             </tbody>
           </table>
+          {leads.length < total && (
+            <div className="p-4 text-center">
+              <button onClick={loadMore} disabled={loadingMore}
+                className="px-6 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium hover:bg-zinc-700 transition disabled:opacity-50">
+                {loadingMore ? "Loading..." : `Load more (${leads.length} / ${total})`}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">
