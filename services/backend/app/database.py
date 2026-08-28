@@ -25,8 +25,12 @@ async def get_db(request: Request = None):
         if request is not None:
             tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
+            # Ensure active transaction (SET LOCAL requires one)
+            await session.execute(text("BEGIN"))
+            # ponytail: SET LOCAL doesn't support parameterized queries.
+            # UUID format is safe — only hex digits and hyphens.
+            safe_id = str(tenant_id).replace("'", "''")
             await session.execute(
-                text("SET LOCAL app.current_tenant = :tid"),
-                {"tid": str(tenant_id)},
+                text(f"SET LOCAL app.current_tenant = '{safe_id}'"),
             )
         yield session
