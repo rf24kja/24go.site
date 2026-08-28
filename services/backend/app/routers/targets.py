@@ -1,18 +1,21 @@
-"""Target CRUD endpoints."""
+"""Target CRUD endpoints + Comment Scraper trigger."""
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.audit import log_event
 from app.database import get_db
-from app.models import Target, User
+from app.models import Target, AccountPool, User
 from app.security import get_current_user
 from app.schemas import TargetCreate, TargetResponse
 
 router = APIRouter(prefix="/api/v1/targets", tags=["targets"])
+log = logging.getLogger(__name__)
 
 
 @router.get("/")
@@ -100,3 +103,65 @@ async def delete_target(
         entity_id=target.id, user_id=current_user.id,
         ip_address=request.client.host if request else None,
     )
+
+
+# ── Comment Scraper ───────────────────────────────────────────────────
+
+class ScrapeCommentsRequest(BaseModel):
+    post_id: str  # Telegram message ID of the post to scrape comments from
+
+
+@router.post("/{target_id}/scrape-comments")
+async def scrape_comments(
+    target_id: UUID,
+    body: ScrapeCommentsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Trigger comment scraping on a specific post. Dispatches async Celery task."""
+    result = await db.execute(
+        select(Target).where(Target.id == target_id, Target.tenant_id == current_user.tenant_id)
+    )
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(404, "Target not found")
+
+    # Find an active account with a session for this tenant
+    acct_result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.status == "active",
+        ).limit(1)
+    )
+    account = acct_result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(400, "No active Telegram account found. Connect an account first.")
+
+    # Dispatch Celery task
+    from app.celery_app import celery
+    task = celery.send_task(
+        "app.tasks.comment_scraper.scrape_comments",
+        args=[
+            str(current_user.tenant_id),
+            str(account.id),
+            target.target_id_code,
+            body.post_id,
+            str(target_id),
+        ],
+        queue="parser",
+    )
+
+    # Update last_parsed_at
+    from datetime import datetime, timezone
+    target.last_parsed_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    log.info(f"Comment scrape dispatched for target {target_id}, post {body.post_id} (task={task.id})")
+    await log_event(
+        url=settings.DATABASE_URL.replace("+asyncpg", ""),
+        tenant_id=current_user.tenant_id, action="scrape_comments", entity_type="target",
+        entity_id=str(target_id), new_value={"post_id": body.post_id, "task_id": task.id},
+        user_id=current_user.id, ip_address=request.client.host if request else None,
+    )
+    return {"status": "scraping", "task_id": task.id, "target_id": str(target_id)}

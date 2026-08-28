@@ -71,7 +71,9 @@ class TargetResponse(BaseModel):
     niche: str
     access: str
     members_count: int
+    engagement_rate: float = 0.0
     is_active: bool
+    last_parsed_at: datetime | None = None
     created_at: datetime | None = None
 
     class Config:

@@ -146,6 +146,12 @@ export async function getTargets(token: string, params?: { limit?: number; offse
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/targets/${qs ? `?${qs}` : ""}`, { token });
 }
 
+export async function scrapeTargetComments(token: string, targetId: string, postId: string) {
+  return api<any>(`/api/v1/targets/${targetId}/scrape-comments`, {
+    method: "POST", body: JSON.stringify({ post_id: postId }), token,
+  });
+}
+
 // ── Billing ───────────────────────────────────────────────────────────
 
 export async function getSubscription(token: string) {

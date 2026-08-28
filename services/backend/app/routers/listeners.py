@@ -101,4 +101,10 @@ async def listener_status(
             "pid": info.get("pid"),
         })
 
-    return {"workers": workers}
+    # Also return which accounts have active listeners
+    active_workers = [
+        {"account_id": aid, "task_id": tid, "status": "active"}
+        for aid, tid in _active_tasks.items()
+    ]
+
+    return {"workers": workers, "active_workers": active_workers}
