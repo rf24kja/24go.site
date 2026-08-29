@@ -137,16 +137,3 @@ async def _run():
         return {"status": "ok", "dispatched": dispatched}
     finally:
         await conn.close()
-
-
-def _render_spintax(text: str) -> str:
-    """Render spintax: {option1|option2|option3} -> random choice."""
-    def replace_group(match):
-        return random.choice(match.group(1).split("|"))
-    result = text
-    for _ in range(10):
-        new_result = re.sub(r"\{([^{}]*)\}", replace_group, result)
-        if new_result == result:
-            break
-        result = new_result
-    return result

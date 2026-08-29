@@ -172,6 +172,6 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
                     )
                 finally:
                     await conn.close()
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning(f"Group scanner cleanup error: {e}")
         log.info(f"Group scanner stopped: {group_username}")

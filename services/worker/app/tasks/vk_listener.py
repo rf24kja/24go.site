@@ -179,7 +179,11 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str,
 
 
 def _set_vk_status(account_id: str, status: str) -> None:
-    """Set VK connection status in Redis."""
+    """Set VK connection status in Redis.
+
+    ponytail: uses tg_status: prefix for shared namespace with TG accounts.
+    The value includes platform='vkontakte' for identification.
+    """
     import redis
     import json
     import os
@@ -190,5 +194,5 @@ def _set_vk_status(account_id: str, status: str) -> None:
             "updated_at": time.time(),
             "platform": "vkontakte",
         }))
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning(f"Failed to set VK status: {e}")

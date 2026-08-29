@@ -97,14 +97,14 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
             try:
                 await conn.execute(
                     """INSERT INTO posting_logs (id, tenant_id, campaign_id, target_id,
-                       account_id, channel, message_text, message_id, posted_at)
-                       VALUES ($1, $2, $3, $4, $5, 'vkontakte', $6, $7, NOW())""",
+                       account_id, rendered_text, utm_url, status, message_id, executed_at)
+                       VALUES ($1, $2, $3, $4, $5, $6, '', 'published', $7, NOW())""",
                     uuid.uuid4(),
                     uuid.UUID(tenant_id),
                     uuid.UUID(campaign_id) if campaign_id else None,
                     uuid.UUID(target_id) if target_id else None,
                     uuid.UUID(account_id),
-                    text[:1000],
+                    text[:2000],
                     str(post_id),
                 )
             finally:

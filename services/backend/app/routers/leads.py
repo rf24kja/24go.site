@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Lead, User
+from app.models import Lead, Target, User
 from app.security import get_current_user
 from app.schemas import LeadResponse
 

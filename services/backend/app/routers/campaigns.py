@@ -160,7 +160,6 @@ async def run_campaign_now(
 ):
     """Manually trigger a campaign post right now (ignoring cron schedule)."""
     import app.models as _models
-    from fastapi import HTTPException
     from sqlalchemy import func as _func
 
     result = await db.execute(

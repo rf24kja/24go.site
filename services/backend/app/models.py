@@ -189,6 +189,7 @@ class PostingLog(Base):
     rendered_text = Column(Text, nullable=False)
     utm_url = Column(String(700), nullable=False)
     status = Column(String(50), nullable=False)
+    message_id = Column(String(255))
     error_trace = Column(Text)
     executed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

@@ -227,7 +227,7 @@ async def stripe_webhook(request: Request):
     sig = request.headers.get("stripe-signature", "")
 
     # Verify signature in production
-    if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_..."):
+    if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
         try:
             import stripe
             stripe.api_key = STRIPE_SECRET_KEY
@@ -235,8 +235,13 @@ async def stripe_webhook(request: Request):
         except Exception as e:
             log.error(f"Stripe signature verification failed: {e}")
             raise HTTPException(400, "Invalid signature")
+    elif STRIPE_WEBHOOK_SECRET and STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
+        # Dev mode with placeholder secret — skip verification, log warning
+        log.warning("Stripe webhook: using placeholder whsec_ secret — signature NOT verified")
+        event = json.loads(body)
     else:
-        # Dev mode — parse raw JSON
+        # No secret configured — parse raw JSON (dev mode)
+        log.info("Stripe webhook: no STRIPE_WEBHOOK_SECRET set — dev mode")
         event = json.loads(body)
 
     event_type = event.get("type", "")

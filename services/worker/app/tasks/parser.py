@@ -45,26 +45,16 @@ def discover_targets(self, tenant_id: str, geo: str, niche: str, platform: str =
     try:
         log.info(f"discover_targets: tenant={tenant_id} geo={geo} niche={niche} platform={platform}")
 
-        # TODO: Real Telegram/VK API integration in TASK_PARSER.md stage
-        # For now, simulate qualified targets
-        sample_targets = [
-            {
-                "target_id_code": f"{niche}_{geo}_{i}",
-                "title": f"Sample Target {i} - {geo} {niche}",
-                "members_count": 1200 + i * 100,
-                "engagement_rate": 2.1 + (i * 0.3),
-                "access": "open_comments",
-            }
-            for i in range(min(3, max_results))
-        ]
-
+        # ponytail: stub — real Telegram/VK API integration pending.
+        # Use /groups/discover endpoint for actual group discovery.
         return {
             "tenant_id": tenant_id,
             "platform": platform,
             "geo": geo,
             "niche": niche,
-            "targets_found": len(sample_targets),
-            "status": "completed",
+            "targets_found": 0,
+            "status": "stub",
+            "message": "Use /api/v1/groups/discover for real Telegram/VK group discovery",
         }
 
     except Exception as exc:
@@ -77,7 +67,8 @@ def parse_members(self, tenant_id: str, target_id: str):
     """Extract member list from a target group/channel."""
     try:
         log.info(f"parse_members: tenant={tenant_id} target={target_id}")
-        return {"tenant_id": tenant_id, "target_id": target_id, "members_extracted": 0, "status": "completed"}
+        # ponytail: stub — member extraction pending
+        return {"tenant_id": tenant_id, "target_id": target_id, "members_extracted": 0, "status": "stub"}
     except Exception as exc:
         raise self.retry(countdown=60 * (2 ** self.request.retries), exc=exc)
 
