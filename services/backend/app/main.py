@@ -1,10 +1,11 @@
-"""FastAPI application — LeadGen Control Plane v0.3.1."""
+"""FastAPI application — LeadGen Control Plane v0.3.2."""
 import asyncio
 import logging
 import time
+import uuid
 from collections import deque
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 
@@ -17,7 +18,27 @@ from app.routers import auth, tenants, targets, accounts, campaigns, leads, task
 if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
 
-app = FastAPI(title="LeadGen Control Plane", version="0.3.1")
+app = FastAPI(title="LeadGen Control Plane", version="0.3.2")
+
+# ── Structured logging ────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","message":"%(message)s"}',
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("leadgen")
+
+
+# ── Request ID middleware ─────────────────────────────────────────────
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    start = time.time()
+    response = await call_next(request)
+    elapsed_ms = round((time.time() - start) * 1000, 1)
+    response.headers["X-Request-ID"] = request_id
+    log.info(f"{request.method} {request.url.path} → {response.status_code} ({elapsed_ms}ms) req={request_id}")
+    return response
 
 # ── Middleware ──────────────────────────────────────────────────────────
 ALLOWED_ORIGINS = [
@@ -235,4 +256,30 @@ app.include_router(groups.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "ws_connections": ws_manager.active_tenants()}
+    """Health check — returns status + dependency health."""
+    checks = {"status": "ok", "ws_connections": ws_manager.active_tenants()}
+
+    # DB check
+    try:
+        import asyncpg
+        from app.config import settings
+        db_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(db_url, timeout=3)
+        await conn.fetchval("SELECT 1")
+        await conn.close()
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {str(e)[:80]}"
+        checks["status"] = "degraded"
+
+    # Redis check
+    try:
+        import redis as _redis
+        r = _redis.from_url(settings.REDIS_URL, socket_timeout=3)
+        r.ping()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {str(e)[:80]}"
+        checks["status"] = "degraded"
+
+    return checks
