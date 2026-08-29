@@ -39,12 +39,13 @@ async def notify_hot_lead(tenant_id: str, lead: dict, tenant_cfg: dict | None = 
     if intent not in notify_on:
         return
 
-    handle = lead.get("user_handle", "unknown")
+    # Sanitize user handle to prevent email header injection
+    handle = lead.get("user_handle", "unknown").replace("\r", "").replace("\n", "")[:100]
     message = lead.get("message_text", "")[:300]
-    geo = lead.get("geo_tag", "")
+    geo = lead.get("geo_tag", "").replace("\r", "").replace("\n", "")[:50]
     source = lead.get("source", "dm")
     dialog = lead.get("dialog_url", "")
-    prefix = notif_cfg.get("email_subject_prefix", "[LeadGen]")
+    prefix = notif_cfg.get("email_subject_prefix", "[LeadGen]").replace("\r", "").replace("\n", "")[:50]
 
     subject = f"{prefix} {intent} Lead from {handle}"
     if geo:

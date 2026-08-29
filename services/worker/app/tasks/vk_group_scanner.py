@@ -21,6 +21,7 @@ from app.celery_app import celery
 log = logging.getLogger(__name__)
 
 _seen_vk: dict[str, set] = {}
+_MAX_SEEN_VK = 10000
 
 
 @celery.task(name="app.tasks.vk_group_scanner.start_vk_group_scanner", queue="listener",
@@ -134,11 +135,14 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                         if not text or len(text) < 3:
                             continue
 
-                        # Dedup
+                        # Dedup with max size
                         msg_key = f"vk_group_{group_id}:{event[1]}"
-                        if msg_key in _seen_vk.get(tenant_id, set()):
+                        tenant_seen_vk = _seen_vk.setdefault(tenant_id, set())
+                        if msg_key in tenant_seen_vk:
                             continue
-                        _seen_vk.setdefault(tenant_id, set()).add(msg_key)
+                        if len(tenant_seen_vk) >= _MAX_SEEN_VK:
+                            tenant_seen_vk.clear()
+                        tenant_seen_vk.add(msg_key)
 
                         # Get sender
                         user_id = peer_id

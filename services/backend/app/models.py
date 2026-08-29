@@ -65,7 +65,7 @@ class Tenant(Base):
     plan = Column(Enum(TenantPlanType, name="tenant_plan_type"), nullable=False, default=TenantPlanType.trial)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
     proxies = relationship("Proxy", back_populates="tenant", cascade="all, delete-orphan")

@@ -55,12 +55,19 @@ def reset_daily_limits():
             )
             log.info(f"Rolled over subscription periods: {result}")
 
-            # Invalidate all Redis quota caches
+            # Invalidate all Redis quota caches (use SCAN instead of KEYS)
             r = _get_redis()
-            keys = r.keys("quota:*")
-            if keys:
-                r.delete(*keys)
-                log.info(f"Invalidated {len(keys)} quota caches")
+            cursor = 0
+            deleted = 0
+            while True:
+                cursor, keys = r.scan(cursor, match="quota:*", count=100)
+                if keys:
+                    r.delete(*keys)
+                    deleted += len(keys)
+                if cursor == 0:
+                    break
+            if deleted:
+                log.info(f"Invalidated {deleted} quota caches")
         finally:
             await conn.close()
 

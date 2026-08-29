@@ -27,7 +27,12 @@ INSERT INTO leads (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, 'new',
     $11, $12, $13, NOW()
-) RETURNING id;
+)
+ON CONFLICT (tenant_id, user_handle) DO UPDATE SET
+    message_text = EXCLUDED.message_text,
+    intent_score = EXCLUDED.intent_score,
+    created_at = NOW()
+RETURNING id;
 """
 
 UPDATE_SQL = """
@@ -37,12 +42,6 @@ UPDATE leads SET
     created_at = NOW()
 WHERE id = $3
 RETURNING id;
-"""
-
-FIND_SQL = """
-SELECT id FROM leads
-WHERE tenant_id = $1 AND user_handle = $2
-ORDER BY created_at DESC LIMIT 1;
 """
 
 
@@ -76,43 +75,28 @@ async def process_incoming_message(
     else:
         dialog_url = ""
 
-    # 3. Upsert into leads table
+    # 3. Upsert into leads table (ON CONFLICT for race-safe upsert)
     lead_id = None
     try:
         conn = await asyncpg.connect(DATABASE_URL)
         try:
-            existing = await conn.fetchrow(
-                FIND_SQL,
+            row = await conn.fetchrow(
+                INSERT_SQL,
+                uuid.uuid4(),
                 uuid.UUID(tenant_id),
+                platform,
+                uuid.UUID(target_id) if target_id else None,
+                uuid.UUID(account_id) if account_id else None,
                 user_handle,
+                user_full_name or "",
+                geo_tag,
+                message_text,
+                intent_score,
+                dialog_url,
+                source,
+                post_id,
             )
-
-            if existing:
-                row = await conn.fetchrow(
-                    UPDATE_SQL,
-                    message_text,
-                    intent_score,
-                    existing["id"],
-                )
-                lead_id = str(row["id"])
-            else:
-                row = await conn.fetchrow(
-                    INSERT_SQL,
-                    uuid.uuid4(),
-                    uuid.UUID(tenant_id),
-                    platform,
-                    uuid.UUID(target_id) if target_id else None,
-                    uuid.UUID(account_id) if account_id else None,
-                    user_handle,
-                    user_full_name or "",
-                    geo_tag,
-                    message_text,
-                    intent_score,
-                    dialog_url,
-                    source,
-                    post_id,
-                )
-                lead_id = str(row["id"])
+            lead_id = str(row["id"])
 
             log.info(f"Lead upserted: {lead_id} intent={intent_score}")
         finally:

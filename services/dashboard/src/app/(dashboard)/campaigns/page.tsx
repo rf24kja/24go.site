@@ -48,7 +48,7 @@ export default function CampaignsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getCampaigns(auth.token).then((res) => setCampaigns(res.items || res)).finally(() => setLoading(false));
+    getCampaigns(auth.token).then((res) => setCampaigns(res.items || res)).catch(() => setCampaigns([])).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [auth?.token]);

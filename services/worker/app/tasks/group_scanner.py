@@ -19,8 +19,9 @@ from app.celery_app import celery
 
 log = logging.getLogger(__name__)
 
-# ponytail: in-memory dedup per worker
+# ponytail: in-memory dedup per worker with max size to prevent OOM
 _seen_messages: dict[str, set] = {}
+_MAX_SEEN = 10000  # max message IDs per tenant before evicting oldest
 
 
 @celery.task(name="app.tasks.group_scanner.start_group_scanner", queue="listener",
@@ -105,11 +106,14 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
             if not text or len(text) < 3:
                 return
 
-            # Dedup
+            # Dedup with max size to prevent OOM
             msg_id = f"{group_username}:{event.message.id}"
             if msg_id in _seen_messages.get(tenant_id, set()):
                 return
-            _seen_messages.setdefault(tenant_id, set()).add(msg_id)
+            tenant_seen = _seen_messages.setdefault(tenant_id, set())
+            if len(tenant_seen) >= _MAX_SEEN:
+                tenant_seen.clear()  # Evict all when full (ponytail: simple, not precise)
+            tenant_seen.add(msg_id)
 
             # Get sender info
             sender = await event.get_sender()

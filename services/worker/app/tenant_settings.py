@@ -118,14 +118,14 @@ async def _fetch_settings(url: str, tenant_id: str) -> dict:
 def get_tenant_settings_from_db(url: str, tenant_id: str) -> dict:
     """Fully sync version using raw asyncpg (no event loop)."""
     try:
-        conn_sync = url.replace("+asyncpg", "")
+        plain_url = url.replace("+asyncpg", "")
         import asyncpg as _apg
         # Use a new event loop for this sync call
         loop = None
         try:
             import asyncio
             loop = asyncio.new_event_loop()
-            settings = loop.run_until_complete(_fetch_settings(url, tenant_id))
+            settings = loop.run_until_complete(_fetch_settings(plain_url, tenant_id))
         finally:
             if loop:
                 loop.close()

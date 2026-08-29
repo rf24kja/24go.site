@@ -56,6 +56,17 @@ async def _run():
 
             local_now = now_utc.astimezone(tz)
 
+            # ── Idempotency lock: prevent double-dispatch within 5 min window ──
+            lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
+            try:
+                import os, redis as _redis
+                r = _redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
+                if r.exists(lock_key):
+                    continue  # Already dispatched this campaign in this window
+                r.set(lock_key, "1", ex=300)  # 5 min TTL
+            except Exception:
+                pass  # If Redis unavailable, proceed (risk double-dispatch, better than blocking)
+
             # ── Cron check ─────────────────────────────────────────────
             cron_expr = c["schedule_cron"]
             if cron_expr:

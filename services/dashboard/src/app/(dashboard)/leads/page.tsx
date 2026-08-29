@@ -97,7 +97,7 @@ export default function LeadsPage() {
       if (sourceFilter !== "all") items = items.filter((l: Lead) => (l.source || "dm") === sourceFilter);
       setLeads(items);
       setTotal(res.total || items.length);
-    }).finally(() => setLoading(false));
+    }).catch(() => { setLeads([]); setTotal(0); }).finally(() => setLoading(false));
   }, [auth?.token, filter, sourceFilter]);
 
   function loadMore() {
@@ -105,6 +105,7 @@ export default function LeadsPage() {
     setLoadingMore(true);
     getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: leads.length })
       .then((res) => { setLeads((prev) => [...prev, ...(res.items || res)]); setTotal(res.total || total); })
+      .catch(() => {})
       .finally(() => setLoadingMore(false));
   }
 

@@ -21,8 +21,9 @@ from app.locks import acquire_account_lock
 log = logging.getLogger(__name__)
 
 # Track already-scraped comments to avoid re-processing
-# ponytail: in-memory per worker. If multi-worker, use Redis set.
+# ponytail: in-memory per worker with max size to prevent OOM
 _scraped_cache: dict[str, set] = {}  # key: "{post_id}:{comment_id}"
+_MAX_SCRAPED = 10000
 
 
 @celery.task(name="app.tasks.comment_scraper.scrape_comments", bind=True,
@@ -92,11 +93,14 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
             if comment.sender_id and str(comment.sender_id) == account_id:
                 continue
 
-            # Dedup check
+            # Dedup check with max size
             cache_key = f"{post_id}:{comment.id}"
-            if cache_key in _scraped_cache.get(tenant_id, set()):
+            tenant_cache = _scraped_cache.setdefault(tenant_id, set())
+            if cache_key in tenant_cache:
                 continue
-            _scraped_cache.setdefault(tenant_id, set()).add(cache_key)
+            if len(tenant_cache) >= _MAX_SCRAPED:
+                tenant_cache.clear()
+            tenant_cache.add(cache_key)
 
             sender = await comment.get_sender()
             user_handle = (getattr(sender, 'username', None)

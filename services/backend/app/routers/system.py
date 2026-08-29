@@ -36,6 +36,23 @@ async def test_webhook(
     if current_user.role not in ("owner", "admin"):
         raise HTTPException(403, "Admin only")
 
+    # SSRF protection: block internal/private URLs
+    from urllib.parse import urlparse
+    import ipaddress
+    parsed = urlparse(body.url)
+    hostname = parsed.hostname or ""
+    blocked = ["localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"]
+    if hostname in blocked:
+        raise HTTPException(400, "Internal URLs are not allowed")
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise HTTPException(400, "Private/internal IPs are not allowed")
+    except ValueError:
+        # hostname is a domain, not an IP — check for common internal patterns
+        if hostname.endswith(".internal") or hostname.endswith(".local"):
+            raise HTTPException(400, "Internal domains are not allowed")
+
     import httpx
     import hashlib
     import hmac

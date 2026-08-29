@@ -18,8 +18,9 @@ from app.celery_app import celery
 
 log = logging.getLogger(__name__)
 
-# ponytail: in-memory per worker
+# ponytail: in-memory per worker with max size to prevent OOM
 _scraped_cache: dict[str, set] = {}
+_MAX_SCRAPED_VK = 10000
 
 
 @celery.task(name="app.tasks.vk_comment_scraper.scrape_vk_comments", bind=True,
@@ -100,9 +101,12 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
 
             user_id = comment.get("from_id", 0)
             cache_key = f"vk_{group_id}:{post_id}:{comment['id']}"
-            if cache_key in _scraped_cache.get(tenant_id, set()):
+            tenant_cache_vk = _scraped_cache.setdefault(tenant_id, set())
+            if cache_key in tenant_cache_vk:
                 continue
-            _scraped_cache.setdefault(tenant_id, set()).add(cache_key)
+            if len(tenant_cache_vk) >= _MAX_SCRAPED_VK:
+                tenant_cache_vk.clear()
+            tenant_cache_vk.add(cache_key)
 
             # Get user info
             try:
