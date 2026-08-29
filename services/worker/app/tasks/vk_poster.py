@@ -34,8 +34,15 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     """
     log.info(f"post_to_vk: tenant={tenant_id} group={group_id}")
 
+    # Load tenant settings
+    from app.tenant_settings import get_tenant_settings_from_db
+    posting_cfg = get_tenant_settings_from_db(
+        __import__("os").getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
+        tenant_id
+    ).get("posting", {})
+
     # Render spintax
-    rendered = _render_spintax(text)
+    rendered = _render_spintax(text, posting_cfg.get("spintax_max_depth", 10))
     log.info(f"Rendered: {rendered[:100]}...")
 
     loop = asyncio.new_event_loop()
@@ -53,13 +60,23 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     return result
 
 
-def _render_spintax(text: str) -> str:
-    """Render spintax: {option1|option2|option3} → random choice."""
+def _render_spintax(text: str, max_depth: int = 10) -> str:
+    """Render spintax: {option1|option2|option3} → random choice.
+
+    Args:
+        max_depth: Maximum nesting depth to prevent infinite loops.
+    """
     import re
     def _replace(match):
         options = match.group(1).split("|")
         return random.choice(options)
-    return re.sub(r'\{([^}]+)\}', _replace, text)
+    result = text
+    for _ in range(max_depth):
+        new_result = re.sub(r'\{([^}]+)\}', _replace, result)
+        if new_result == result:
+            break
+        result = new_result
+    return result
 
 
 async def _publish_vk_post(tenant_id: str, account_id: str,

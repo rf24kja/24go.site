@@ -60,6 +60,14 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
     """Fetch comments, classify each, save as leads."""
     from app.telegram_client import get_client
     from app.lead_pipeline import process_incoming_message
+    from app.tenant_settings import get_tenant_settings_from_db
+    import os
+
+    posting_cfg = get_tenant_settings_from_db(
+        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
+        tenant_id
+    ).get("posting", {})
+    max_comments = posting_cfg.get("max_comment_replies_per_post", 10)
 
     client = await get_client(account_id)
     if client is None:
@@ -69,7 +77,7 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
         # Get comments (replies to the post)
         entity = await client.get_entity(target_channel)
         comments = await client.get_messages(
-            entity, limit=100, reply_to=post_id
+            entity, limit=max_comments, reply_to=post_id
         )
 
         if not comments:
@@ -131,16 +139,26 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
 def auto_scrape_after_post(self, tenant_id: str, account_id: str,
                            target_channel: str, post_id: str,
                            source_target_id: str = ""):
-    """Schedule 3 comment scrapes: 2min, 10min, 24h after posting.
+    """Schedule 3 comment scrapes: configurable delay, 10min, 24h after posting.
 
     Called by poster after successful publish.
+    First scrape uses comment_scrape_delay_sec from tenant settings.
     """
-    log.info(f"auto_scrape_after_post: scheduling 3 scrapes for post {post_id}")
+    from app.tenant_settings import get_tenant_settings_from_db
+    import os
 
-    # Scrape 1: 2 minutes
+    posting_cfg = get_tenant_settings_from_db(
+        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
+        tenant_id
+    ).get("posting", {})
+    scrape_delay = posting_cfg.get("comment_scrape_delay_sec", 120)
+
+    log.info(f"auto_scrape_after_post: scheduling 3 scrapes for post {post_id} (first in {scrape_delay}s)")
+
+    # Scrape 1: configurable delay (default 2min)
     scrape_comments.apply_async(
         args=[tenant_id, account_id, target_channel, post_id, source_target_id],
-        countdown=120,
+        countdown=scrape_delay,
     )
 
     # Scrape 2: 10 minutes
@@ -155,4 +173,4 @@ def auto_scrape_after_post(self, tenant_id: str, account_id: str,
         countdown=86400,
     )
 
-    return {"status": "scheduled", "post_id": post_id, "scrapes": 3}
+    return {"status": "scheduled", "post_id": post_id, "scrapes": 3, "first_delay_sec": scrape_delay}

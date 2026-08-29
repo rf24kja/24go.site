@@ -55,11 +55,18 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
     """Fetch VK wall comments, classify each, save as leads."""
     from app.vk_client import get_vk_group_session
     from app.lead_pipeline import process_incoming_message
+    from app.tenant_settings import get_tenant_settings_from_db
 
     import os
     group_token = os.getenv("VK_GROUP_TOKEN", "")
     if not group_token:
         return {"status": "error", "error": "no_vk_token", "leads_created": 0}
+
+    posting_cfg = get_tenant_settings_from_db(
+        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
+        tenant_id
+    ).get("posting", {})
+    max_comments = posting_cfg.get("max_comment_replies_per_post", 10)
 
     vk_session = await get_vk_group_session(account_id, group_token)
     if vk_session is None:
@@ -75,7 +82,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
             lambda: vk.wall.getComments(
                 owner_id=owner_id,
                 post_id=post_id,
-                count=100,
+                count=max_comments,
                 sort="asc",
                 need_likes=1,
             ),

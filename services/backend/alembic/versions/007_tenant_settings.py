@@ -6,8 +6,8 @@ Create Date: 2026-08-29
 from alembic import op
 import sqlalchemy as sa
 
-revision = "007"
-down_revision = "006"
+revision = "007_tenant_settings"
+down_revision = "006_lead_source"
 branch_labels = None
 depends_on = None
 
