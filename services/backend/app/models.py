@@ -166,7 +166,7 @@ class Campaign(Base):
     base_text = Column(Text, nullable=False)
     target_geos = Column(JSONB, nullable=False)
     target_niches = Column(JSONB, nullable=False)
-    media_urls = Column(JSONB, default="[]")
+    media_urls = Column(JSONB, default=list)
     is_active = Column(Boolean, default=True)
     schedule_cron = Column(String(100), nullable=True)  # e.g. "0 9,15 * * *" (9am and 3pm daily)
     posts_per_day = Column(Integer, default=1)

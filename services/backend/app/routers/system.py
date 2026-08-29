@@ -65,7 +65,7 @@ async def test_webhook(
         headers["X-Webhook-Signature"] = f"sha256={sig}"
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=10)) as client:
             resp = await client.post(body.url, json=body.payload, headers=headers)
             return {
                 "status": resp.status_code,

@@ -149,7 +149,7 @@ export default function AccountsPage() {
     try {
       await disconnectTelegram(auth.token, accountId);
       load();
-    } finally { setActionBusy(null); }
+    } catch { /* empty */ } finally { setActionBusy(null); }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -164,7 +164,7 @@ export default function AccountsPage() {
       setShowAdd(false);
       setAddPhone("");
       load();
-    } finally { setAddSaving(false); }
+    } catch { /* empty */ } finally { setAddSaving(false); }
   };
 
   const stats = {

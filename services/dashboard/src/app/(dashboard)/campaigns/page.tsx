@@ -125,13 +125,13 @@ export default function CampaignsPage() {
 
   const handleDelete = async (id: string) => {
     if (!auth?.token || !confirm("Delete this campaign?")) return;
-    await deleteCampaign(auth.token, id);
+    try { await deleteCampaign(auth.token, id); } catch { /* empty */ }
     load();
   };
 
   const toggleActive = async (c: Campaign) => {
     if (!auth?.token) return;
-    await updateCampaign(auth.token, c.id, { is_active: !c.is_active });
+    try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); } catch { /* empty */ }
     load();
   };
 

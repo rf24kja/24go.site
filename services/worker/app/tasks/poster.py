@@ -41,10 +41,11 @@ def render_spintax(text_template: str) -> str:
 def build_utm_url(base_url: str, campaign_id: str, target_id: str, account_id: str,
                    posting_cfg: dict | None = None) -> str:
     """Append UTM parameters for click tracking. Uses tenant settings if provided."""
+    from urllib.parse import quote
     cfg = posting_cfg or {}
-    source = cfg.get("utm_source", "leadgen")
-    medium = cfg.get("utm_medium", "post")
-    campaign = cfg.get("utm_campaign", campaign_id)
+    source = quote(str(cfg.get("utm_source", "leadgen"))[:64], safe="")
+    medium = quote(str(cfg.get("utm_medium", "post"))[:64], safe="")
+    campaign = quote(str(cfg.get("utm_campaign", campaign_id))[:64], safe="")
     separator = "&" if "?" in base_url else "?"
     return f"{separator}utm_source={source}&utm_medium={medium}&utm_campaign={campaign}&utm_content={target_id}_{account_id}"
 

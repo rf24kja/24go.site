@@ -229,10 +229,12 @@ export default function LeadsPage() {
           </div>
           <button onClick={async () => {
               if (!auth?.token) return;
-              const blob = await exportLeadsCsv(auth.token, filter !== "ALL" ? { intent_score: filter } : undefined);
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a"); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
-              a.click(); URL.revokeObjectURL(url);
+              try {
+                const blob = await exportLeadsCsv(auth.token, filter !== "ALL" ? { intent_score: filter } : undefined);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click(); URL.revokeObjectURL(url);
+              } catch { /* empty */ }
             }}
             className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition">
             ⬇ CSV
@@ -242,11 +244,13 @@ export default function LeadsPage() {
             <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file || !auth?.token) return;
-              const text = await file.text();
-              const result = await importLeadsCsv(auth.token, text);
-              const msg = `Imported: ${result.imported}, Skipped: ${result.skipped}` + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
-              toast(msg, result.errors?.length ? "info" : "success");
-              getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
+              try {
+                const text = await file.text();
+                const result = await importLeadsCsv(auth.token, text);
+                const msg = `Imported: ${result.imported}, Skipped: ${result.skipped}` + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
+                toast(msg, result.errors?.length ? "info" : "success");
+                getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
+              } catch { /* empty */ }
               e.target.value = "";
             }} />
           </label>

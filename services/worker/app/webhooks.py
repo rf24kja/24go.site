@@ -22,7 +22,7 @@ async def notify_lead_captured(tenant_id: str, lead: dict):
             "dialog_url": lead["dialog_url"],
         },
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=10)) as client:
         try:
             await client.post(N8N_WEBHOOK_URL, json=payload)
         except Exception:

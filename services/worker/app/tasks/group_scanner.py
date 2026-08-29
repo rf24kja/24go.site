@@ -94,12 +94,18 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
 
     _set_status(account_id, "scanning_group")
 
+    # Cache bot ID to avoid get_me() per message
+    try:
+        _bot_id = (await client.get_me()).id
+    except Exception:
+        _bot_id = 0
+
     @client.on(events.NewMessage(chats=entity))
     async def handler(event):
         """Handle new message in the monitored group."""
         try:
-            # Skip own messages
-            if event.message.sender_id == (await client.get_me()).id:
+            # Skip own messages (cached bot ID)
+            if event.message.sender_id == _bot_id:
                 return
 
             text = event.message.text or ""

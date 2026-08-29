@@ -133,13 +133,17 @@ def deduct_tokens(tenant_id: str, service_type: str, quantity: int, cost_usd: fl
                 tenant_uuid, service_type, quantity, cost_usd,
             )
 
-            # Deduct token credits
+            # Deduct token credits (only if sufficient balance)
             row = await conn.fetchrow(
                 """UPDATE subscriptions SET token_credits_balance = token_credits_balance - $1
-                   WHERE tenant_id = $2 RETURNING token_credits_balance""",
+                   WHERE tenant_id = $2 AND token_credits_balance >= $1
+                   RETURNING token_credits_balance""",
                 quantity, tenant_uuid,
             )
-            new_balance = row["token_credits_balance"] if row else 0
+            if not row:
+                log.warning(f"Insufficient token balance for tenant {tenant_id}")
+                return {"status": "insufficient_balance"}
+            new_balance = row["token_credits_balance"]
 
             # Invalidate Redis cache
             try:

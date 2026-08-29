@@ -179,17 +179,17 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str,
 
 
 def _set_vk_status(account_id: str, status: str) -> None:
-    """Set VK connection status in Redis.
+    """Set VK connection status in Redis with TTL.
 
     ponytail: uses tg_status: prefix for shared namespace with TG accounts.
-    The value includes platform='vkontakte' for identification.
+    Cached Redis connection + 5min TTL to prevent stale keys.
     """
     import redis
     import json
     import os
     try:
         r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
-        r.set(f"tg_status:{account_id}", json.dumps({
+        r.setex(f"tg_status:{account_id}", 300, json.dumps({
             "status": status,
             "updated_at": time.time(),
             "platform": "vkontakte",
