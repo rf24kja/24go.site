@@ -23,13 +23,20 @@ def _is_configured() -> bool:
     return bool(SMTP_HOST and SMTP_USER and SMTP_PASS and NOTIFY_EMAIL)
 
 
-async def notify_hot_lead(tenant_id: str, lead: dict) -> None:
-    """Send email alert for HOT leads. Best-effort, never raises."""
+async def notify_hot_lead(tenant_id: str, lead: dict, tenant_cfg: dict | None = None) -> None:
+    """Send email alert for HOT leads. Best-effort, never raises.
+
+    Args:
+        tenant_cfg: Tenant settings (notifications section) for notify_on filter.
+    """
     if not _is_configured():
         return
 
     intent = lead.get("intent_score", "COLD")
-    if intent not in ("HOT", "WARM"):
+    notif_cfg = (tenant_cfg or {}).get("notifications", {})
+    notify_on = notif_cfg.get("notify_on", ["HOT", "WARM"])
+
+    if intent not in notify_on:
         return
 
     handle = lead.get("user_handle", "unknown")
@@ -37,8 +44,9 @@ async def notify_hot_lead(tenant_id: str, lead: dict) -> None:
     geo = lead.get("geo_tag", "")
     source = lead.get("source", "dm")
     dialog = lead.get("dialog_url", "")
+    prefix = notif_cfg.get("email_subject_prefix", "[LeadGen]")
 
-    subject = f"🔥 {intent} Lead from {handle}"
+    subject = f"{prefix} {intent} Lead from {handle}"
     if geo:
         subject += f" ({geo})"
 

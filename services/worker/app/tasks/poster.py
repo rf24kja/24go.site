@@ -38,10 +38,15 @@ def render_spintax(text_template: str) -> str:
     return result
 
 
-def build_utm_url(base_url: str, campaign_id: str, target_id: str, account_id: str) -> str:
-    """Append UTM parameters for click tracking."""
+def build_utm_url(base_url: str, campaign_id: str, target_id: str, account_id: str,
+                   posting_cfg: dict | None = None) -> str:
+    """Append UTM parameters for click tracking. Uses tenant settings if provided."""
+    cfg = posting_cfg or {}
+    source = cfg.get("utm_source", "leadgen")
+    medium = cfg.get("utm_medium", "post")
+    campaign = cfg.get("utm_campaign", campaign_id)
     separator = "&" if "?" in base_url else "?"
-    return f"{separator}utm_source=leadgen&utm_medium=post&utm_campaign={campaign_id}&utm_content={target_id}_{account_id}"
+    return f"{separator}utm_source={source}&utm_medium={medium}&utm_campaign={campaign}&utm_content={target_id}_{account_id}"
 
 
 @celery.task(name="app.tasks.poster.publish_post", bind=True, queue="poster", max_retries=2)
@@ -62,14 +67,19 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
 
         # Check daily limits
         current_actions = get_daily_action_count(tenant_id, account_id)
-        limit = WARMUP_LIMITS.get(3, 20)
+        from app.tenant_settings import get_tenant_settings_from_db
+        posting_cfg = get_tenant_settings_from_db(
+            __import__("os").getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
+            tenant_id
+        ).get("posting", {})
+        limit = posting_cfg.get("stage3_daily_limit", WARMUP_LIMITS.get(3, 20))
         if current_actions >= limit:
             log.info(f"Account {account_id} reached daily limit ({current_actions}/{limit})")
             return {"status": "skipped", "reason": "daily_limit_reached"}
 
         # Render content
         rendered_text = render_spintax(base_text)
-        utm_url = build_utm_url(base_url, campaign_id, target_id, account_id)
+        utm_url = build_utm_url(base_url, campaign_id, target_id, account_id, posting_cfg)
         full_text = f"{rendered_text}\n\n{utm_url}"
 
         log.info(f"publish_post: tenant={tenant_id} target={target_id} "

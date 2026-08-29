@@ -385,3 +385,17 @@ export async function getNotificationStatus(token: string) {
 export async function testSmtp(token: string, data: { host: string; port: number; user: string; password: string; to_email: string }) {
   return api<any>("/api/v1/notifications/test-smtp", { method: "POST", body: JSON.stringify(data), token });
 }
+
+// ── Tenant Settings ──────────────────────────────────────────────
+export async function getTenantSettings(token: string) {
+  return api<{ settings: Record<string, any>; defaults: Record<string, any> }>("/api/v1/settings/", { token });
+}
+export async function getSettingsSection(token: string, section: string) {
+  return api<{ section: string; settings: Record<string, any>; defaults: Record<string, any> }>(`/api/v1/settings/${section}`, { token });
+}
+export async function updateSettingsSection(token: string, section: string, settings: Record<string, any>) {
+  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/${section}`, { method: "PUT", body: JSON.stringify({ settings }), token });
+}
+export async function resetSettingsSection(token: string, section: string) {
+  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/reset/${section}`, { method: "POST", token });
+}

@@ -33,8 +33,7 @@ STAGE_DESCRIPTIONS = {
     3: "production ready — full commercial posting",
 }
 
-# Ponytail: neutral channels for warmup reading/joining.
-# These are large, safe Russian-speaking channels with no commercial content.
+# Defaults — overridden by tenant_settings["warmup"] if configured
 WARMUP_CHANNELS = [
     "https://t.me/s/ru2ch",
     "https://t.me/s/pikabu",
@@ -64,6 +63,18 @@ def run_warmup_cycle(self, tenant_id: str, account_id: str):
 async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     """Run warmup actions via Telethon."""
     from app.telegram_client import get_client, _set_status
+    from app.tenant_settings import get_tenant_settings_from_db
+
+    # Load tenant settings
+    warmup_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id).get("warmup", {})
+    channels = warmup_cfg.get("channels", WARMUP_CHANNELS)
+    reactions = warmup_cfg.get("reactions", WARMUP_REACTIONS)
+    stage1_days = warmup_cfg.get("stage1_days", 3)
+    stage2_days = warmup_cfg.get("stage2_days", 4)
+    stage1_limit = warmup_cfg.get("stage1_actions_per_day", 5)
+    stage2_limit = warmup_cfg.get("stage2_actions_per_day", 10)
+    delay_min = warmup_cfg.get("random_delay_min_sec", 2)
+    delay_max = warmup_cfg.get("random_delay_max_sec", 8)
 
     # Read current stage from DB
     conn = await asyncpg.connect(DATABASE_URL)
@@ -86,13 +97,13 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     if account_status == "banned":
         return {"status": "skipped", "reason": "banned"}
 
-    # Auto-advance stage based on account age
+    # Auto-advance stage based on tenant-configured durations
     age_days = (datetime.now(timezone.utc) - created_at).days if created_at else 0
-    if stage == 1 and age_days >= 3:
+    if stage == 1 and age_days >= stage1_days:
         stage = 2
         await _update_stage(account_id, stage)
         log.info(f"Account {account_id} advanced to Stage 2 after {age_days} days")
-    elif stage == 2 and age_days >= 7:
+    elif stage == 2 and age_days >= (stage1_days + stage2_days):
         stage = 3
         await _update_stage(account_id, stage)
         log.info(f"Account {account_id} advanced to Stage 3 after {age_days} days")
@@ -108,46 +119,46 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     actions = 0
     try:
         if stage == 1:
-            # Stage 1: Read 5 channels, leave 1-2 reactions
+            # Stage 1: Read channels, leave reactions
             log.info(f"Stage 1 warmup: passive reading for {account_id}")
-            for channel_url in WARMUP_CHANNELS[:3]:
+            for channel_url in channels[:3]:
                 try:
                     await client.get_messages(channel_url, limit=3)
                     actions += 1
-                    await asyncio.sleep(random.uniform(2, 5))
+                    await asyncio.sleep(random.uniform(delay_min, delay_max))
                 except Exception as e:
                     log.warning(f"Read channel failed: {e}")
                     continue
 
             # Leave 1-2 reactions on recent posts
             try:
-                messages = await client.get_messages(WARMUP_CHANNELS[0], limit=5)
+                messages = await client.get_messages(channels[0], limit=5)
                 for msg in messages[:2]:
                     if msg.reactions is not None:
-                        emoji = random.choice(WARMUP_REACTIONS)
+                        emoji = random.choice(reactions)
                         await client.send_reaction(msg, emoji)
                         actions += 1
-                        await asyncio.sleep(random.uniform(3, 8))
+                        await asyncio.sleep(random.uniform(delay_min, delay_max * 2))
             except Exception as e:
                 log.warning(f"Reaction failed: {e}")
 
         elif stage == 2:
-            # Stage 2: Join 1 neutral group, write a non-commercial comment
+            # Stage 2: Read + join a neutral group
             log.info(f"Stage 2 warmup: soft engagement for {account_id}")
-            for channel_url in WARMUP_CHANNELS[:2]:
+            for channel_url in channels[:2]:
                 try:
                     await client.get_messages(channel_url, limit=3)
                     actions += 1
-                    await asyncio.sleep(random.uniform(2, 5))
+                    await asyncio.sleep(random.uniform(delay_min, delay_max))
                 except Exception:
                     continue
 
-            # Join a neutral group (ponytail: try/except, don't fail on already joined)
+            # Join a neutral group
             try:
-                entity = await client.get_entity(WARMUP_CHANNELS[1])
+                entity = await client.get_entity(channels[1] if len(channels) > 1 else channels[0])
                 await client.join_chat(entity)
                 actions += 1
-                await asyncio.sleep(random.uniform(5, 10))
+                await asyncio.sleep(random.uniform(delay_min * 2, delay_max * 2))
             except Exception as e:
                 if "already" not in str(e).lower():
                     log.warning(f"Join failed: {e}")

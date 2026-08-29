@@ -102,9 +102,13 @@ async def _run():
                 continue
 
             # ── Dispatch ───────────────────────────────────────────────
+            from app.tenant_settings import get_tenant_settings_from_db
+            posting_cfg = get_tenant_settings_from_db(DATABASE_URL, str(c["tenant_id"])).get("posting", {})
+            utm_source = posting_cfg.get("utm_source", "leadgen")
+            utm_medium = posting_cfg.get("utm_medium", "post")
             utm_url = (
                 f"https://t.me/{target['target_id_code']}"
-                f"?utm_source=leadgen&utm_medium=post"
+                f"?utm_source={utm_source}&utm_medium={utm_medium}"
                 f"&utm_campaign={c['id']}"
             )
 

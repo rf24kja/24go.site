@@ -2,6 +2,8 @@
 
 Supports DeepSeek-V3 and OpenAI GPT-4o-mini via HTTP.
 Falls back to keyword heuristic if no API key configured.
+
+Tenant-aware: reads keywords, thresholds, prompt from tenant_settings.
 """
 import json
 import logging
@@ -36,79 +38,81 @@ LLM_ENDPOINTS = [
     },
 ]
 
-SYSTEM_PROMPT = """You are an expert sales analyst for a B2B travel and real estate lead generation system in Thailand (Phuket).
+# ── Defaults (used when no tenant_settings override exists) ──────
+DEFAULT_SYSTEM_PROMPT = (
+    "You are an expert sales analyst for a B2B lead generation system.\n\n"
+    "Analyze an incoming message and extract qualification parameters.\n\n"
+    "Return strictly a valid JSON object:\n"
+    "{\n"
+    '  "intent_score": "HOT" | "WARM" | "COLD" | "SPAM",\n'
+    '  "confidence": 0.00 to 1.00,\n'
+    '  "summary": "Brief 1-sentence summary",\n'
+    '  "extracted_parameters": {\n'
+    '    "geo_origin": "city/region or null",\n'
+    '    "budget_mentioned": "budget string or null",\n'
+    '    "dates_mentioned": "dates string or null",\n'
+    '    "service_category": "villas | tours | real_estate | general"\n'
+    '  }\n'
+    '}\n\n'
+    "Return ONLY the JSON string."
+)
 
-Your task is to analyze an incoming private message or comment reply and extract key qualification parameters.
-
-[Output Requirement]
-Return strictly a valid JSON object with the following fields:
-{
-  "intent_score": "HOT" | "WARM" | "COLD" | "SPAM",
-  "confidence": 0.00 to 1.00,
-  "summary": "Brief 1-sentence summary of the buyer request in Russian",
-  "extracted_parameters": {
-    "geo_origin": "Extracted city/region or null if unknown",
-    "budget_mentioned": "Extracted budget string or null",
-    "dates_mentioned": "Extracted dates string or null",
-    "service_category": "villas" | "tours" | "real_estate_buy" | "currency" | "general"
-  }
-}
-
-[Constraint]
-Return ONLY the JSON string. Do NOT include markdown code fences or conversational text."""
-
-# Keyword fallback heuristics (ponytail: fast path before hitting LLM)
-HOT_KEYWORDS = [
-    "сколько стоит", "цена", "бронировать", "забронировать", "записаться",
-    "купить", "аренду", "оплатить", "готов", "заказать", "стоимость",
-    "вилл", "недвижимость", "дом", "квартир", "таунхаус",
+DEFAULT_HOT_KEYWORDS = [
+    "сколько стоит", "цена", "купить", "аренду", "оплатить",
+    "готов", "заказать", "стоимость", "buy", "price", "order",
 ]
-WARM_KEYWORDS = [
-    "подскажите", "какие есть", "расскажите", "варианты", "каталог",
-    "интересует", "хотел бы", "планирую", "в ноябре", "в декабре",
-    "с детьми", "экскурси", "валют",
+DEFAULT_WARM_KEYWORDS = [
+    "подскажите", "какие есть", "расскажите", "варианты",
+    "интересует", "хотел бы", "планирую", "interested", "tell me more",
 ]
-SPAM_KEYWORDS = [
-    "заработок", "без вложений", "жми", "кликай", "telegram bot",
-    "earn money", "free crypto", "casino", "viagra",
+DEFAULT_SPAM_KEYWORDS = [
+    "casino", "crypto", "earn money", "заработать",
+    "бесплатно", "free", "click here", "нажми",
 ]
 
 
-def _classify_by_keywords(text: str) -> dict:
-    """Fast keyword heuristic — ponytail: skip LLM if signal is clear."""
+def _classify_by_keywords(text: str, cfg: dict | None = None) -> dict:
+    """Fast keyword heuristic using tenant-configured keywords and thresholds."""
+    cfg = cfg or {}
+    hot_kws = cfg.get("hot_keywords", DEFAULT_HOT_KEYWORDS)
+    warm_kws = cfg.get("warm_keywords", DEFAULT_WARM_KEYWORDS)
+    spam_kws = cfg.get("spam_keywords", DEFAULT_SPAM_KEYWORDS)
+    hot_thresh = cfg.get("hot_threshold", 2)
+    warm_thresh = cfg.get("warm_threshold", 1)
+
     lower = text.lower()
 
-    spam_hits = sum(1 for kw in SPAM_KEYWORDS if kw in lower)
+    spam_hits = sum(1 for kw in spam_kws if kw.lower() in lower)
     if spam_hits >= 2:
         return {
             "intent_score": "SPAM",
             "confidence": 0.85,
-            "summary": f"Спам-сообщение (совпадений: {spam_hits})",
+            "summary": f"Spam message (matches: {spam_hits})",
             "extracted_parameters": {
                 "geo_origin": None, "budget_mentioned": None,
                 "dates_mentioned": None, "service_category": "general",
             },
         }
 
-    hot_hits = sum(1 for kw in HOT_KEYWORDS if kw in lower)
-    warm_hits = sum(1 for kw in WARM_KEYWORDS if kw in lower)
+    hot_hits = sum(1 for kw in hot_kws if kw.lower() in lower)
+    warm_hits = sum(1 for kw in warm_kws if kw.lower() in lower)
 
-    if hot_hits >= 2:
+    if hot_hits >= hot_thresh:
         return {
             "intent_score": "HOT",
             "confidence": min(0.7 + hot_hits * 0.05, 0.95),
-            "summary": f"Высокий интерес (совпадений: {hot_hits})",
+            "summary": f"High interest (matches: {hot_hits})",
             "extracted_parameters": {
                 "geo_origin": None, "budget_mentioned": None,
                 "dates_mentioned": None, "service_category": "general",
             },
         }
 
-    if warm_hits >= 1 or hot_hits == 1:
+    if warm_hits >= warm_thresh or hot_hits == 1:
         return {
             "intent_score": "WARM",
             "confidence": min(0.6 + warm_hits * 0.05, 0.90),
-            "summary": f"Интерес к информации (совпадений: {warm_hits})",
+            "summary": f"Interest signals (matches: {warm_hits})",
             "extracted_parameters": {
                 "geo_origin": None, "budget_mentioned": None,
                 "dates_mentioned": None, "service_category": "general",
@@ -118,7 +122,7 @@ def _classify_by_keywords(text: str) -> dict:
     return {
         "intent_score": "COLD",
         "confidence": 0.5,
-        "summary": "Низкая вовлечённость",
+        "summary": "Low engagement",
         "extracted_parameters": {
             "geo_origin": None, "budget_mentioned": None,
             "dates_mentioned": None, "service_category": "general",
@@ -126,21 +130,36 @@ def _classify_by_keywords(text: str) -> dict:
     }
 
 
-async def classify_message(text: str, geo_tag: str = "") -> dict:
+async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None = None) -> dict:
     """Classify incoming message intent via LLM or keyword fallback.
+
+    Args:
+        text: Message text to classify
+        geo_tag: Geographic tag for context
+        tenant_cfg: Tenant's LLM settings (from tenant_settings["llm"])
 
     Returns dict with keys: intent_score, confidence, summary, extracted_parameters.
     """
+    llm_cfg = (tenant_cfg or {}).get("llm", tenant_cfg or {})
+
     # Strip and validate
     text = text.strip()
     if not text or len(text) < 3:
-        return _classify_by_keywords(text or "empty")
+        return _classify_by_keywords(text or "empty", llm_cfg)
 
-    # Check if any real LLM API key is configured (skip placeholder values)
+    # Check provider setting
+    provider = llm_cfg.get("provider", "deepseek")
+    if provider == "keyword_only":
+        return _classify_by_keywords(text, llm_cfg)
+
+    # Check if any real LLM API key is configured
     has_llm = any(ep["key"] and not ep["key"].startswith("sk-...") for ep in LLM_ENDPOINTS)
     if not has_llm:
         log.debug("No real LLM API key configured, using keyword heuristic")
-        return _classify_by_keywords(text)
+        return _classify_by_keywords(text, llm_cfg)
+
+    system_prompt = llm_cfg.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
+    confidence_threshold = llm_cfg.get("confidence_threshold", 0.5)
 
     user_prompt = (
         f"SENDER_HANDLE: (incoming message)\n"
@@ -150,6 +169,11 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
     )
 
     for ep in LLM_ENDPOINTS:
+        # Skip endpoints not matching the configured provider
+        if provider != "deepseek" and ep["name"] == "deepseek":
+            continue
+        if provider != "openai" and ep["name"] == "openai":
+            continue
         if not ep["key"]:
             continue
         try:
@@ -163,7 +187,7 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
                     json={
                         "model": ep["model"],
                         "messages": [
-                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
                         ],
                         "temperature": 0.1,
@@ -181,6 +205,12 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
                 # Validate required keys
                 assert result.get("intent_score") in ("HOT", "WARM", "COLD", "SPAM")
                 assert 0 <= result.get("confidence", 0) <= 1
+
+                # Reject if confidence too low
+                if result.get("confidence", 0) < confidence_threshold:
+                    log.info(f"LLM result confidence {result['confidence']} < threshold {confidence_threshold}, using keywords")
+                    return _classify_by_keywords(text, llm_cfg)
+
                 log.info(f"LLM classification ({ep['name']}): {result['intent_score']} "
                          f"confidence={result['confidence']}")
                 return result
@@ -191,4 +221,4 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
 
     # All LLMs failed — fall back to keywords
     log.warning("All LLM providers failed, falling back to keyword heuristic")
-    return _classify_by_keywords(text)
+    return _classify_by_keywords(text, llm_cfg)

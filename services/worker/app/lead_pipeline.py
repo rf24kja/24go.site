@@ -63,7 +63,9 @@ async def process_incoming_message(
     Returns lead_id and intent_score.
     """
     # 1. Classify via LLM (keyword heuristic fallback)
-    classification = await classify_message(message_text, geo_tag)
+    from app.tenant_settings import get_tenant_settings_from_db
+    tenant_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id)
+    classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL
@@ -143,7 +145,9 @@ async def process_incoming_message(
         # Email alert for HOT/WARM leads
         try:
             from app.notifications import notify_hot_lead
-            await notify_hot_lead(tenant_id, lead_payload)
+            from app.tenant_settings import get_tenant_settings_from_db
+            tenant_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id)
+            await notify_hot_lead(tenant_id, lead_payload, tenant_cfg)
         except Exception as e:
             log.debug(f"Email notify failed (non-blocking): {e}")
 

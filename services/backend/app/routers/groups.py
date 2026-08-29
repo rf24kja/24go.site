@@ -298,7 +298,16 @@ async def discover_groups(
 
     Uses Telegram search (via Telethon) or VK groups.search.
     Returns recommended groups with metadata.
+    Filters by tenant settings (min_members_count, prefer_open_comments).
     """
+    from app.tenant_settings import get_section
+    from app.config import settings as app_settings
+    db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")
+    groups_cfg = await get_section(db_url, str(current_user.tenant_id), "groups")
+
+    min_members = groups_cfg.get("min_members_count", 100)
+    prefer_open = groups_cfg.get("prefer_open_comments", True)
+
     results = []
 
     if body.platform == "telegram":
@@ -306,7 +315,16 @@ async def discover_groups(
     elif body.platform == "vkontakte":
         results = await _discover_vk_groups(body.geo_tag, body.niche)
 
-    return {"results": results, "total": len(results)}
+    # Apply tenant filters
+    filtered = []
+    for r in results:
+        if r.get("members_count", 0) < min_members:
+            continue
+        if prefer_open and r.get("access") == "closed":
+            continue
+        filtered.append(r)
+
+    return {"results": filtered, "total": len(filtered), "filters": {"min_members": min_members, "prefer_open": prefer_open}}
 
 
 async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | None) -> list:

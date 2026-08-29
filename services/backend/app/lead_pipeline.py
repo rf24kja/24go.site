@@ -65,6 +65,10 @@ async def process_incoming_message(
     """
     # 1. Try custom scoring rules first, fallback to LLM/keyword
     try:
+        # Load tenant settings for LLM config
+        from app.tenant_settings import get_settings as _get_tenant_settings
+        tenant_cfg = await _get_tenant_settings(DATABASE_URL, tenant_id)
+
         custom_rules = await get_rules(DATABASE_URL, tenant_id)
         if custom_rules:
             intent_score, confidence = classify_with_rules(message_text, custom_rules)
@@ -75,10 +79,10 @@ async def process_incoming_message(
                 "extracted_parameters": {},
             }
         else:
-            classification = await classify_message(message_text, geo_tag)
+            classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)
     except Exception as e:
         log.warning(f"Custom scoring failed, falling back to LLM: {e}")
-        classification = await classify_message(message_text, geo_tag)
+        classification = await classify_message(message_text, geo_tag, tenant_cfg=locals().get("tenant_cfg"))
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL

@@ -274,3 +274,19 @@ class MonitoredGroup(Base):
 
     tenant = relationship("Tenant", back_populates="monitored_groups")
     account = relationship("AccountPool")
+
+
+class TenantSettings(Base):
+    """Per-tenant configuration overrides. JSONB blob with sensible defaults in code.
+
+    Sections: llm, warmup, posting, notifications, groups, scoring
+    """
+    __tablename__ = "tenant_settings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, unique=True)
+    settings = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=datetime.utcnow)
+
+    tenant = relationship("Tenant")
