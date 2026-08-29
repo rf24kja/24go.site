@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign } from "@/lib/api";
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign, previewCron } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 
@@ -43,6 +43,7 @@ export default function CampaignsPage() {
   const [saving, setSaving] = useState(false);
   const [statsCampaign, setStatsCampaign] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [cronPreview, setCronPreview] = useState<string[]>([]);
 
   const load = () => {
     if (!auth?.token) return;
@@ -51,6 +52,16 @@ export default function CampaignsPage() {
   };
 
   useEffect(() => { load(); }, [auth?.token]);
+
+  // Cron preview: show next 5 run times when editing schedule
+  useEffect(() => {
+    const token = auth?.token;
+    if (!token || !modalMode || !form.schedule) { setCronPreview([]); return; }
+    const timer = setTimeout(() => {
+      previewCron(token, form.schedule, form.timezone).then((res) => setCronPreview(res.runs || [])).catch(() => setCronPreview([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [auth?.token, modalMode, form.schedule, form.timezone]);
 
   const openCreate = () => {
     setModalMode("create");
@@ -254,6 +265,20 @@ export default function CampaignsPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Cron Preview */}
+              {cronPreview.length > 0 && (
+                <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2">
+                  <p className="text-[10px] text-zinc-500 mb-1">Next 5 runs ({form.timezone}):</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    {cronPreview.map((t, i) => (
+                      <span key={i} className="text-[11px] text-zinc-400 font-mono">
+                        {new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalMode(null)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>

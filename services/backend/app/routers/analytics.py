@@ -215,3 +215,81 @@ async def get_analytics(
         total_cost_usd=float(total_cost),
         total_tokens=int(total_tokens),
     )
+
+
+@router.get("/leaderboard")
+async def leaderboard(
+    days: int = Query(default=30, le=90),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Top campaigns by lead count and HOT conversion rate."""
+    from app.models import Campaign
+
+    tenant_id = current_user.tenant_id
+    since = date.today() - timedelta(days=days)
+
+    # Get campaigns with lead counts
+    result = await db.execute(
+        select(
+            Campaign.id,
+            Campaign.name,
+            Campaign.is_active,
+            Campaign.schedule_cron,
+            Campaign.timezone,
+            Campaign.last_posted_at,
+        ).where(Campaign.tenant_id == tenant_id, Campaign.is_active == True)
+    )
+    campaigns = result.all()
+
+    leaderboard = []
+    for c in campaigns:
+        # Count leads matching this campaign's geos
+        lead_q = select(
+            func.count(Lead.id).label("total"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.WARM, 1))).label("warm"),
+        ).where(
+            Lead.tenant_id == tenant_id,
+            Lead.created_at >= since,
+        )
+
+        # If campaign has target_geos, filter by geo
+        geo_result = await db.execute(select(Campaign.target_geos).where(Campaign.id == c.id))
+        geos = geo_result.scalar()
+        if geos:
+            lead_q = lead_q.where(Lead.geo_tag.in_(geos))
+
+        row = (await db.execute(lead_q)).one()
+        total = row.total or 0
+        hot = row.hot or 0
+        warm = row.warm or 0
+        conversion = round(hot / total * 100, 1) if total > 0 else 0
+
+        # Posts count
+        posts_q = await db.execute(
+            select(func.count(PostingLog.id)).where(
+                PostingLog.campaign_id == c.id,
+                PostingLog.executed_at >= since,
+            )
+        )
+        posts = posts_q.scalar() or 0
+
+        leaderboard.append({
+            "campaign_id": str(c.id),
+            "name": c.name,
+            "is_active": c.is_active,
+            "schedule_cron": c.schedule_cron,
+            "timezone": c.timezone,
+            "last_posted_at": c.last_posted_at.isoformat() if c.last_posted_at else None,
+            "total_leads": total,
+            "hot_leads": hot,
+            "warm_leads": warm,
+            "conversion_rate": conversion,
+            "total_posts": posts,
+        })
+
+    # Sort by total_leads desc, then by hot_leads desc
+    leaderboard.sort(key=lambda x: (-x["total_leads"], -x["hot_leads"]))
+
+    return {"leaderboard": leaderboard[:10], "period_days": days}

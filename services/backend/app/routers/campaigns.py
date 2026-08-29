@@ -219,3 +219,40 @@ async def run_campaign_now(
     )
 
     return {"status": "dispatched", "campaign_id": str(campaign.id), "target": t.title, "account": a.account_identifier}
+
+
+class CronPreviewRequest(BaseModel):
+    cron: str
+    timezone: str = "UTC"
+
+
+@router.post("/cron-preview")
+async def cron_preview(
+    body: CronPreviewRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Preview next 5 cron fire times for a given cron expression + timezone."""
+    from zoneinfo import ZoneInfo
+    from datetime import datetime, timezone
+
+    if not body.cron:
+        return {"runs": []}
+
+    try:
+        from croniter import croniter
+    except ImportError:
+        return {"runs": [], "error": "croniter not installed"}
+
+    try:
+        tz = ZoneInfo(body.timezone)
+    except Exception:
+        tz = ZoneInfo("UTC")
+
+    now = datetime.now(timezone.utc).astimezone(tz)
+    cron = croniter(body.cron, now)
+    runs = []
+    for _ in range(5):
+        next_run = cron.get_next(datetime)
+        runs.append(next_run.isoformat())
+
+    return {"runs": runs, "timezone": body.timezone, "cron": body.cron}

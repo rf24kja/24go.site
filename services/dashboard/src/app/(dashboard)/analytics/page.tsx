@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getAnalytics } from "@/lib/api";
+import { getAnalytics, getLeaderboard } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
@@ -20,15 +20,20 @@ const COLORS = {
 export default function AnalyticsPage() {
   const { auth } = useAuth();
   const [data, setData] = useState<any>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!auth?.token) return;
     setLoading(true);
-    getAnalytics(auth.token, days)
-      .then(setData)
-      .finally(() => setLoading(false));
+    Promise.all([
+      getAnalytics(auth.token, days),
+      getLeaderboard(auth.token, days).catch(() => ({ leaderboard: [] })),
+    ]).then(([analytics, lb]) => {
+      setData(analytics);
+      setLeaderboard(lb.leaderboard || []);
+    }).finally(() => setLoading(false));
   }, [auth?.token, days]);
 
   if (loading) return <div className="p-8"><p className="text-zinc-500">Loading analytics...</p></div>;
@@ -204,6 +209,53 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {/* Campaign Leaderboard */}
+      {leaderboard.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">🏆 Campaign Leaderboard</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-800">
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">#</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Campaign</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Posts</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Leads</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">🔥 HOT</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">🟡 WARM</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Conversion</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Schedule</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((c: any, i: number) => (
+                  <tr key={c.campaign_id} className="border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/30">
+                    <td className="px-3 py-2.5 text-zinc-400">
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : <span className="text-xs">{i + 1}</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-zinc-200 font-medium">{c.name}</td>
+                    <td className="px-3 py-2.5 text-zinc-400">{c.total_posts}</td>
+                    <td className="px-3 py-2.5 text-zinc-200 font-medium">{c.total_leads}</td>
+                    <td className="px-3 py-2.5 text-rose-400">{c.hot_leads}</td>
+                    <td className="px-3 py-2.5 text-amber-400">{c.warm_leads}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-xs font-medium ${
+                        c.conversion_rate >= 10 ? "text-emerald-400" :
+                        c.conversion_rate >= 5 ? "text-amber-400" :
+                        "text-zinc-400"
+                      }`}>
+                        {c.conversion_rate}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-zinc-500 text-xs font-mono">{c.schedule_cron || "manual"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

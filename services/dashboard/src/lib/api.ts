@@ -153,6 +153,10 @@ export async function runCampaign(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}/run`, { method: "POST", token });
 }
 
+export async function previewCron(token: string, cron: string, timezone: string) {
+  return api<any>("/api/v1/campaigns/cron-preview", { method: "POST", body: JSON.stringify({ cron, timezone }), token });
+}
+
 export async function getCampaignStats(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
 }
@@ -236,6 +240,10 @@ export async function dispatchPoster(token: string, data: any) {
 
 export async function getAnalytics(token: string, days = 30) {
   return api<any>(`/api/v1/analytics/?days=${days}`, { token });
+}
+
+export async function getLeaderboard(token: string, days = 30) {
+  return api<any>(`/api/v1/analytics/leaderboard?days=${days}`, { token });
 }
 
 // ── Lead Status ───────────────────────────────────────────────────────
