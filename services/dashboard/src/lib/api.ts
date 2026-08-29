@@ -149,6 +149,15 @@ export async function deleteCampaign(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}`, { method: "DELETE", token });
 }
 
+export async function getCampaignStats(token: string, campaignId: string) {
+  return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
+}
+
+export async function getCampaignLogs(token: string, campaignId: string, params?: { limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<any>(`/api/v1/campaigns/${campaignId}/logs${qs ? `?${qs}` : ""}`, { token });
+}
+
 // ── Targets ───────────────────────────────────────────────────────────
 
 export async function getTargets(token: string, params?: { limit?: number; offset?: number }) {
@@ -353,10 +362,4 @@ export async function backupLeads(token: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.blob();
-}
-
-// ── Campaign Analytics ───────────────────────────────────────────────
-
-export async function getCampaignStats(token: string, campaignId: string) {
-  return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
 }

@@ -89,16 +89,18 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 # ── /leads ───────────────────────────────────────────────────────────────
 
 async def cmd_leads(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    leads = await api_get("/api/v1/leads/")
-    if not leads:
+    data = await api_get("/api/v1/leads/?limit=5&offset=0")
+    if not data:
         await update.message.reply_text("⚠️ Нет лидов или API недоступен.")
         return
 
-    if isinstance(leads, dict) and "detail" in leads:
-        await update.message.reply_text(f"⚠️ {leads['detail']}")
+    # Handle paginated response {items: [...], total} or flat list
+    items = data.get("items", data) if isinstance(data, dict) else data
+    if isinstance(items, dict) and "detail" in items:
+        await update.message.reply_text(f"⚠️ {items['detail']}")
         return
 
-    recent = (leads or [])[:5]
+    recent = (items or [])[:5]
     if not recent:
         await update.message.reply_text("📭 Пока нет лидов.")
         return
@@ -184,8 +186,10 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 def main() -> None:
     if not BOT_TOKEN:
-        log.error("BOT_TOKEN not set. Bot will not start.")
-        return
+        log.error("BOT_TOKEN not set. Sleeping forever (will retry on restart).")
+        import time
+        while True:
+            time.sleep(3600)  # stay alive for docker restart backoff
 
     app = Application.builder().token(BOT_TOKEN).build()
 

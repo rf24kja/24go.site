@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign } from "@/lib/api";
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
 
 type Campaign = {
@@ -38,6 +38,8 @@ export default function CampaignsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC" });
   const [saving, setSaving] = useState(false);
+  const [statsCampaign, setStatsCampaign] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   const load = () => {
     if (!auth?.token) return;
@@ -66,6 +68,20 @@ export default function CampaignsPage() {
       timezone: c.timezone || "UTC",
     });
   };
+
+  async function openStats(c: Campaign) {
+    if (!auth?.token) return;
+    setLoadingStats(true);
+    setStatsCampaign(null);
+    try {
+      const stats = await getCampaignStats(auth.token, c.id);
+      setStatsCampaign(stats);
+    } catch {
+      setStatsCampaign({ error: true });
+    } finally {
+      setLoadingStats(false);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,6 +186,7 @@ export default function CampaignsPage() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openEdit(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">Edit</button>
+                <button onClick={() => openStats(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">📊 Stats</button>
                 <button onClick={() => handleDelete(c.id)} className="px-3 py-1 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition">Delete</button>
               </div>
             </div>
@@ -230,6 +247,113 @@ export default function CampaignsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Campaign stats drawer */}
+      {statsCampaign && (
+        <div className="fixed inset-0 bg-black/60 flex justify-end z-50" onClick={() => setStatsCampaign(null)}>
+          <div className="w-full max-w-md bg-zinc-900 border-l border-zinc-800 h-full overflow-y-auto p-6 space-y-5 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-zinc-100">{statsCampaign.campaign_name || "Campaign Stats"}</h2>
+              <button onClick={() => setStatsCampaign(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
+            </div>
+
+            {loadingStats ? (
+              <p className="text-zinc-500 text-sm">Loading...</p>
+            ) : statsCampaign.error ? (
+              <p className="text-rose-400 text-sm">Failed to load stats</p>
+            ) : (
+              <>
+                {/* Key metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-zinc-800 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-zinc-100">{statsCampaign.total_posts || 0}</p>
+                    <p className="text-xs text-zinc-500">Posts</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-zinc-100">{statsCampaign.total_leads || 0}</p>
+                    <p className="text-xs text-zinc-500">Leads</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-rose-400">{statsCampaign.hot_leads || 0}</p>
+                    <p className="text-xs text-zinc-500">HOT</p>
+                  </div>
+                </div>
+
+                {/* Schedule info */}
+                <div className="bg-zinc-800 rounded-lg p-3 text-sm">
+                  <div className="flex justify-between text-zinc-400 mb-1">
+                    <span>Schedule</span>
+                    <span className="text-zinc-200">{statsCampaign.schedule_cron || "Manual"}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400 mb-1">
+                    <span>Timezone</span>
+                    <span className="text-zinc-200">{statsCampaign.timezone}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Last posted</span>
+                    <span className="text-zinc-200">{statsCampaign.last_posted_at ? new Date(statsCampaign.last_posted_at).toLocaleString() : "Never"}</span>
+                  </div>
+                </div>
+
+                {/* Intent breakdown */}
+                {statsCampaign.intent_breakdown && Object.keys(statsCampaign.intent_breakdown).length > 0 && (
+                  <div>
+                    <h3 className="text-xs text-zinc-500 mb-2">Intent Breakdown</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(statsCampaign.intent_breakdown).map(([k, v]) => (
+                        <span key={k} className={`px-2 py-1 rounded text-xs font-medium ${
+                          k === "HOT" ? "bg-rose-500/10 text-rose-400" :
+                          k === "WARM" ? "bg-amber-500/10 text-amber-400" :
+                          k === "COLD" ? "bg-sky-500/10 text-sky-400" :
+                          "bg-zinc-700 text-zinc-400"
+                        }`}>
+                          {k}: {String(v)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Geo breakdown */}
+                {statsCampaign.geo_breakdown && statsCampaign.geo_breakdown.length > 0 && (
+                  <div>
+                    <h3 className="text-xs text-zinc-500 mb-2">Leads by GEO</h3>
+                    <div className="space-y-1">
+                      {statsCampaign.geo_breakdown.slice(0, 5).map((g: any) => (
+                        <div key={g.geo} className="flex justify-between text-sm">
+                          <span className="text-zinc-300">{g.geo}</span>
+                          <span className="text-zinc-500">{g.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Posts chart (simple bar) */}
+                {statsCampaign.posts_by_day && statsCampaign.posts_by_day.length > 0 && (
+                  <div>
+                    <h3 className="text-xs text-zinc-500 mb-2">Posts (last 7 days)</h3>
+                    <div className="flex items-end gap-1 h-16">
+                      {statsCampaign.posts_by_day.map((d: any) => {
+                        const maxCount = Math.max(...statsCampaign.posts_by_day.map((x: any) => x.count), 1);
+                        const height = Math.max(4, (d.count / maxCount) * 100);
+                        return (
+                          <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                            <span className="text-[10px] text-zinc-500">{d.count}</span>
+                            <div className="w-full bg-emerald-500/30 rounded-sm" style={{ height: `${height}%` }} />
+                            <span className="text-[10px] text-zinc-600">{d.date.slice(5)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

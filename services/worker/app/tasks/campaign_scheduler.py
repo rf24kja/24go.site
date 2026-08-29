@@ -102,7 +102,6 @@ async def _run():
                 continue
 
             # ── Dispatch ───────────────────────────────────────────────
-            rendered = _render_spintax(c["base_text"])
             utm_url = (
                 f"https://t.me/{target['target_id_code']}"
                 f"?utm_source=leadgen&utm_medium=post"
@@ -116,8 +115,9 @@ async def _run():
                     str(c["id"]),
                     str(target["id"]),
                     str(account["id"]),
-                    rendered,
+                    c["base_text"],  # raw spintax template — poster renders
                     utm_url,
+                    f"@{target['target_id_code']}",  # target_channel for Telethon
                 ],
                 queue="poster",
             )
