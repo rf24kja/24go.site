@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy to VPS — push to git, SCP changed files, rebuild containers.
-# Usage: bash deploy.ps1 [backend|worker|bot|all]
+# Usage: bash deploy.sh [backend|worker|bot|all]
+# Rollback: bash deploy.sh rollback
 set -euo pipefail
 
 VPS="root@46.250.235.165"
@@ -9,6 +10,20 @@ SSH_KEY="$HOME/.ssh/id_ed25519_generator"
 SSH="ssh -i $SSH_KEY $VPS"
 SCP="scp -i $SSH_KEY"
 SCOPE="${1:-all}"
+
+# Rollback support
+if [ "$SCOPE" = "rollback" ]; then
+  echo "=== Rollback ==="
+  LAST_TAG=$(git tag -l 'deploy-*' --sort=-creatordate | head -1)
+  if [ -z "$LAST_TAG" ]; then
+    echo "No deploy tags found. Cannot rollback."
+    exit 1
+  fi
+  echo "Rolling back to $LAST_TAG..."
+  git checkout "$LAST_TAG" -- .
+  bash "$0" all
+  exit 0
+fi
 
 echo "=== LeadGen Deploy ==="
 echo "Scope: $SCOPE"
@@ -25,6 +40,7 @@ git reset HEAD "services/dashboard/package-lock.json" "services/dashboard/tsconf
 CHANGED=$(git diff --cached --name-only 2>/dev/null | head -1)
 if [ -n "$CHANGED" ]; then
   git commit -m "deploy: $(date +%Y-%m-%d_%H-%M)" --quiet
+  git tag "deploy-$(date +%Y%m%d-%H%M%S)" --quiet
   git push origin main --quiet 2>&1
   echo "  Pushed."
 else

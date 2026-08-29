@@ -31,7 +31,7 @@ class ConfirmCodeRequest(BaseModel):
 @router.get("/")
 async def list_accounts(
     status_filter: str | None = None,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

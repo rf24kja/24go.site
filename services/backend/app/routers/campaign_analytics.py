@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Campaign, Lead, PostingLog, User
 from app.security import get_current_user
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
 
@@ -90,7 +91,7 @@ async def campaign_stats(
 @router.get("/{campaign_id}/logs")
 async def campaign_logs(
     campaign_id: str,
-    limit: int = Query(default=20, le=100),
+    limit: int = Query(default=20, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

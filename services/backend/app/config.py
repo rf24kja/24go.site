@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
+    LLM_TIMEOUT: int = 15  # seconds
 
     N8N_WEBHOOK_URL: str = ""
 
@@ -35,6 +36,10 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str = "redis://redis:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
+
+    # Pagination
+    DEFAULT_PAGE_SIZE: int = 50
+    MAX_PAGE_SIZE: int = 200
 
     class Config:
         env_file = ".env"

@@ -153,7 +153,7 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
         if not ep["key"]:
             continue
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
                 resp = await client.post(
                     ep["url"],
                     headers={

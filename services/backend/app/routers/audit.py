@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 @router.get("/")
 async def list_audit_entries(
     entity_type: str | None = None,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
