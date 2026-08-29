@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getTargets, getAccounts, getCampaigns, getLeads, getListenerStatus } from "@/lib/api";
+import {
+  Radar, Plane, Flame, Radio, Megaphone, Crosshair, CheckCircle,
+  type IconProps,
+} from "@/components/Icons";
 
 type Step = {
   id: string;
@@ -11,7 +15,7 @@ type Step = {
   description: string;
   href: string;
   done: boolean;
-  icon: string;
+  Icon: React.FC<IconProps>;
 };
 
 export function OnboardingChecklist() {
@@ -46,7 +50,7 @@ export function OnboardingChecklist() {
           description: "Find Telegram groups and channels in your niche",
           href: "/targets",
           done: hasTargets,
-          icon: "🔍",
+          Icon: Radar,
         },
         {
           id: "account",
@@ -54,7 +58,7 @@ export function OnboardingChecklist() {
           description: "Link your Telegram account to start intercepting DMs",
           href: "/accounts",
           done: hasAccounts,
-          icon: "✈️",
+          Icon: Plane,
         },
         {
           id: "warmup",
@@ -62,7 +66,7 @@ export function OnboardingChecklist() {
           description: "Build reputation before active outreach",
           href: "/accounts",
           done: hasActiveAccount,
-          icon: "🔥",
+          Icon: Flame,
         },
         {
           id: "listener",
@@ -70,7 +74,7 @@ export function OnboardingChecklist() {
           description: "Begin intercepting incoming messages as leads",
           href: "/accounts",
           done: hasListener,
-          icon: "📡",
+          Icon: Radio,
         },
         {
           id: "campaign",
@@ -78,7 +82,7 @@ export function OnboardingChecklist() {
           description: "Set up automated posting to your targets",
           href: "/campaigns",
           done: hasCampaigns,
-          icon: "📣",
+          Icon: Megaphone,
         },
         {
           id: "leads",
@@ -86,7 +90,7 @@ export function OnboardingChecklist() {
           description: "Wait for incoming messages to be classified",
           href: "/leads",
           done: hasLeads,
-          icon: "🎯",
+          Icon: Crosshair,
         },
       ]);
     }).finally(() => setLoading(false));
@@ -143,11 +147,13 @@ export function OnboardingChecklist() {
                   : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800"
               }`}
             >
-              <span className="text-lg mt-0.5">{step.icon}</span>
+              <span className={`mt-0.5 shrink-0 ${step.done ? "text-emerald-400" : "text-zinc-500"}`}>
+                {step.done ? <CheckCircle className="w-5 h-5" /> : <step.Icon className="w-5 h-5" />}
+              </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${step.done ? "text-emerald-400" : "text-zinc-200"}`}>
-                    {step.done ? "✓ " : `${i + 1}. `}{step.label}
+                    {step.done ? "" : `${i + 1}. `}{step.label}
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 mt-0.5">{step.description}</p>

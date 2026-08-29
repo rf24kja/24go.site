@@ -8,16 +8,20 @@ import {
   getSystemInfo, seedDemoData, backupLeads,
   getNotificationStatus, testSmtp,
 } from "@/lib/api";
+import {
+  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog,
+  type IconProps,
+} from "@/components/Icons";
 
 type Section = "llm" | "warmup" | "posting" | "notifications" | "groups" | "account";
 
-const SECTIONS: { key: Section; label: string; icon: string }[] = [
-  { key: "llm", label: "AI & Classification", icon: "🧠" },
-  { key: "warmup", label: "Account Warmup", icon: "🔥" },
-  { key: "posting", label: "Posting & UTM", icon: "📝" },
-  { key: "notifications", label: "Notifications", icon: "🔔" },
-  { key: "groups", label: "Group Scanning", icon: "👥" },
-  { key: "account", label: "Account & Billing", icon: "⚙️" },
+const SECTIONS: { key: Section; label: string; Icon: React.FC<IconProps> }[] = [
+  { key: "llm", label: "AI & Classification", Icon: BrainCircuit },
+  { key: "warmup", label: "Account Warmup", Icon: Flame },
+  { key: "posting", label: "Posting & UTM", Icon: Send },
+  { key: "notifications", label: "Notifications", Icon: Bell },
+  { key: "groups", label: "Group Scanning", Icon: UsersGroup },
+  { key: "account", label: "Account & Billing", Icon: Cog },
 ];
 
 export default function SettingsPage() {
@@ -76,7 +80,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
               activeSection === s.key ? "bg-zinc-800 text-zinc-100 font-medium" : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
             }`}>
-            <span className="mr-2">{s.icon}</span>{s.label}
+            <span className="mr-2"><s.Icon className="w-4 h-4" /></span>{s.label}
           </button>
         ))}
       </nav>
@@ -190,7 +194,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="🧠" title="AI & Classification" desc="Configure how incoming messages are classified into HOT / WARM / COLD / SPAM" />
+      <SectionHeader Icon={BrainCircuit} title="AI & Classification" desc="Configure how incoming messages are classified into HOT / WARM / COLD / SPAM" />
 
       <Card title="LLM Provider">
         <div className="grid grid-cols-2 gap-4">
@@ -251,7 +255,7 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="🔥" title="Account Warmup" desc="Configure how new Telegram accounts are warmed up before production use" />
+      <SectionHeader Icon={Flame} title="Account Warmup" desc="Configure how new Telegram accounts are warmed up before production use" />
 
       <Card title="Warmup Channels">
         <Field label="Reading Channels" hint="Safe channels for passive reading during warmup">
@@ -312,7 +316,7 @@ function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="📝" title="Posting & UTM" desc="Configure default posting behavior and UTM tracking parameters" />
+      <SectionHeader Icon={Send} title="Posting & UTM" desc="Configure default posting behavior and UTM tracking parameters" />
 
       <Card title="UTM Defaults">
         <div className="grid grid-cols-3 gap-4">
@@ -357,7 +361,7 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="🔔" title="Notifications" desc="Configure when and how you receive notifications about new leads" />
+      <SectionHeader Icon={Bell} title="Notifications" desc="Configure when and how you receive notifications about new leads" />
 
       <Card title="Email Notifications">
         <div className="space-y-4">
@@ -404,7 +408,7 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="👥" title="Group Scanning" desc="Configure how monitored Telegram groups and VK communities are scanned for leads" />
+      <SectionHeader Icon={UsersGroup} title="Group Scanning" desc="Configure how monitored Telegram groups and VK communities are scanned for leads" />
 
       <Card title="Scan Behavior">
         <div className="grid grid-cols-2 gap-4">
@@ -500,7 +504,7 @@ function AccountSection() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader icon="⚙️" title="Account & Billing" desc="Company profile, subscription, and security" />
+      <SectionHeader Icon={Cog} title="Account & Billing" desc="Company profile, subscription, and security" />
 
       <Card title="Company Profile">
         <form onSubmit={handleSave} className="space-y-4">
@@ -587,10 +591,10 @@ function AccountSection() {
 }
 
 // ── Shared components ────────────────────────────────────────────
-function SectionHeader({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function SectionHeader({ Icon, title, desc }: { Icon: React.FC<IconProps>; title: string; desc: string }) {
   return (
     <div>
-      <h2 className="text-xl font-bold flex items-center gap-2"><span>{icon}</span>{title}</h2>
+      <h2 className="text-xl font-bold flex items-center gap-2"><Icon className="w-5 h-5 text-emerald-400" />{title}</h2>
       <p className="text-sm text-zinc-500 mt-1">{desc}</p>
     </div>
   );

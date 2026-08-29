@@ -5,20 +5,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useWebSocket } from "@/lib/useWebSocket";
+import {
+  ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
+  Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
+  Cog, LogOut, Cross, Menu,
+} from "@/components/Icons";
 
 const NAV = [
-  { href: "/analytics", label: "Analytics", icon: "📊" },
-  { href: "/leads", label: "Leads", icon: "🎯" },
-  { href: "/scoring", label: "Scoring", icon: "⚖️" },
-  { href: "/targets", label: "Targets", icon: "🔍" },
-  { href: "/groups", label: "Groups", icon: "📡" },
-  { href: "/accounts", label: "Accounts", icon: "👤" },
-  { href: "/campaigns", label: "Campaigns", icon: "📣" },
-  { href: "/billing", label: "Billing", icon: "💳" },
-  { href: "/users", label: "Team", icon: "👥" },
-  { href: "/audit", label: "Audit Log", icon: "📋" },
-  { href: "/health", label: "Health", icon: "💓" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+  { href: "/analytics", label: "Analytics", icon: ChartBar },
+  { href: "/leads", label: "Leads", icon: Crosshair },
+  { href: "/scoring", label: "Scoring", icon: Scales },
+  { href: "/targets", label: "Targets", icon: Radar },
+  { href: "/groups", label: "Groups", icon: Radio },
+  { href: "/accounts", label: "Accounts", icon: UserCircle },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/users", label: "Team", icon: UsersGroup },
+  { href: "/audit", label: "Audit Log", icon: FileText },
+  { href: "/health", label: "Health", icon: Heartbeat },
+  { href: "/settings", label: "Settings", icon: Cog },
 ];
 
 export function Sidebar() {
@@ -37,7 +42,7 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button onClick={() => setMobileOpen(!mobileOpen)}
         className="fixed top-4 left-4 z-50 md:hidden bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-zinc-300 hover:text-zinc-100 transition">
-        {mobileOpen ? "✕" : "☰"}
+        {mobileOpen ? <Cross className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Backdrop */}
@@ -53,26 +58,29 @@ export function Sidebar() {
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                pathname === item.href
-                  ? "bg-zinc-800 text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <span>{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                  pathname === item.href
+                    ? "bg-zinc-800 text-zinc-100"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                }`}
+              >
+                <Icon className="w-[18px] h-[18px] shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="p-4 border-t border-zinc-800">
           <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
           <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 mt-1.5 transition flex items-center gap-1.5">
-            <span>🚪</span> Sign out
+            <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>
       </aside>

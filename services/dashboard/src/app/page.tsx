@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  Search, Bot, ChartBar, UsersGroup, Megaphone, CreditCard,
+} from "@/components/Icons";
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -90,12 +93,12 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <FeatureCard icon="🔍" title="Auto-Discovery" desc="Find prospects in target groups automatically. Parse members, messages, and engagement signals across Telegram and VK." />
-            <FeatureCard icon="🤖" title="AI Classification" desc="LLM-powered lead scoring. HOT/WARM/COLD intent detection with customizable scoring rules." />
-            <FeatureCard icon="📊" title="Real-time Dashboard" desc="Kanban pipeline, analytics, CSV export. Track every lead from discovery to conversion in real-time." />
-            <FeatureCard icon="👥" title="Multi-Account" desc="Manage dozens of Telegram accounts with automatic warm-up, daily quotas, and anti-spam protection." />
-            <FeatureCard icon="📣" title="Smart Campaigns" desc="Schedule posts with spintax, cron expressions, and per-campaign analytics." />
-            <FeatureCard icon="💳" title="Billing & Plans" desc="Stripe and YooKassa integration. Usage-based limits with real-time quota enforcement." />
+            <FeatureCard Icon={Search} title="Auto-Discovery" desc="Find prospects in target groups automatically. Parse members, messages, and engagement signals across Telegram and VK." />
+            <FeatureCard Icon={Bot} title="AI Classification" desc="LLM-powered lead scoring. HOT/WARM/COLD intent detection with customizable scoring rules." />
+            <FeatureCard Icon={ChartBar} title="Real-time Dashboard" desc="Kanban pipeline, analytics, CSV export. Track every lead from discovery to conversion in real-time." />
+            <FeatureCard Icon={UsersGroup} title="Multi-Account" desc="Manage dozens of Telegram accounts with automatic warm-up, daily quotas, and anti-spam protection." />
+            <FeatureCard Icon={Megaphone} title="Smart Campaigns" desc="Schedule posts with spintax, cron expressions, and per-campaign analytics." />
+            <FeatureCard Icon={CreditCard} title="Billing & Plans" desc="Stripe and YooKassa integration. Usage-based limits with real-time quota enforcement." />
           </div>
         </div>
       </section>
@@ -144,11 +147,11 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function FeatureCard({ Icon, title, desc }: { Icon: React.FC<{ className?: string }>; title: string; desc: string }) {
   return (
     <div className="group bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200">
-      <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-zinc-700 transition">
-        {icon}
+      <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition">
+        <Icon className="w-5 h-5 text-emerald-400" />
       </div>
       <h3 className="font-semibold text-zinc-100 mb-2">{title}</h3>
       <p className="text-sm text-zinc-500 leading-relaxed">{desc}</p>
