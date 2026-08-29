@@ -363,3 +363,13 @@ export async function backupLeads(token: string) {
   });
   return res.blob();
 }
+
+// ── Notifications ───────────────────────────────────────────────────
+
+export async function getNotificationStatus(token: string) {
+  return api<any>("/api/v1/notifications/status", { token });
+}
+
+export async function testSmtp(token: string, data: { host: string; port: number; user: string; password: string; to_email: string }) {
+  return api<any>("/api/v1/notifications/test-smtp", { method: "POST", body: JSON.stringify(data), token });
+}

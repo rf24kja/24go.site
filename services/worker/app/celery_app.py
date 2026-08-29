@@ -50,6 +50,11 @@ celery.conf.update(
             "schedule": crontab(minute="*/5"),
             "options": {"queue": "poster"},
         },
+        "daily-lead-summary-emails": {
+            "task": "app.tasks.billing.daily_summary_emails",
+            "schedule": crontab(hour=9, minute=0),
+            "options": {"queue": "billing"},
+        },
     },
 )
 

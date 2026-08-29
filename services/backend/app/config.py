@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     NOTIFY_EMAIL: str = ""
     FROM_EMAIL: str = "noreply@24go.site"
 
-    # VKontakte API
+    # Telegram Bot
+    BOT_TOKEN: str = ""
+    OWNER_CHAT_ID: int = 0
     VK_SERVICE_TOKEN: str = ""  # VK community token for group operations
     VK_GROUP_TOKEN: str = ""    # VK group token with messages permission
 

@@ -147,3 +147,44 @@ def deduct_tokens(tenant_id: str, service_type: str, quantity: int, cost_usd: fl
             await conn.close()
 
     return asyncio.run(_deduct())
+
+
+@celery.task(name="app.tasks.billing.daily_summary_emails", queue="billing", max_retries=3)
+def daily_summary_emails():
+    """Daily at 9am: send summary emails to all tenants with leads today.
+
+    Collects HOT/WARM/COLD counts and sends via notifications.py.
+    """
+    import asyncio
+
+    async def _run():
+        from app.notifications import notify_daily_summary
+
+        conn = await asyncpg.connect(DB_URL_SYNC)
+        try:
+            # Get all active tenants
+            tenants = await conn.fetch(
+                "SELECT id FROM tenants WHERE is_active = true"
+            )
+            for t in tenants:
+                tid = str(t["id"])
+                row = await conn.fetchrow(
+                    """SELECT
+                        count(*) FILTER (WHERE intent_score = 'HOT') as hot,
+                        count(*) FILTER (WHERE intent_score = 'WARM') as warm,
+                        count(*) FILTER (WHERE intent_score = 'COLD') as cold
+                       FROM leads WHERE tenant_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'""",
+                    t["id"],
+                )
+                stats = {
+                    "hot": row["hot"] or 0,
+                    "warm": row["warm"] or 0,
+                    "cold": row["cold"] or 0,
+                }
+                if sum(stats.values()) > 0:
+                    await notify_daily_summary(tid, stats)
+                    log.info(f"Daily summary sent for tenant {tid}: {stats}")
+        finally:
+            await conn.close()
+
+    return asyncio.run(_run())
