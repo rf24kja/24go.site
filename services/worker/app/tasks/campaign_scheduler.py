@@ -1,15 +1,18 @@
-"""Campaign scheduling: periodic posting from active campaigns.
+"""Campaign scheduling: timezone-aware periodic posting.
 
 Queue: poster
-Schedule: Triggered by Celery Beat every 30 minutes.
-Logic: For each active campaign, pick an account, render spintax, dispatch post.
+Schedule: Beat every 5 min. Each campaign has its own cron + timezone.
+Logic: For each campaign whose cron fires now (in its TZ), post once.
 """
-import json
+import asyncio
 import logging
 import random
-import uuid
+import re
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import asyncpg
+from croniter import croniter
 
 from app.celery_app import celery
 from app.config import DATABASE_URL
@@ -21,56 +24,96 @@ DB_URL = DATABASE_URL.replace("+asyncpg", "") if "+asyncpg" in DATABASE_URL else
 
 @celery.task(name="app.tasks.poster.periodic_campaign_post", queue="poster", max_retries=3)
 def periodic_campaign_post():
-    """Beat-triggered: post from active campaigns to discovered targets.
+    """Beat-triggered every 5 min: for each active campaign, check if its cron
+    fires in the current 5-min window (in the campaign's timezone).
 
-    Runs every 30 minutes. Picks one random active campaign, one random target,
-    one random available account, renders spintax, and dispatches the post.
+    If yes and posts_per_day limit not reached → dispatch one post.
     """
-    import asyncio
+    return asyncio.run(_run())
 
-    async def _run():
-        conn = await asyncpg.connect(DB_URL)
-        try:
-            # Find an active campaign
-            campaign = await conn.fetchrow(
-                "SELECT id, tenant_id, base_text, target_geos, target_niches "
-                "FROM campaigns WHERE is_active = true ORDER BY random() LIMIT 1"
+
+async def _run():
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        # Fetch all active campaigns with scheduling fields
+        campaigns = await conn.fetch(
+            "SELECT id, tenant_id, base_text, target_geos, target_niches, "
+            "schedule_cron, posts_per_day, timezone, last_posted_at "
+            "FROM campaigns WHERE is_active = true"
+        )
+        if not campaigns:
+            return {"status": "no_active_campaigns"}
+
+        now_utc = datetime.now(timezone.utc)
+        dispatched = []
+
+        for c in campaigns:
+            tz_name = c["timezone"] or "UTC"
+            try:
+                tz = ZoneInfo(tz_name)
+            except Exception:
+                tz = ZoneInfo("UTC")
+
+            local_now = now_utc.astimezone(tz)
+
+            # ── Cron check ─────────────────────────────────────────────
+            cron_expr = c["schedule_cron"]
+            if cron_expr:
+                # Campaigns without a cron are manual-only → skip
+                cron = croniter(cron_expr, local_now.replace(second=0, microsecond=0))
+                prev = cron.get_prev(datetime)
+                # Fire if the previous cron tick is within the last 5 minutes
+                delta = (local_now - prev).total_seconds()
+                if delta > 300:
+                    continue
+
+            # ── Daily limit check ──────────────────────────────────────
+            posts_today = await conn.fetchval(
+                """SELECT count(*) FROM posting_logs
+                   WHERE campaign_id = $1 AND executed_at >= (NOW() AT TIME ZONE $2)::date""",
+                c["id"], tz_name,
             )
-            if not campaign:
-                return {"status": "no_active_campaigns"}
+            limit = c["posts_per_day"] or 1
+            if posts_today >= limit:
+                log.debug(f"Campaign {c['id']} hit daily limit ({posts_today}/{limit})")
+                continue
 
-            # Find a matching target
+            # ── Pick a matching target ─────────────────────────────────
             target = await conn.fetchrow(
-                "SELECT id, target_id_code, title, geo_tag, niche "
-                "FROM targets WHERE tenant_id = $1 AND is_active = true "
+                "SELECT id, target_id_code, title FROM targets "
+                "WHERE tenant_id = $1 AND is_active = true "
                 "AND (geo_tag = ANY($2) OR $2 = '{}') "
                 "ORDER BY random() LIMIT 1",
-                campaign["tenant_id"],
-                campaign["target_geos"] or [],
+                c["tenant_id"],
+                c["target_geos"] or [],
             )
             if not target:
-                return {"status": "no_matching_targets"}
+                continue
 
-            # Find an available account
+            # ── Pick an available account ──────────────────────────────
             account = await conn.fetchrow(
                 "SELECT id, account_identifier FROM account_pool "
-                "WHERE tenant_id = $1 AND status = 'active' AND actions_today < daily_action_limit "
+                "WHERE tenant_id = $1 AND status = 'active' "
+                "AND actions_today < daily_action_limit "
                 "ORDER BY random() LIMIT 1",
-                campaign["tenant_id"],
+                c["tenant_id"],
             )
             if not account:
-                return {"status": "no_available_accounts"}
+                continue
 
-            # Render spintax
-            rendered = _render_spintax(campaign["base_text"])
-            utm_url = f"https://t.me/{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign['id']}"
+            # ── Dispatch ───────────────────────────────────────────────
+            rendered = _render_spintax(c["base_text"])
+            utm_url = (
+                f"https://t.me/{target['target_id_code']}"
+                f"?utm_source=leadgen&utm_medium=post"
+                f"&utm_campaign={c['id']}"
+            )
 
-            # Dispatch to poster worker
             celery.send_task(
                 "app.tasks.poster.publish_post",
                 args=[
-                    str(campaign["tenant_id"]),
-                    str(campaign["id"]),
+                    str(c["tenant_id"]),
+                    str(c["id"]),
                     str(target["id"]),
                     str(account["id"]),
                     rendered,
@@ -79,22 +122,29 @@ def periodic_campaign_post():
                 queue="poster",
             )
 
-            log.info(f"Campaign post dispatched: campaign={campaign['id']} target={target['title']} account={account['account_identifier']}")
-            return {"status": "dispatched", "campaign_id": str(campaign["id"])}
-        finally:
-            await conn.close()
+            # Update last_posted_at
+            await conn.execute(
+                "UPDATE campaigns SET last_posted_at = NOW() WHERE id = $1",
+                c["id"],
+            )
 
-    return asyncio.run(_run())
+            dispatched.append(str(c["id"]))
+            log.info(
+                f"Dispatched: campaign={c['id']} target={target['title']} "
+                f"account={account['account_identifier']} tz={tz_name}"
+            )
+
+        return {"status": "ok", "dispatched": dispatched}
+    finally:
+        await conn.close()
 
 
 def _render_spintax(text: str) -> str:
-    """Render spintax: {option1|option2|option3} → random choice."""
-    import re
+    """Render spintax: {option1|option2|option3} -> random choice."""
     def replace_group(match):
-        options = match.group(1).split("|")
-        return random.choice(options)
+        return random.choice(match.group(1).split("|"))
     result = text
-    for _ in range(10):  # nested spintax support
+    for _ in range(10):
         new_result = re.sub(r"\{([^{}]*)\}", replace_group, result)
         if new_result == result:
             break

@@ -216,6 +216,8 @@ class Lead(Base):
     message_text = Column(Text, nullable=False)
     intent_score = Column(Enum(LeadIntentLevel, name="lead_intent_level"), nullable=False, default=LeadIntentLevel.WARM)
     status = Column(Enum(LeadStatus, name="lead_status"), nullable=False, default=LeadStatus.new)
+    source = Column(String(50), nullable=False, default="dm")  # dm, comment, group, manual, import, webhook
+    post_id = Column(String(255), nullable=True)  # TG message_id or VK post_id that generated this lead
     dialog_url = Column(String(550), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

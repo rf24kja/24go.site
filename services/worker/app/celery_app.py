@@ -47,7 +47,7 @@ celery.conf.update(
         },
         "periodic-campaign-post": {
             "task": "app.tasks.poster.periodic_campaign_post",
-            "schedule": crontab(minute="*/30"),
+            "schedule": crontab(minute="*/5"),
             "options": {"queue": "poster"},
         },
     },

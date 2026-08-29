@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
-import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv } from "@/lib/api";
+import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv, getLead } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
@@ -19,7 +19,12 @@ type Lead = {
   source?: string;
   post_id?: string;
   dialog_url?: string;
+  target_name?: string;
   created_at: string;
+};
+
+type LeadDetail = Lead & {
+  events?: { action: string; old_value?: any; new_value?: any; created_at?: string }[];
 };
 
 const INTENT_STYLES: Record<string, string> = {
@@ -63,8 +68,9 @@ export default function LeadsPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const { connected, lastEvent } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<LeadDetail | null>(null);
   const [detailSaving, setDetailSaving] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const PAGE_SIZE = 50;
 
   // Real-time: when a new lead event arrives, add it to the list
@@ -105,9 +111,23 @@ export default function LeadsPage() {
   useEffect(() => {
     if (selectedLead) {
       const updated = leads.find((l) => l.id === selectedLead.id);
-      if (updated) setSelectedLead(updated);
+      if (updated) setSelectedLead((prev) => prev ? { ...prev, ...updated } : prev);
     }
   }, [leads, selectedLead?.id]);
+
+  async function openLeadDetail(lead: Lead) {
+    setSelectedLead({ ...lead, events: [] } as LeadDetail);
+    if (!auth?.token) return;
+    setLoadingDetail(true);
+    try {
+      const detail = await getLead(auth.token, lead.id);
+      setSelectedLead(detail);
+    } catch {
+      // Keep the basic data from list
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
 
   async function handleQualify(e: React.FormEvent) {
     e.preventDefault();
@@ -305,7 +325,7 @@ export default function LeadsPage() {
               ) : (
                 leads.map((lead) => (
                   <tr key={lead.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30 cursor-pointer"
-                    onClick={() => setSelectedLead(lead)}>
+                    onClick={() => openLeadDetail(lead)}>
                     <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{lead.user_handle}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${INTENT_STYLES[lead.intent_score] ?? ""}`}>
@@ -350,7 +370,7 @@ export default function LeadsPage() {
                     className={`bg-zinc-800 border border-zinc-700 rounded-lg p-3 cursor-grab active:cursor-grabbing transition-opacity hover:border-zinc-600 ${draggingId === lead.id ? "opacity-40" : ""}`}
                     draggable onDragStart={(e) => handleDragStart(e, lead.id)}
                     onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
-                    onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }}>
+                    onClick={(e) => { e.stopPropagation(); openLeadDetail(lead); }}>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-mono text-xs text-zinc-200 truncate">
                         <span className="mr-1">{SOURCE_ICONS[lead.source || "dm"] || "💬"}</span>
@@ -392,11 +412,16 @@ export default function LeadsPage() {
               <button onClick={() => setSelectedLead(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
             </div>
 
-            {/* Handle + intent */}
-            <div className="flex items-center gap-3">
+            {loadingDetail && <p className="text-xs text-zinc-500">Loading details...</p>}
+
+            {/* Handle + intent + source */}
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="font-mono text-sm text-zinc-100 bg-zinc-800 px-3 py-1.5 rounded-lg">{selectedLead.user_handle}</span>
               <span className={`px-2 py-0.5 rounded text-xs font-medium border ${INTENT_STYLES[selectedLead.intent_score] ?? ""}`}>
                 {selectedLead.intent_score}
+              </span>
+              <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">
+                {SOURCE_ICONS[selectedLead.source || "dm"] || "💬"} {selectedLead.source || "dm"}
               </span>
             </div>
 
@@ -418,6 +443,18 @@ export default function LeadsPage() {
                 <span className="text-zinc-500 text-xs block mb-1">Created</span>
                 <span className="text-zinc-200">{new Date(selectedLead.created_at).toLocaleString()}</span>
               </div>
+              {selectedLead.target_name && (
+                <div>
+                  <span className="text-zinc-500 text-xs block mb-1">Target</span>
+                  <span className="text-zinc-200">{selectedLead.target_name}</span>
+                </div>
+              )}
+              {selectedLead.post_id && (
+                <div>
+                  <span className="text-zinc-500 text-xs block mb-1">Post ID</span>
+                  <span className="text-zinc-200 font-mono text-xs">{selectedLead.post_id}</span>
+                </div>
+              )}
             </div>
 
             {/* Message */}
@@ -452,6 +489,31 @@ export default function LeadsPage() {
                 ))}
               </div>
             </div>
+
+            {/* Audit timeline */}
+            {selectedLead.events && selectedLead.events.length > 0 && (
+              <div>
+                <span className="text-zinc-500 text-xs block mb-2">History</span>
+                <div className="space-y-2">
+                  {selectedLead.events.map((ev, i) => (
+                    <div key={i} className="flex items-start gap-3 text-xs">
+                      <span className="text-zinc-600 mt-0.5">●</span>
+                      <div>
+                        <span className="text-zinc-300">
+                          {ev.action === "status_change" ? "Status changed" : ev.action}
+                          {ev.old_value?.status && ev.new_value?.status && (
+                            <>: {STATUS_LABELS[ev.old_value.status] || ev.old_value.status} → {STATUS_LABELS[ev.new_value.status] || ev.new_value.status}</>
+                          )}
+                        </span>
+                        {ev.created_at && (
+                          <span className="text-zinc-600 ml-2">{new Date(ev.created_at).toLocaleString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

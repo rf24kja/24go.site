@@ -82,6 +82,10 @@ export async function getLeads(token: string, params?: { intent_score?: string; 
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
 }
 
+export async function getLead(token: string, leadId: string) {
+  return api<any>(`/api/v1/leads/${leadId}`, { token });
+}
+
 export async function qualifyLead(token: string, data: {
   user_handle: string; message_text: string; geo_tag?: string;
   user_full_name?: string; platform?: string;
