@@ -75,6 +75,7 @@ class Tenant(Base):
     posting_logs = relationship("PostingLog", back_populates="tenant", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="tenant", cascade="all, delete-orphan")
     daily_analytics = relationship("DailyAnalytic", back_populates="tenant", cascade="all, delete-orphan")
+    monitored_groups = relationship("MonitoredGroup", back_populates="tenant", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -242,3 +243,27 @@ class DailyAnalytic(Base):
     )
 
     tenant = relationship("Tenant", back_populates="daily_analytics")
+
+
+class MonitoredGroup(Base):
+    __tablename__ = "monitored_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(UUID(as_uuid=True), ForeignKey("account_pool.id", ondelete="SET NULL"), nullable=True)
+    platform = Column(String(50), nullable=False)  # 'telegram' | 'vkontakte'
+    group_identifier = Column(String(255), nullable=False)  # '@username' or 'vk_id:12345'
+    title = Column(String(255), nullable=True)
+    members_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    status = Column(String(50), default="idle")  # 'idle' | 'scanning' | 'error'
+    last_scan_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "platform", "group_identifier", name="uq_tenant_platform_group"),
+        Index("idx_monitored_groups_tenant", "tenant_id", "is_active"),
+    )
+
+    tenant = relationship("Tenant", back_populates="monitored_groups")
+    account = relationship("AccountPool")

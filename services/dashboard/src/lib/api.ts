@@ -158,6 +158,29 @@ export async function scrapeTargetComments(token: string, targetId: string, post
   });
 }
 
+// ── Groups (Monitored) ────────────────────────────────────────────────
+
+export async function getGroups(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/groups/${qs ? `?${qs}` : ""}`, { token });
+}
+
+export async function addGroup(token: string, data: { platform: string; group_identifier: string; account_id: string }) {
+  return api<any>("/api/v1/groups/", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function startGroupScanner(token: string, groupId: string) {
+  return api<any>(`/api/v1/groups/${groupId}/start`, { method: "POST", token });
+}
+
+export async function stopGroupScanner(token: string, groupId: string) {
+  return api<any>(`/api/v1/groups/${groupId}/stop`, { method: "POST", token });
+}
+
+export async function removeGroup(token: string, groupId: string) {
+  return api<any>(`/api/v1/groups/${groupId}`, { method: "DELETE", token });
+}
+
 // ── Billing ───────────────────────────────────────────────────────────
 
 export async function getSubscription(token: string) {

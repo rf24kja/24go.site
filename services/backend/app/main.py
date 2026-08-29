@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 from app.config import settings
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
-from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system
+from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups
 
 # ── Startup guard ─────────────────────────────────────────────────────
 if not settings.JWT_SECRET:
@@ -230,6 +230,7 @@ app.include_router(audit.router)
 app.include_router(campaign_analytics.router)
 app.include_router(scoring.router)
 app.include_router(system.router)
+app.include_router(groups.router)
 
 
 @app.get("/health")

@@ -169,6 +169,87 @@
 - **Real 3-stage account warmup**
 - **Real campaign posting via Telegram**
 - **Telegram session management (connect/confirm/disconnect/status)**
+- **Email notifications for HOT/WARM leads** (smtplib, best-effort)
+- **VKontakte integration** (listener, poster, comment scraper)
+- **Onboarding checklist** (progress bar on dashboard)
+- **Inline help** (instructions on all pages)
+
+---
+
+## Фаза 7: Group Monitoring (НОВАЯ КЛЮЧЕВАЯ ФИЧА) 🔴 В РАБОТЕ
+
+> Мониторинг ПУБЛИЧНЫХ групп Telegram и VK на наличие лидов.
+> Пользователь подключает аккаунт → выбирает группы → система слушает 24/7.
+
+### 7.1 Telegram Group Scanner
+- [ ] **`services/worker/app/tasks/group_scanner.py`** — новый модуль:
+  - `start_group_scanner(tenant_id, account_id, group_username)` — Celery task
+  - Telethon: `client.get_entity(group_username)` → entity
+  - `client.iter_messages(entity, limit=50)` — читаем последние сообщения
+  - `client.add_event_handler(on_new_message)` — слушаем новые сообщения в реальном времени
+  - Фильтр: пропускать сообщения админов, сервисные сообщения, сообщения < 3 символов
+  - Дедупликация: не обрабатывать одно сообщение дважды (message_id)
+  - Каждое сообщение → `process_incoming_message(source="group")`
+  - Heartbeat в Redis (как listener)
+
+### 7.2 VK Group Scanner
+- [ ] **`services/worker/app/tasks/vk_group_scanner.py`** — новый модуль:
+  - `start_vk_group_scanner(tenant_id, account_id, group_id)` — Celery task
+  - VK API: `wall.get(owner_id=-group_id)` — читаем стены
+  - Long Poll: слушаем новые сообщения в обсуждениях
+  - Каждое сообщение → `process_incoming_message(source="group", platform="vkontakte")`
+
+### 7.3 Group Management API
+- [ ] **`POST /api/v1/groups/`** — добавить группу для мониторинга:
+  ```json
+  { "platform": "telegram", "group_username": "@phuket_rentals", "account_id": "..." }
+  ```
+- [ ] **`GET /api/v1/groups/`** — список отслеживаемых групп
+- [ ] **`DELETE /api/v1/groups/{id}`** — удалить группу из мониторинга
+- [ ] **`POST /api/v1/groups/{id}/start`** — запустить сканер
+- [ ] **`POST /api/v1/groups/{id}/stop`** — остановить сканер
+- [ ] **`GET /api/v1/groups/{id}/status`** — статус (online/offline)
+
+### 7.4 DB: таблица `monitored_groups`
+```sql
+CREATE TABLE monitored_groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id),
+    account_id UUID REFERENCES account_pool(id),
+    platform VARCHAR(50) NOT NULL,  -- 'telegram' | 'vkontakte'
+    group_identifier VARCHAR(255) NOT NULL,  -- '@username' or 'vk_id:12345'
+    title VARCHAR(255),
+    members_count INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    status VARCHAR(50) DEFAULT 'idle',  -- 'idle' | 'scanning' | 'error'
+    last_scan_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, platform, group_identifier)
+);
+```
+
+### 7.5 Dashboard UI
+- [ ] **Targets page** — добавить вкладку "Monitored Groups"
+- [ ] Форма: ввести @username группы → проверить доступность → добавить
+- [ ] Таблица: группа, платформа, статус, последние сообщения, кнопки Start/Stop
+- [ ] Real-time обновление статуса через WebSocket
+
+### 7.6 Auto-Discovery
+- [ ] **`POST /api/v1/groups/discover`** — автопоиск групп по гео/нише:
+  ```json
+  { "geo_tag": "phuket", "niche": "real_estate", "platform": "telegram" }
+  ```
+  - Telegram: поиск через `client.get_dialogs()` + фильтр по ключевым словам
+  - VK: поиск через `groups.search(q=...)`
+  - Возвращает список рекомендуемых групп
+
+---
+
+## Фаза 8: Email Notifications ✅ DONE
+
+- [x] SMTP-конфигурация в `.env`
+- [x] `notifications.py` — отправка email для HOT/WARM лидов
+- [x] Интеграция в `lead_pipeline.py`
 
 ---
 

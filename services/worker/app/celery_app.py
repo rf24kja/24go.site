@@ -21,9 +21,11 @@ celery.conf.update(
         "app.tasks.warmup.*": {"queue": "warmup"},
         "app.tasks.listener.*": {"queue": "listener"},
         "app.tasks.comment_scraper.*": {"queue": "parser"},
+        "app.tasks.group_scanner.*": {"queue": "listener"},
         "app.tasks.vk_listener.*": {"queue": "listener"},
         "app.tasks.vk_poster.*": {"queue": "poster"},
         "app.tasks.vk_comment_scraper.*": {"queue": "parser"},
+        "app.tasks.vk_group_scanner.*": {"queue": "listener"},
         "app.tasks.billing.*": {"queue": "billing"},
     },
     # ── Periodic Task Schedule (Celery Beat) ──────────────────────────
