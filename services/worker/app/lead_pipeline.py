@@ -140,6 +140,13 @@ async def process_incoming_message(
         except Exception as e:
             log.warning(f"Webhook dispatch failed (non-blocking): {e}")
 
+        # Email alert for HOT/WARM leads
+        try:
+            from app.notifications import notify_hot_lead
+            await notify_hot_lead(tenant_id, lead_payload)
+        except Exception as e:
+            log.debug(f"Email notify failed (non-blocking): {e}")
+
     # 5. Broadcast to backend WebSocket for real-time dashboard
     try:
         backend_url = os.getenv("BACKEND_URL", "http://fastapi:8000")

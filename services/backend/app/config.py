@@ -19,6 +19,18 @@ class Settings(BaseSettings):
 
     N8N_WEBHOOK_URL: str = ""
 
+    # Email notifications
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    NOTIFY_EMAIL: str = ""
+    FROM_EMAIL: str = "noreply@24go.site"
+
+    # VKontakte API
+    VK_SERVICE_TOKEN: str = ""  # VK community token for group operations
+    VK_GROUP_TOKEN: str = ""    # VK group token with messages permission
+
     CELERY_BROKER_URL: str = "redis://redis:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
 

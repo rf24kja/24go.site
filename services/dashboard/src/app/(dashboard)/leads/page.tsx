@@ -268,7 +268,7 @@ export default function LeadsPage() {
       )}
 
       {view === "table" ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800">

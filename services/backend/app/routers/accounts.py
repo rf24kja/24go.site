@@ -344,3 +344,76 @@ async def telegram_status(
         "tg_status": tg_status.get("status", "unknown"),
         "updated_at": tg_status.get("updated_at", 0),
     }
+
+
+# ── VKontakte Connection ───────────────────────────────────────────────
+
+class VKConnectRequest(BaseModel):
+    group_token: str  # VK community token
+    group_id: int     # VK community ID
+
+
+@router.post("/{account_id}/connect-vk")
+async def connect_vk(
+    account_id: UUID,
+    body: VKConnectRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Connect VKontakte community via group token."""
+    result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.id == account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "Account not found")
+    if account.platform != "vkontakte":
+        raise HTTPException(400, "Account platform must be 'vkontakte'")
+
+    # Store group token encrypted in session_data
+    import uuid as _uuid
+    import asyncpg
+    from app.crypto import encrypt as enc
+    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(conn_url)
+    try:
+        encrypted = enc(body.group_token)
+        existing = await conn.fetchrow(
+            "SELECT id FROM account_sessions WHERE account_id = $1",
+            _uuid.UUID(str(account_id)),
+        )
+        if existing:
+            await conn.execute(
+                "UPDATE account_sessions SET session_data = $1, updated_at = NOW() WHERE account_id = $2",
+                encrypted, _uuid.UUID(str(account_id)),
+            )
+        else:
+            await conn.execute(
+                """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                   VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
+                _uuid.UUID(str(account_id)), encrypted,
+            )
+        # Also store group_id as meta
+        await conn.execute(
+            "UPDATE account_sessions SET updated_at = NOW() WHERE account_id = $1",
+            _uuid.UUID(str(account_id)),
+        )
+    finally:
+        await conn.close()
+
+    account.status = "active"
+    await db.commit()
+
+    log.info(f"VK connected for account {account_id}, group={body.group_id}")
+    await log_event(
+        url=settings.DATABASE_URL.replace("+asyncpg", ""),
+        tenant_id=current_user.tenant_id, action="connected_vk", entity_type="account",
+        entity_id=str(account_id),
+        new_value={"group_id": body.group_id},
+        user_id=current_user.id, ip_address=request.client.host if request else None,
+    )
+    return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte"}

@@ -120,6 +120,12 @@ export async function getTelegramStatus(token: string, accountId: string) {
   return api<any>(`/api/v1/accounts/${accountId}/tg-status`, { token });
 }
 
+export async function connectVK(token: string, accountId: string, groupToken: string, groupId: number) {
+  return api<any>(`/api/v1/accounts/${accountId}/connect-vk`, {
+    method: "POST", body: JSON.stringify({ group_token: groupToken, group_id: groupId }), token,
+  });
+}
+
 // ── Campaigns ─────────────────────────────────────────────────────────
 
 export async function getCampaigns(token: string, params?: { limit?: number; offset?: number }) {
