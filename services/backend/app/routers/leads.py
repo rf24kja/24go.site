@@ -140,10 +140,11 @@ async def qualify_lead(
     body: QualifyRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Run LLM qualification on a message and save the lead.
+    """Classify a message for buying intent using LLM.
 
-    This is the API equivalent of what the Telegram listener does in real-time.
-    Use it for testing, manual lead entry, or non-Telegram platforms.
+    Submits a message for AI-powered qualification without needing a live Telegram listener.
+    Returns intent score (HOT/WARM/COLD/SPAM), confidence, and summary.
+    Use for testing, manual lead entry, or non-Telegram platforms.
     """
     from app.lead_pipeline import process_incoming_message
 

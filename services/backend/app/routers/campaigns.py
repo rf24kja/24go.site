@@ -1,4 +1,4 @@
-"""Campaign CRUD endpoints."""
+"""Campaign CRUD, scheduling, and manual posting endpoints."""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request

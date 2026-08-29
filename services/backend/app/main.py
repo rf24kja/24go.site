@@ -18,7 +18,27 @@ from app.routers import auth, tenants, targets, accounts, campaigns, leads, task
 if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
 
-app = FastAPI(title="LeadGen Control Plane", version="0.3.2")
+app = FastAPI(
+    title="LeadGen Control Plane",
+    description="Multi-tenant B2B SaaS platform for automated lead generation in Telegram/VK social networks.",
+    version="0.3.3",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "auth", "description": "User registration, login, JWT tokens"},
+        {"name": "leads", "description": "Lead capture, qualification, status management, CSV import/export"},
+        {"name": "campaigns", "description": "Campaign CRUD, scheduling (timezone-aware cron), posting, analytics"},
+        {"name": "targets", "description": "Target channels/groups discovery, comment scraping"},
+        {"name": "groups", "description": "Public group monitoring — auto-discover, start/stop scanning for buying signals"},
+        {"name": "accounts", "description": "Telegram/VK account management, connect/disconnect, warmup status"},
+        {"name": "analytics", "description": "Time-series charts, funnel, geo/source breakdown, leaderboard"},
+        {"name": "billing", "description": "Subscription plans, quota enforcement, usage tracking"},
+        {"name": "listeners", "description": "Real-time DM listener, group scanner status and control"},
+        {"name": "notifications", "description": "SMTP test, notification channel status"},
+        {"name": "audit", "description": "Audit log — who changed what and when"},
+        {"name": "system", "description": "Health check, system info, demo data, backup"},
+    ],
+)
 
 # ── Structured logging ────────────────────────────────────────────────
 logging.basicConfig(
