@@ -14,6 +14,7 @@ type Campaign = {
   is_active: boolean;
   schedule_cron: string | null;
   posts_per_day: number | null;
+  timezone: string;
   created_at: string;
 };
 
@@ -35,7 +36,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5" });
+  const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC" });
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -49,7 +50,7 @@ export default function CampaignsPage() {
   const openCreate = () => {
     setModalMode("create");
     setEditingId(null);
-    setForm({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5" });
+    setForm({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC" });
   };
 
   const openEdit = (c: Campaign) => {
@@ -62,6 +63,7 @@ export default function CampaignsPage() {
       target_niches: (c.target_niches || []).join(", "),
       schedule: c.schedule_cron || "",
       posts_per_day: String(c.posts_per_day || 5),
+      timezone: c.timezone || "UTC",
     });
   };
 
@@ -77,6 +79,7 @@ export default function CampaignsPage() {
         target_niches: form.target_niches.split(",").map((s) => s.trim()).filter(Boolean),
         schedule_cron: form.schedule || null,
         posts_per_day: parseInt(form.posts_per_day) || 5,
+        timezone: form.timezone,
       };
       if (modalMode === "edit" && editingId) {
         await updateCampaign(auth.token, editingId, data);
@@ -162,6 +165,8 @@ export default function CampaignsPage() {
                 <span>{c.schedule_cron ? SCHEDULE_OPTIONS.find((o) => o.value === c.schedule_cron)?.label || c.schedule_cron : "Manual"}</span>
                 <span className="text-zinc-600">·</span>
                 <span>{c.posts_per_day || 5}/day</span>
+                <span className="text-zinc-600">·</span>
+                <span>🕐 {c.timezone || "UTC"}</span>
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openEdit(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">Edit</button>
@@ -188,7 +193,7 @@ export default function CampaignsPage() {
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
 
               {/* Schedule */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">Schedule</label>
                   <select value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })}
@@ -202,6 +207,19 @@ export default function CampaignsPage() {
                   <label className="text-xs text-zinc-500 mb-1 block">Posts/day limit</label>
                   <input type="number" min="1" max="50" value={form.posts_per_day} onChange={(e) => setForm({ ...form, posts_per_day: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Timezone</label>
+                  <select value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
+                    <option value="UTC">UTC</option>
+                    <option value="Europe/Moscow">Moscow (UTC+3)</option>
+                    <option value="Asia/Bangkok">Bangkok (UTC+7)</option>
+                    <option value="Asia/Phuket">Phuket (UTC+7)</option>
+                    <option value="Europe/London">London (UTC+0)</option>
+                    <option value="America/New_York">New York (UTC-5)</option>
+                    <option value="Asia/Dubai">Dubai (UTC+4)</option>
+                  </select>
                 </div>
               </div>
 

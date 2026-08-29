@@ -181,6 +181,12 @@ export async function removeGroup(token: string, groupId: string) {
   return api<any>(`/api/v1/groups/${groupId}`, { method: "DELETE", token });
 }
 
+export async function discoverGroups(token: string, data: { geo_tag: string; niche: string; platform?: string; account_id?: string }) {
+  return api<{ results: any[]; total: number }>("/api/v1/groups/discover", {
+    method: "POST", body: JSON.stringify(data), token,
+  });
+}
+
 // ── Billing ───────────────────────────────────────────────────────────
 
 export async function getSubscription(token: string) {

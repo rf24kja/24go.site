@@ -168,6 +168,10 @@ class Campaign(Base):
     target_niches = Column(JSONB, nullable=False)
     media_urls = Column(JSONB, default="[]")
     is_active = Column(Boolean, default=True)
+    schedule_cron = Column(String(100), nullable=True)  # e.g. "0 9,15 * * *" (9am and 3pm daily)
+    posts_per_day = Column(Integer, default=1)
+    timezone = Column(String(50), default="UTC")
+    last_posted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="campaigns")

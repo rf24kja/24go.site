@@ -278,3 +278,166 @@ async def remove_group(
         entity_id=str(group_id), user_id=current_user.id,
         ip_address=request.client.host if request else None,
     )
+
+
+# ── Auto-Discovery ────────────────────────────────────────────────────
+
+class DiscoverRequest(BaseModel):
+    geo_tag: str  # e.g. "Phuket", "Moscow"
+    niche: str    # e.g. "real_estate", "tourism"
+    platform: str = "telegram"
+    account_id: str | None = None  # optional: use this account to search
+
+
+@router.post("/discover")
+async def discover_groups(
+    body: DiscoverRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Auto-discover public groups by GEO and niche.
+
+    Uses Telegram search (via Telethon) or VK groups.search.
+    Returns recommended groups with metadata.
+    """
+    results = []
+
+    if body.platform == "telegram":
+        results = await _discover_telegram_groups(body.geo_tag, body.niche, body.account_id)
+    elif body.platform == "vkontakte":
+        results = await _discover_vk_groups(body.geo_tag, body.niche)
+
+    return {"results": results, "total": len(results)}
+
+
+async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | None) -> list:
+    """Search Telegram for public groups matching GEO + niche."""
+    import os
+
+    api_id = int(os.getenv("TG_API_ID", "0"))
+    api_hash = os.getenv("TG_API_HASH", "")
+    if not api_id or not api_hash:
+        return []
+
+    # Build search queries from GEO + niche keywords
+    queries = [
+        f"{geo_tag} {niche}",
+        f"{geo_tag}",
+        niche.replace("_", " "),
+    ]
+
+    results = []
+    seen = set()
+
+    try:
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+
+        # Get a session to search with
+        client = None
+        if account_id:
+            import asyncpg
+            from app.crypto import decrypt as dec
+            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
+            try:
+                from app.models import AccountPool
+                row = await conn.fetchrow(
+                    "SELECT s.session_data FROM account_sessions s WHERE s.account_id = $1",
+                    __import__('uuid').UUID(account_id),
+                )
+                if row:
+                    session_str = dec(row["session_data"])
+                    client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                    await client.connect()
+            finally:
+                await conn.close()
+
+        if not client:
+            # Fallback: use service account or return empty
+            return []
+
+        try:
+            for query in queries:
+                try:
+                    # Search for channels and groups
+                    result = await client.get_dialogs(limit=50)
+                    for dialog in result:
+                        entity = dialog.entity
+                        name = getattr(entity, 'title', '').lower()
+                        username = getattr(entity, 'username', '') or ''
+
+                        # Filter: must be a group/channel, not already seen
+                        if not username or username in seen:
+                            continue
+                        if not getattr(entity, 'megagroup', False) and not getattr(entity, 'broadcast', False):
+                            continue
+
+                        # Score relevance
+                        relevance = 0
+                        geo_lower = geo_tag.lower()
+                        niche_lower = niche.lower().replace("_", " ")
+
+                        if geo_lower in name or geo_lower in username.lower():
+                            relevance += 10
+                        if niche_lower in name or niche_lower in username.lower():
+                            relevance += 10
+
+                        # Partial matches
+                        for word in niche_lower.split():
+                            if word in name:
+                                relevance += 3
+
+                        if relevance > 0:
+                            seen.add(username)
+                            results.append({
+                                "platform": "telegram",
+                                "group_identifier": f"@{username}",
+                                "title": getattr(entity, 'title', username),
+                                "members_count": getattr(entity, 'participants_count', 0) or 0,
+                                "relevance": relevance,
+                            })
+                except Exception as e:
+                    log.debug(f"Search query '{query}' failed: {e}")
+                    continue
+        finally:
+            await client.disconnect()
+
+        # Sort by relevance
+        results.sort(key=lambda x: x["relevance"], reverse=True)
+        return results[:20]
+
+    except Exception as e:
+        log.error(f"Telegram group discovery failed: {e}")
+        return []
+
+
+async def _discover_vk_groups(geo_tag: str, niche: str) -> list:
+    """Search VK for communities matching GEO + niche."""
+    import os
+    import vk_api
+
+    service_token = os.getenv("VK_SERVICE_TOKEN", "")
+    if not service_token:
+        return []
+
+    try:
+        session = vk_api.VkApi(token=service_token)
+        vk = session.get_api()
+
+        query = f"{geo_tag} {niche}".replace("_", " ")
+        response = vk.groups.search(q=query, count=20, type="group")
+
+        results = []
+        for item in response.get("items", []):
+            results.append({
+                "platform": "vkontakte",
+                "group_identifier": f"vk_{item['id']}",
+                "title": item.get("name", ""),
+                "members_count": item.get("members_count", 0),
+                "relevance": 5,  # Default relevance for VK
+            })
+
+        return results[:20]
+    except Exception as e:
+        log.error(f"VK group discovery failed: {e}")
+        return []

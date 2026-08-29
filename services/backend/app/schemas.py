@@ -109,6 +109,9 @@ class CampaignCreate(BaseModel):
     target_geos: list[str]
     target_niches: list[str]
     media_urls: list[str] = []
+    schedule_cron: str | None = None  # e.g. "0 9,15 * * *"
+    posts_per_day: int = 1
+    timezone: str = "UTC"
 
 
 class CampaignResponse(BaseModel):
@@ -118,6 +121,10 @@ class CampaignResponse(BaseModel):
     target_geos: list
     target_niches: list
     is_active: bool
+    schedule_cron: str | None = None
+    posts_per_day: int = 1
+    timezone: str = "UTC"
+    last_posted_at: datetime | None = None
     created_at: datetime | None = None
 
     class Config:
