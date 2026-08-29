@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv, getLead } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
@@ -409,7 +410,10 @@ export default function LeadsPage() {
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-zinc-100">Lead Detail</h2>
-              <button onClick={() => setSelectedLead(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
+              <div className="flex items-center gap-3">
+                <Link href={`/leads/${selectedLead.id}`} className="text-xs text-emerald-400 hover:text-emerald-300 underline">Full page ↗</Link>
+                <button onClick={() => setSelectedLead(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
+              </div>
             </div>
 
             {loadingDetail && <p className="text-xs text-zinc-500">Loading details...</p>}

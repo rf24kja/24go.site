@@ -31,6 +31,12 @@ class GeoBreakdown(BaseModel):
     hot_leads: int
 
 
+class SourceBreakdown(BaseModel):
+    source: str
+    leads: int
+    hot_leads: int
+
+
 class TimeSeriesPoint(BaseModel):
     date: str
     targets: int
@@ -42,6 +48,7 @@ class TimeSeriesPoint(BaseModel):
 class AnalyticsResponse(BaseModel):
     funnel: FunnelResponse
     geo_breakdown: list[GeoBreakdown]
+    source_breakdown: list[SourceBreakdown]
     time_series: list[TimeSeriesPoint]
     total_cost_usd: float
     total_tokens: int
@@ -108,6 +115,25 @@ async def get_analytics(
     geo_breakdown = [
         GeoBreakdown(geo_tag=r.geo_tag, leads=r.leads, hot_leads=r.hot_leads)
         for r in geo_q.all()
+    ]
+
+    # ── Source breakdown: leads by source (dm, comment, group, etc.) ──
+    source_q = await db.execute(
+        select(
+            Lead.source,
+            func.count(Lead.id).label("leads"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot_leads"),
+        )
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.created_at >= since,
+        )
+        .group_by(Lead.source)
+        .order_by(func.count(Lead.id).desc())
+    )
+    source_breakdown = [
+        SourceBreakdown(source=r.source or "dm", leads=r.leads, hot_leads=r.hot_leads)
+        for r in source_q.all()
     ]
 
     # ── Time-series: 2 queries (posts + leads) instead of 3×N ──────
@@ -184,6 +210,7 @@ async def get_analytics(
             warm_leads=warm,
         ),
         geo_breakdown=geo_breakdown,
+        source_breakdown=source_breakdown,
         time_series=time_series,
         total_cost_usd=float(total_cost),
         total_tokens=int(total_tokens),

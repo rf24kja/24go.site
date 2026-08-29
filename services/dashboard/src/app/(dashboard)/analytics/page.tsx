@@ -41,6 +41,12 @@ export default function AnalyticsPage() {
     hot: g.hot_leads,
   }));
 
+  const sourceData = (data.source_breakdown || []).map((s: any) => ({
+    name: s.source === "dm" ? "💬 DM" : s.source === "comment" ? "💭 Comment" : s.source === "group" ? "👥 Group" : s.source === "manual" ? "✏️ Manual" : s.source,
+    leads: s.leads,
+    hot: s.hot_leads,
+  }));
+
   const funnelData = [
     { name: "Targets", value: funnel.discovered_targets || 0 },
     { name: "Posts", value: funnel.published_posts || 0 },
@@ -76,10 +82,10 @@ export default function AnalyticsPage() {
         <MetricCard label="Hot Leads" value={funnel.hot_leads || 0} accent="rose" />
       </div>
 
-      {/* Time Series */}
+      {/* Time Series — posts + leads overlay */}
       {data.time_series && data.time_series.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Leads Over Time</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">Activity Over Time</h2>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={data.time_series}>
               <defs>
@@ -87,12 +93,19 @@ export default function AnalyticsPage() {
                   <stop offset="5%" stopColor={COLORS.sky} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={COLORS.sky} stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="postGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.emerald} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={COLORS.emerald} stopOpacity={0} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
               <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} />
               <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
               <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-              <Area type="monotone" dataKey="count" stroke={COLORS.sky} fill="url(#leadGrad)" strokeWidth={2} />
+              <Legend />
+              <Area type="monotone" dataKey="leads" name="Leads" stroke={COLORS.sky} fill="url(#leadGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="hot_leads" name="HOT" stroke={COLORS.rose} fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
+              <Area type="monotone" dataKey="posts" name="Posts" stroke={COLORS.emerald} fill="url(#postGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -133,6 +146,26 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           ) : (
             <p className="text-zinc-500 text-sm text-center py-12">No lead data yet</p>
+          )}
+        </div>
+
+        {/* Source Breakdown */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">Leads by Source</h2>
+          {sourceData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={sourceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
+                <Legend />
+                <Bar dataKey="leads" fill={COLORS.sky} name="Total Leads" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="hot" fill={COLORS.rose} name="Hot Leads" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-zinc-500 text-sm text-center py-12">No source data yet</p>
           )}
         </div>
 
