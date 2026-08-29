@@ -149,6 +149,10 @@ export async function deleteCampaign(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}`, { method: "DELETE", token });
 }
 
+export async function runCampaign(token: string, campaignId: string) {
+  return api<any>(`/api/v1/campaigns/${campaignId}/run`, { method: "POST", token });
+}
+
 export async function getCampaignStats(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
 }

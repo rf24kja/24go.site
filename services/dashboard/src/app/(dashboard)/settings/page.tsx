@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getSubscription, getUsage, updateTenant, changePassword, getSystemInfo, seedDemoData, backupLeads } from "@/lib/api";
+import { getSubscription, getUsage, updateTenant, changePassword, getSystemInfo, seedDemoData, backupLeads, getNotificationStatus, testSmtp } from "@/lib/api";
 
 export default function SettingsPage() {
   const { auth } = useAuth();
@@ -14,6 +14,10 @@ export default function SettingsPage() {
   const [sysInfo, setSysInfo] = useState<any>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<any>(null);
+  const [notifStatus, setNotifStatus] = useState<any>(null);
+  const [smtpTest, setSmtpTest] = useState({ host: "smtp.gmail.com", port: "587", user: "", password: "", to_email: "" });
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpResult, setSmtpResult] = useState<any>(null);
 
   useEffect(() => {
     if (!auth?.token) return;
@@ -21,6 +25,7 @@ export default function SettingsPage() {
     getSubscription(auth.token).then(setSub).catch(() => {});
     getUsage(auth.token).then(setUsage).catch(() => {});
     getSystemInfo(auth.token).then(setSysInfo).catch(() => {});
+    getNotificationStatus(auth.token).then(setNotifStatus).catch(() => {});
   }, [auth?.token]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -55,6 +60,27 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `backup_${new Date().toISOString().slice(0,10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
+  };
+
+  const handleSmtpTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth?.token) return;
+    setSmtpTesting(true);
+    setSmtpResult(null);
+    try {
+      const result = await testSmtp(auth.token, {
+        host: smtpTest.host,
+        port: parseInt(smtpTest.port) || 587,
+        user: smtpTest.user,
+        password: smtpTest.password,
+        to_email: smtpTest.to_email,
+      });
+      setSmtpResult(result);
+    } catch (err: any) {
+      setSmtpResult({ status: "error", message: err.message || "Failed" });
+    } finally {
+      setSmtpTesting(false);
+    }
   };
 
   return (
@@ -139,6 +165,46 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Notification Channels */}
+      {notifStatus && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 className="text-sm font-medium text-zinc-400">Notification Channels</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StatusBadge label="SMTP Email" configured={notifStatus.smtp?.configured} detail={notifStatus.smtp?.host} />
+            <StatusBadge label="Telegram Bot" configured={notifStatus.bot?.configured} detail={notifStatus.bot?.owner_chat_id !== "(not set)" ? `Chat: ${notifStatus.bot.owner_chat_id}` : "Not set"} />
+            <StatusBadge label="Telegram API" configured={notifStatus.telegram_api?.configured} detail={notifStatus.telegram_api?.configured ? "TG_API_ID set" : "Not set"} />
+          </div>
+
+          {/* SMTP Test Form */}
+          <form onSubmit={handleSmtpTest} className="space-y-3 mt-3">
+            <h3 className="text-xs text-zinc-500">Test SMTP Connection</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <input type="text" placeholder="SMTP Host" value={smtpTest.host} onChange={(e) => setSmtpTest({ ...smtpTest, host: e.target.value })}
+                className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <input type="text" placeholder="Port" value={smtpTest.port} onChange={(e) => setSmtpTest({ ...smtpTest, port: e.target.value })}
+                className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <input type="text" placeholder="Username / Email" value={smtpTest.user} onChange={(e) => setSmtpTest({ ...smtpTest, user: e.target.value })}
+                className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <input type="password" placeholder="Password / App Password" value={smtpTest.password} onChange={(e) => setSmtpTest({ ...smtpTest, password: e.target.value })}
+                className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+            </div>
+            <div className="flex gap-3">
+              <input type="email" placeholder="Send test to (your email)" value={smtpTest.to_email} onChange={(e) => setSmtpTest({ ...smtpTest, to_email: e.target.value })}
+                className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <button type="submit" disabled={smtpTesting || !smtpTest.user || !smtpTest.password || !smtpTest.to_email}
+                className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 whitespace-nowrap">
+                {smtpTesting ? "Sending..." : "Send Test Email"}
+              </button>
+            </div>
+            {smtpResult && (
+              <div className={`px-3 py-2 rounded-lg text-xs ${smtpResult.status === "ok" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
+                {smtpResult.message}
+              </div>
+            )}
+          </form>
+        </div>
+      )}
+
       {/* Demo Data */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
         <h2 className="text-sm font-medium text-zinc-400">Demo Data</h2>
@@ -213,5 +279,21 @@ function ChangePasswordForm() {
         {error && <span className="text-rose-400 text-sm">{error}</span>}
       </div>
     </form>
+  );
+}
+
+function StatusBadge({ label, configured, detail }: { label: string; configured: boolean; detail?: string }) {
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
+      configured
+        ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400"
+        : "bg-zinc-800 border-zinc-700 text-zinc-500"
+    }`}>
+      <div className={`w-2 h-2 rounded-full ${configured ? "bg-emerald-400" : "bg-zinc-600"}`} />
+      <div>
+        <span className="font-medium">{label}</span>
+        {detail && <span className="text-xs ml-2 opacity-60">{detail}</span>}
+      </div>
+    </div>
   );
 }

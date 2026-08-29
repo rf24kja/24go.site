@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats } from "@/lib/api";
+import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 type Campaign = {
   id: string;
@@ -15,6 +16,7 @@ type Campaign = {
   schedule_cron: string | null;
   posts_per_day: number | null;
   timezone: string;
+  last_posted_at: string | null;
   created_at: string;
 };
 
@@ -32,6 +34,7 @@ type ModalMode = "create" | "edit" | null;
 
 export default function CampaignsPage() {
   const { auth } = useAuth();
+  const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -184,9 +187,21 @@ export default function CampaignsPage() {
                 <span className="text-zinc-600">·</span>
                 <span>🕐 {c.timezone || "UTC"}</span>
               </div>
+              {c.last_posted_at && (
+                <p className="text-[10px] text-zinc-600 mt-1">Last posted: {new Date(c.last_posted_at).toLocaleString()}</p>
+              )}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => openEdit(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">Edit</button>
                 <button onClick={() => openStats(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">📊 Stats</button>
+                <button onClick={async () => {
+                  if (!auth?.token || !confirm("Run this campaign now?")) return;
+                  try {
+                    const result = await runCampaign(auth.token, c.id);
+                    toast(`Posted to ${result.target} via ${result.account}`, "success");
+                  } catch (err: any) {
+                    toast(err.message || "Failed to run", "error");
+                  }
+                }} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-xs hover:bg-emerald-500/20 transition">▶ Run</button>
                 <button onClick={() => handleDelete(c.id)} className="px-3 py-1 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition">Delete</button>
               </div>
             </div>

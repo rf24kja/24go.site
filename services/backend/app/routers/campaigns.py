@@ -149,3 +149,73 @@ async def update_campaign(
         user_id=current_user.id, ip_address=request.client.host if request else None,
     )
     return campaign
+
+
+@router.post("/{campaign_id}/run")
+async def run_campaign_now(
+    campaign_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually trigger a campaign post right now (ignoring cron schedule)."""
+    import app.models as _models
+    from fastapi import HTTPException
+    from sqlalchemy import func as _func
+
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id,
+            Campaign.tenant_id == current_user.tenant_id,
+        )
+    )
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+
+    # Find a matching target
+    target = await db.execute(
+        select(_models.Target).where(
+            _models.Target.tenant_id == current_user.tenant_id,
+            _models.Target.is_active == True,
+        ).order_by(_func.random()).limit(1)
+    )
+    t = target.scalar_one_or_none()
+    if not t:
+        raise HTTPException(400, "No active targets found. Add targets first.")
+
+    # Find an available account
+    acc = await db.execute(
+        select(_models.AccountPool).where(
+            _models.AccountPool.tenant_id == current_user.tenant_id,
+            _models.AccountPool.status == "active",
+        ).order_by(_func.random()).limit(1)
+    )
+    a = acc.scalar_one_or_none()
+    if not a:
+        raise HTTPException(400, "No active accounts. Connect an account first.")
+
+    # Dispatch to poster worker
+    from app.celery_app import celery
+    celery.send_task(
+        "app.tasks.poster.publish_post",
+        args=[
+            str(current_user.tenant_id),
+            str(campaign.id),
+            str(t.id),
+            str(a.id),
+            campaign.base_text,
+            f"https://t.me/{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}",
+            f"@{t.target_id_code}",
+        ],
+        queue="poster",
+    )
+
+    await log_event(
+        url=settings.DATABASE_URL.replace("+asyncpg", ""),
+        tenant_id=current_user.tenant_id, action="manual_run", entity_type="campaign",
+        entity_id=campaign.id, user_id=current_user.id,
+        ip_address=request.client.host if request else None,
+    )
+
+    return {"status": "dispatched", "campaign_id": str(campaign.id), "target": t.title, "account": a.account_identifier}
