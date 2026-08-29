@@ -486,10 +486,12 @@ function AccountSection() {
 
   const handleBackup = async () => {
     if (!auth?.token) return;
-    const blob = await backupLeads(auth.token);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `backup_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    try {
+      const blob = await backupLeads(auth.token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `backup_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch { /* empty */ }
   };
 
   const handlePassChange = async (e: React.FormEvent) => {

@@ -31,7 +31,7 @@ export default function UsersPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getUsers(auth.token).then(setUsers).finally(() => setLoading(false));
+    getUsers(auth.token).then(setUsers).catch(() => setUsers([])).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [auth?.token]);

@@ -32,7 +32,7 @@ export default function ScoringPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getScoringRules(auth.token).then(setRules).finally(() => setLoading(false));
+    getScoringRules(auth.token).then(setRules).catch(() => setRules([])).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [auth?.token]);
@@ -59,7 +59,7 @@ export default function ScoringPage() {
 
   const handleDelete = async (id: string) => {
     if (!auth?.token || !confirm("Delete this rule?")) return;
-    await deleteScoringRule(auth.token, id);
+    try { await deleteScoringRule(auth.token, id); } catch { /* empty */ }
     load();
   };
 

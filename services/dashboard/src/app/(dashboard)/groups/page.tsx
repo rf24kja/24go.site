@@ -57,12 +57,12 @@ export default function GroupsPage() {
     if (!auth?.token) return;
     setLoading(true);
     Promise.all([
-      getGroups(auth.token),
+      getGroups(auth.token).catch(() => ({ items: [] })),
       getAccounts(auth.token).catch(() => ({ items: [] })),
     ]).then(([g, a]) => {
       setGroups(g.items || []);
       setAccounts((a.items || []).filter((acc: Account) => acc.status === "active"));
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [auth?.token]);

@@ -42,7 +42,7 @@ export default function TargetsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getTargets(auth.token).then((res) => setTargets(res.items || res)).finally(() => setLoading(false));
+    getTargets(auth.token).then((res) => setTargets(res.items || res)).catch(() => setTargets([])).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [auth?.token]);

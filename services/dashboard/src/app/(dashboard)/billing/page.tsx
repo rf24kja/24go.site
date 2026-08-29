@@ -46,8 +46,7 @@ export default function BillingPage() {
       .then(([sub, u]) => {
         setSubscription(sub);
         setUsage(u);
-      })
-      .finally(() => setLoading(false));
+      }).catch(() => {}).finally(() => setLoading(false));
   }, [auth?.token]);
 
   const handleUpgrade = async (plan: string) => {

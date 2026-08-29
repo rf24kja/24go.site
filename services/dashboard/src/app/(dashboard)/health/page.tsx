@@ -47,7 +47,7 @@ export default function HealthPage() {
         queue: w.queues?.[0] || "unknown",
         active_tasks: w.active_tasks || 0,
       })));
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [auth?.token]);
 
   if (loading) return <div className="p-8"><p className="text-zinc-500">Loading health data...</p></div>;

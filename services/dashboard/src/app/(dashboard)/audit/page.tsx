@@ -34,7 +34,7 @@ export default function AuditPage() {
     if (!auth?.token) return;
     setLoading(true);
     getAuditLog(auth.token, entityFilter !== "all" ? { entity_type: entityFilter, limit: 100 } : { limit: 100 })
-      .then(setEntries)
+      .then(setEntries).catch(() => setEntries([]))
       .finally(() => setLoading(false));
   }, [auth?.token, entityFilter]);
 

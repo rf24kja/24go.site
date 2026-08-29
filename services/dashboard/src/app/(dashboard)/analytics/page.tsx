@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
     ]).then(([analytics, lb]) => {
       setData(analytics);
       setLeaderboard(lb.leaderboard || []);
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [auth?.token, days]);
 
   if (loading) return <div className="p-8"><p className="text-zinc-500">Loading analytics...</p></div>;
