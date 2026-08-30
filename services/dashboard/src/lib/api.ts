@@ -4,11 +4,10 @@
  */
 
 export function getApiBase(): string {
-  // Ponytail: env var takes precedence. Fallback: production domain hardcoded.
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (typeof window === "undefined") return ""; // SSR
+  if (typeof window === "undefined") return "https://api.24go.site"; // SSR: always use full URL
   if (window.location.hostname === "localhost") return "http://localhost:8000";
-  return "https://api.24go.site"; // ponytail: hardcoded, change if domain changes
+  return "https://api.24go.site";
 }
 
 const API_URL = getApiBase();
@@ -463,5 +462,6 @@ export async function getPublicBlogPost(slug: string, locale = "en") {
 }
 
 export async function getBlogSlugs() {
-  return api<{ slug: string }[]>("/api/v1/blog/slugs");
+  const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=100");
+  return data.items || [];
 }
