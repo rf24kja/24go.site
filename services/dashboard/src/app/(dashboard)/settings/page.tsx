@@ -199,8 +199,14 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
       <Card title="LLM Provider">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Provider" hint="DeepSeek is cheaper, keyword_only skips LLM entirely">
-            <Select value={cfg.provider || "deepseek"} onChange={(v) => set("provider", v)}
-              options={[{ value: "deepseek", label: "DeepSeek (recommended)" }, { value: "openai", label: "OpenAI" }, { value: "keyword_only", label: "Keywords only (no LLM)" }]} />
+            <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)} 
+              options={[
+                { value: "auto", label: "Auto (try all providers)" },
+                { value: "openrouter", label: "OpenRouter (free models)" },
+                { value: "deepseek", label: "DeepSeek" },
+                { value: "openai", label: "OpenAI" },
+                { value: "keyword_only", label: "Keywords only (no LLM)" },
+              ]} />
           </Field>
           <Field label="Model">
             <Input value={cfg.model || ""} onChange={(v) => set("model", v)} placeholder="deepseek-chat" />

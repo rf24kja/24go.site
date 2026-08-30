@@ -14,9 +14,16 @@ log = logging.getLogger(__name__)
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-# DeepSeek is primary (cheaper), OpenAI is fallback
+# Priority: openrouter (free models) → deepseek (cheap) → openai (fallback)
 LLM_ENDPOINTS = [
+    {
+        "name": "openrouter",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "key": OPENROUTER_API_KEY,
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
+    },
     {
         "name": "deepseek",
         "url": "https://api.deepseek.com/v1/chat/completions",

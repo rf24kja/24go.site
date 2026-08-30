@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # ── Default settings for every section ──────────────────────────────
 DEFAULTS = {
     "llm": {
-        "provider": "deepseek",           # deepseek | openai | keyword_only
+        "provider": "auto",              # auto | openrouter | deepseek | openai | keyword_only
         "model": "deepseek-chat",         # model name
         "system_prompt": (
             "You are an expert sales analyst for a B2B lead generation system.\n\n"

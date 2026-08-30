@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     LLM_TIMEOUT: int = 15  # seconds
 
     N8N_WEBHOOK_URL: str = ""

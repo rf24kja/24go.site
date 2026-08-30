@@ -18,12 +18,20 @@ try:
     from app.config import settings
     DEEPSEEK_API_KEY = settings.DEEPSEEK_API_KEY or ""
     OPENAI_API_KEY = settings.OPENAI_API_KEY or ""
+    OPENROUTER_API_KEY = settings.OPENROUTER_API_KEY or ""
 except ImportError:
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-# DeepSeek is primary (cheaper), OpenAI is fallback
+# Priority: openrouter (free models) → deepseek (cheap) → openai (fallback)
 LLM_ENDPOINTS = [
+    {
+        "name": "openrouter",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "key": OPENROUTER_API_KEY,
+        "model": "meta-llama/llama-3.1-8b-instruct:free",
+    },
     {
         "name": "deepseek",
         "url": "https://api.deepseek.com/v1/chat/completions",
@@ -148,7 +156,7 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
         return _classify_by_keywords(text or "empty", llm_cfg)
 
     # Check provider setting
-    provider = llm_cfg.get("provider", "deepseek")
+    provider = llm_cfg.get("provider", "auto")
     if provider == "keyword_only":
         return _classify_by_keywords(text, llm_cfg)
 
@@ -168,11 +176,9 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
         f"Classify this message. Return ONLY the JSON."
     )
 
+    # Auto: try all endpoints in priority order. Specific: try only that provider.
     for ep in LLM_ENDPOINTS:
-        # Skip endpoints not matching the configured provider
-        if provider != "deepseek" and ep["name"] == "deepseek":
-            continue
-        if provider != "openai" and ep["name"] == "openai":
+        if provider != "auto" and provider != ep["name"]:
             continue
         if not ep["key"]:
             continue

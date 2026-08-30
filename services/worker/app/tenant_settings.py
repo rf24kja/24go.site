@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 # Same defaults as app.tenant_settings
 DEFAULTS = {
     "llm": {
-        "provider": "deepseek",
+        "provider": "auto",
         "model": "deepseek-chat",
         "system_prompt": (
             "You are an expert sales analyst for a B2B lead generation system.\n\n"
