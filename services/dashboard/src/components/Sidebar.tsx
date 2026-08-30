@@ -19,7 +19,7 @@ const NAV = [
   { href: "/groups", label: "Groups", icon: Radio },
   { href: "/accounts", label: "Accounts", icon: UserCircle },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/blog", label: "Blog", icon: Pen },
+  { href: "/blog-admin", label: "Blog", icon: Pen },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/users", label: "Team", icon: UsersGroup },
   { href: "/audit", label: "Audit Log", icon: FileText },
