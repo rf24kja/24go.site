@@ -2,6 +2,7 @@
 
 Automatically logs lead status changes, campaign edits, and billing events.
 """
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -62,8 +63,8 @@ async def log_event(
             action,
             entity_type,
             uuid.UUID(str(entity_id)) if entity_id else None,
-            str(old_value) if old_value else None,
-            str(new_value) if new_value else None,
+            json.dumps(old_value) if old_value else None,
+            json.dumps(new_value) if new_value else None,
             ip_address,
         )
     except Exception as e:

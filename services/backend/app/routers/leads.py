@@ -19,6 +19,36 @@ from app.config import settings
 router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
 
 
+@router.get("/stats")
+async def lead_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate lead counts by intent_score and status."""
+    from sqlalchemy import func
+    q = select(
+        Lead.intent_score,
+        Lead.status,
+        func.count().label("count"),
+    ).where(Lead.tenant_id == current_user.tenant_id).group_by(Lead.intent_score, Lead.status)
+    result = await db.execute(q)
+    rows = result.all()
+
+    by_intent: dict[str, int] = {}
+    by_status: dict[str, int] = {}
+    total = 0
+    for intent, status, count in rows:
+        by_intent[intent or "unknown"] = by_intent.get(intent or "unknown", 0) + count
+        by_status[status or "new"] = by_status.get(status or "new", 0) + count
+        total += count
+
+    return {
+        "total": total,
+        "by_intent": by_intent,
+        "by_status": by_status,
+    }
+
+
 @router.get("/{lead_id}")
 async def get_lead(
     lead_id: str,

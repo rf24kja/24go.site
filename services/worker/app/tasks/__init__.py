@@ -10,3 +10,4 @@ from app.tasks import vk_listener  # noqa: F401
 from app.tasks import vk_poster  # noqa: F401
 from app.tasks import vk_comment_scraper  # noqa: F401
 from app.tasks import vk_group_scanner  # noqa: F401
+from app.tasks import campaign_scheduler  # noqa: F401
