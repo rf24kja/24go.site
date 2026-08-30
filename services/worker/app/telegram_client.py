@@ -165,7 +165,7 @@ async def create_client(phone: str, api_id: int = None, api_hash: str = None):
         return client, "code_sent"
 
     # Already authorized (shouldn't happen for new, but handle gracefully)
-    session_string = await client.export_session_string()
+    session_string = client.session.save()
     await client.disconnect()
     return client, session_string
 
@@ -185,7 +185,7 @@ async def complete_auth(phone: str, code: str, client=None):
         await client.disconnect()
         raise
 
-    session_string = await client.export_session_string()
+    session_string = client.session.save()
     await client.disconnect()
     log.info(f"Authorization completed for {phone}")
     return session_string

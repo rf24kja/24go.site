@@ -251,7 +251,7 @@ async def confirm_telegram(
             await client.disconnect()
             raise HTTPException(400, "Code expired. Click 'Resend Code' to get a new one.")
 
-        session_string = await client.export_session_string()
+        session_string = client.session.save()
         await client.disconnect()
         r.delete(f"tg_code:{account_id}")
 
@@ -373,7 +373,7 @@ async def confirm_password(
         await client.connect()
         await client.sign_in(password=body.password)
 
-        session_string = await client.export_session_string()
+        session_string = client.session.save()
         await client.disconnect()
         r.delete(f"tg_2fa:{account_id}")
         r.delete(f"tg_code:{account_id}")
