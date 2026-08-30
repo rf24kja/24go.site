@@ -53,9 +53,13 @@ export default function TargetsPage() {
     try {
       const geo = scanGeo.split(",").map((s) => s.trim()).filter(Boolean)[0] || "global";
       const niche = scanNiche.split(",").map((s) => s.trim()).filter(Boolean)[0] || "general";
-      await discoverGroups(auth.token, { geo_tag: geo, niche, platform: "telegram" });
-      toast("Scan started — results will appear shortly", "success");
-      setTimeout(load, 5000);
+      const res = await discoverGroups(auth.token, { geo_tag: geo, niche, platform: "telegram" });
+      if (res.total > 0) {
+        toast(`Found ${res.total} targets`, "success");
+      } else {
+        toast("No targets found — try different GEO/niche, or connect a Telegram account", "info");
+      }
+      load();
     } catch (e: any) {
       toast(e.message || "Scan failed", "error");
     } finally {

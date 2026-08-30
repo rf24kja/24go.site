@@ -311,7 +311,7 @@ async def discover_groups(
     results = []
 
     if body.platform == "telegram":
-        results = await _discover_telegram_groups(body.geo_tag, body.niche, body.account_id)
+        results = await _discover_telegram_groups(body.geo_tag, body.niche, body.account_id, tenant_id=current_user.tenant_id)
     elif body.platform == "vkontakte":
         results = await _discover_vk_groups(body.geo_tag, body.niche)
 
@@ -324,10 +324,39 @@ async def discover_groups(
             continue
         filtered.append(r)
 
+    # Persist discovered results as targets so the frontend can list them
+    from app.models import Target
+    from app.config import settings as _s
+    import asyncpg as _asyncpg
+    conn_url = _s.DATABASE_URL.replace("+asyncpg", "")
+    conn = await _asyncpg.connect(conn_url)
+    try:
+        for r in filtered[:20]:
+            target_code = r.get("group_identifier", "")
+            existing = await conn.fetchval(
+                "SELECT id FROM targets WHERE tenant_id = $1 AND platform = $2 AND target_id_code = $3",
+                current_user.tenant_id, body.platform, target_code,
+            )
+            if existing:
+                await conn.execute(
+                    "UPDATE targets SET title = $1, members_count = $2 WHERE id = $3",
+                    r.get("title", ""), r.get("members_count", 0), existing,
+                )
+            else:
+                await conn.execute(
+                    """INSERT INTO targets (id, tenant_id, platform, target_id_code, title, geo_tag, niche, access, members_count)
+                       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)""",
+                    current_user.tenant_id, body.platform, target_code,
+                    r.get("title", target_code), body.geo_tag, body.niche,
+                    r.get("access", "public"), r.get("members_count", 0),
+                )
+    finally:
+        await conn.close()
+
     return {"results": filtered, "total": len(filtered), "filters": {"min_members": min_members, "prefer_open": prefer_open}}
 
 
-async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | None) -> list:
+async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | None, tenant_id=None) -> list:
     """Search Telegram for public groups matching GEO + niche."""
     import os
 
@@ -370,8 +399,29 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             finally:
                 await conn.close()
 
+        if not client and tenant_id:
+            # Fallback: pick any active account for this tenant
+            import asyncpg
+            from app.crypto import decrypt as dec
+            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
+            try:
+                row = await conn.fetchrow(
+                    """SELECT a.id, s.session_data FROM account_pool a
+                       JOIN account_sessions s ON s.account_id = a.id
+                       WHERE a.tenant_id = $1 AND a.status = 'active'
+                       ORDER BY a.created_at LIMIT 1""",
+                    tenant_id,
+                )
+                if row:
+                    session_str = dec(row["session_data"])
+                    client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                    await client.connect()
+            finally:
+                await conn.close()
+
         if not client:
-            # Fallback: use service account or return empty
+            log.warning("No active Telegram session found for discovery")
             return []
 
         try:
