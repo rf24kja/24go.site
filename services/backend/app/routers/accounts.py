@@ -215,7 +215,6 @@ async def confirm_telegram(
         import asyncpg
         conn = await asyncpg.connect(conn_url)
         try:
-            # Upsert into account_sessions
             from app.crypto import encrypt as enc
             encrypted_session = enc(session_string)
             existing = await conn.fetchrow(
@@ -233,6 +232,9 @@ async def confirm_telegram(
                        VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
                     _uuid.UUID(str(account_id)), encrypted_session,
                 )
+        except Exception as db_err:
+            log.error(f"Failed to save session for {account_id}: {db_err}")
+            raise HTTPException(500, f"Session authorized but save failed: {db_err}. Please reconnect.")
         finally:
             await conn.close()
 

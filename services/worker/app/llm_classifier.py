@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "15"))
 
 # Priority: openrouter (free models) → deepseek (cheap) → openai (fallback)
 LLM_ENDPOINTS = [
@@ -155,7 +156,7 @@ async def classify_message(text: str, geo_tag: str = "") -> dict:
         if not ep["key"]:
             continue
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=settings.LLM_TIMEOUT)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=LLM_TIMEOUT)) as client:
                 resp = await client.post(
                     ep["url"],
                     headers={

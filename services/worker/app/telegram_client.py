@@ -214,8 +214,6 @@ async def get_client(account_id: str):
         return None
 
     _ensure_session_dir()
-    session_name = os.path.join(SESSION_DIR, account_id)
-    client = TelegramClient(session_name, TG_API_ID, TG_API_HASH)
 
     # Import session from string
     from telethon.sessions import StringSession

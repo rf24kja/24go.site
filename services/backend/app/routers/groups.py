@@ -377,8 +377,9 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
         try:
             for query in queries:
                 try:
-                    # Search for channels and groups
-                    result = await client.get_dialogs(limit=50)
+                    # Search user's dialogs (groups/channels they already joined)
+                    # Telegram API doesn't support discovering unknown public groups
+                    result = await client.get_dialogs(limit=50, search=query)
                     for dialog in result:
                         entity = dialog.entity
                         name = getattr(entity, 'title', '').lower()
