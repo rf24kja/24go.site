@@ -238,9 +238,38 @@ async def confirm_telegram(
         finally:
             await conn.close()
 
-        # Update account status to active
-        account.status = "active"
+        # Update account status — warming_up if first connect, active if reconnect
+        if not account.status or account.status == "warming_up":
+            account.status = "warming_up"
+        else:
+            account.status = "active"
+        account.warmup_stage = account.warmup_stage or 1
         await db.commit()
+
+        # Auto-dispatch listener + first warmup cycle via Celery
+        try:
+            from app.celery_app import celery
+            celery.send_task(
+                "app.tasks.listener.start_lead_listener",
+                args=[str(current_user.tenant_id), account_id],
+                queue="listener",
+            )
+            celery.send_task(
+                "app.tasks.warmup.run_warmup_cycle",
+                args=[str(current_user.tenant_id), str(account_id)],
+                queue="warmup",
+            )
+            # Set tg_status in Redis so dashboard shows online
+            import redis as _r2
+            r2 = _r2.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+            import time as _t
+            r2.setex(
+                f"tg_status:{account_id}", 300,
+                _json.dumps({"status": "online", "platform": "telegram", "updated_at": _t.time()}),
+            )
+            log.info(f"Auto-dispatched listener + warmup for account {account_id}")
+        except Exception as dispatch_err:
+            log.warning(f"Failed to auto-dispatch tasks: {dispatch_err}")
 
         log.info(f"Telegram authorized for account {account_id}")
         await log_event(

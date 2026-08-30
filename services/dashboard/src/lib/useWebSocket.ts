@@ -52,6 +52,12 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
         const res = await fetch(
           `${apiBase}/api/v1/events/poll?since=${sinceRef.current}&token=${encodeURIComponent(token)}`,
         );
+        if (res.status === 401) {
+          // ponytail: token expired, stop polling to avoid spam
+          setConnected(false);
+          modeRef.current = "detecting";
+          return;
+        }
         const data = await res.json();
         if (data.events?.length) {
           for (const ev of data.events) {
@@ -62,7 +68,7 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
           }
         }
       } catch { /* ignore */ }
-      pollTimer.current = setTimeout(poll, 1000);
+      pollTimer.current = setTimeout(poll, 2000); // ponytail: 2s not 1s
     };
     poll();
   }, [tenantId, token, apiBase]);
