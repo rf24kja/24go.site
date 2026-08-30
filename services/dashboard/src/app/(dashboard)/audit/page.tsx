@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getAuditLog } from "@/lib/api";
+import { Skeleton } from "@/components/Skeleton";
 
 type AuditEntry = {
   id: string;
@@ -39,7 +40,7 @@ export default function AuditPage() {
   }, [auth?.token, entityFilter]);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Audit Log</h1>
         <div className="flex gap-1">
@@ -65,7 +66,19 @@ export default function AuditPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </td></tr>
             ) : entries.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No audit entries yet.</td></tr>
             ) : (

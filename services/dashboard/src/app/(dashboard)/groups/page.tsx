@@ -164,7 +164,7 @@ export default function GroupsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Monitored Groups</h1>
         <button onClick={() => setShowAdd(!showAdd)}
@@ -349,8 +349,15 @@ export default function GroupsPage() {
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-8">
                 <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
                   ))}
                 </div>
               </td></tr>

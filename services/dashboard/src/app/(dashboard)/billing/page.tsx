@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getSubscription, getUsage, createCheckout } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { Skeleton } from "@/components/Skeleton";
 
 const PLANS = [
   {
@@ -67,8 +68,47 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <p className="text-zinc-500 text-sm">Loading...</p>
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-32" />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <Skeleton className="h-4 w-40" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2 w-full rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <Skeleton className="h-4 w-36" />
+          <div className="flex gap-8">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="space-y-1">
+                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Skeleton className="h-4 w-32 mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-3">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-8 w-16" />
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <Skeleton key={j} className="h-3 w-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-9 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -83,7 +123,7 @@ export default function BillingPage() {
   const tokensUsed = usage?.total_tokens_used ?? 0;
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8 animate-fade-in">
       <h1 className="text-2xl font-semibold text-zinc-100">Billing</h1>
 
       {/* Current Subscription */}

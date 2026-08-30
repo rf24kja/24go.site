@@ -197,7 +197,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Leads</h1>
         <div className="flex items-center gap-3">
@@ -355,6 +355,24 @@ export default function LeadsPage() {
               </button>
             </div>
           )}
+        </div>
+      ) : loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">
+          {COLUMNS.map((col) => (
+            <div key={col.key} className={`rounded-xl border-t-2 ${col.color} bg-zinc-900/50 p-3 flex flex-col gap-2 min-h-[200px]`}>
+              <div className="flex items-center justify-between mb-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-6 rounded-full" />
+              </div>
+              {Array.from({ length: 2 }).map((_, j) => (
+                <div key={j} className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 space-y-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">

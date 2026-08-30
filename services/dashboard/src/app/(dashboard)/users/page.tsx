@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getUsers, inviteUser, updateUserRole, removeUser } from "@/lib/api";
+import { Skeleton } from "@/components/Skeleton";
 
 type User = {
   id: string;
@@ -72,7 +73,7 @@ export default function UsersPage() {
   const isAdmin = auth?.user?.role === "admin" || isOwner;
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <h1 className="text-2xl font-bold">Team Members</h1>
 
       {/* Invite form */}
@@ -108,7 +109,18 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-zinc-500">Loading...</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </td></tr>
             ) : users.length === 0 ? (
               <tr><td colSpan={4} className="px-4 py-8 text-center text-zinc-500">No users found.</td></tr>
             ) : (

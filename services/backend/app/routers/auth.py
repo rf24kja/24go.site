@@ -1,5 +1,10 @@
-"""Auth endpoints: register, login, me, user management."""
+"""Auth endpoints: register, login, me, user management, password recovery."""
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -286,3 +291,81 @@ async def change_password(
         user_id=current_user.id, ip_address=request.client.host if request else None,
     )
     return {"status": "ok"}
+
+
+# ── Password Recovery ────────────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    new_password: str = Field(..., min_length=8)
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Send a password reset email. Always returns 200 to prevent email enumeration."""
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        reset_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "type": "password_reset",
+                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            },
+            settings.JWT_SECRET,
+            algorithm=settings.JWT_ALGORITHM,
+        )
+
+        reset_link = f"https://www.24go.site/reset-password?token={reset_token}"
+        body_text = (
+            f"Hi,\n\n"
+            f"Click the link below to reset your password:\n\n"
+            f"{reset_link}\n\n"
+            f"This link expires in 1 hour.\n"
+            f"If you didn't request this, you can safely ignore this email.\n"
+        )
+
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = settings.FROM_EMAIL
+            msg["To"] = body.email
+            msg["Subject"] = "Reset your password — 24GO"
+            msg.attach(MIMEText(body_text, "plain"))
+
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+                server.starttls()
+                server.login(settings.SMTP_USER, settings.SMTP_PASS)
+                server.sendmail(settings.FROM_EMAIL, body.email, msg.as_string())
+        except Exception:
+            # ponytail: swallow email errors, don't leak info
+            pass
+
+    return {"message": "If that email is registered, you'll receive a reset link shortly."}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Reset password using a valid token."""
+    try:
+        payload = jwt.decode(body.token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user_id = payload.get("sub")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user.password_hash = hash_password(body.new_password)
+    await db.commit()
+
+    return {"message": "Password updated successfully. You can now log in."}

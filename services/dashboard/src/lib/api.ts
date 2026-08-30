@@ -132,6 +132,18 @@ export async function getTelegramStatus(token: string, accountId: string) {
   return api<any>(`/api/v1/accounts/${accountId}/tg-status`, { token });
 }
 
+export async function bulkCreateAccounts(token: string, accounts: { platform: string; account_identifier: string }[]) {
+  return api<{ created: number; errors: string[] }>("/api/v1/accounts/bulk", {
+    method: "POST", body: JSON.stringify({ accounts }), token,
+  });
+}
+
+export async function bulkConnectAccounts(token: string, accountIds: string[]) {
+  return api<{ sent: number; failed: string[] }>("/api/v1/accounts/connect-all", {
+    method: "POST", body: JSON.stringify({ account_ids: accountIds }), token,
+  });
+}
+
 export async function connectVK(token: string, accountId: string, groupToken: string, groupId: number) {
   return api<any>(`/api/v1/accounts/${accountId}/connect-vk`, {
     method: "POST", body: JSON.stringify({ group_token: groupToken, group_id: groupId }), token,
@@ -365,6 +377,20 @@ export async function changePassword(token: string, currentPassword: string, new
     method: "POST",
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     token,
+  });
+}
+
+export async function forgotPassword(email: string) {
+  return api<any>("/api/v1/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, password: string) {
+  return api<any>("/api/v1/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, new_password: password }),
   });
 }
 

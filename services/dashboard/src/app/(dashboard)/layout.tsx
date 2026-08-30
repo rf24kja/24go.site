@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { Spinner } from "@/components/Spinner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -17,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [auth.loading, auth.token, router]);
 
-  if (auth.loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-zinc-500 text-sm">Loading...</p></div>;
+  if (auth.loading) return <div className="min-h-screen flex items-center justify-center"><Spinner size={24} className="text-zinc-500" /></div>;
   if (!auth.token) return null;
 
   return (

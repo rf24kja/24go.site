@@ -83,6 +83,12 @@ export default function LoginPage() {
               </span>
             ) : mode === "login" ? "Sign In" : "Create Account"}
           </button>
+
+          {mode === "login" && (
+            <p className="text-center text-xs text-zinc-500">
+              <Link href="/forgot-password" className="hover:text-zinc-300 transition">Forgot password?</Link>
+            </p>
+          )}
         </form>
 
         <p className="text-center text-xs text-zinc-600">

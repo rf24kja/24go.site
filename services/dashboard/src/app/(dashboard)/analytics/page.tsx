@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
+import { Skeleton, CardSkeleton } from "@/components/Skeleton";
 
 const COLORS = {
   rose: "#f43f5e",
@@ -36,7 +37,38 @@ export default function AnalyticsPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [auth?.token, days]);
 
-  if (loading) return <div className="p-8"><p className="text-zinc-500">Loading analytics...</p></div>;
+  if (loading) return (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-32" />
+        <div className="flex gap-1">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-12 rounded-lg" />
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-7 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+        <Skeleton className="h-4 w-40 mb-4" />
+        <Skeleton className="h-[250px] w-full rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <Skeleton className="h-4 w-36 mb-4" />
+            <Skeleton className="h-[250px] w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
   if (!data) return <div className="p-8"><p className="text-zinc-500">No data</p></div>;
 
   const funnel = data.funnel || {};
@@ -66,7 +98,7 @@ export default function AnalyticsPage() {
   ].filter((d) => d.value > 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Analytics</h1>
         <div className="flex gap-1">

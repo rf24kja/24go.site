@@ -1,21 +1,19 @@
 "use client";
 
-/** Lightweight loading skeleton — no new deps, just CSS animation. */
-
 export function Skeleton({ className = "" }: { className?: string }) {
   return (
-    <div className={`animate-pulse bg-zinc-800 rounded ${className}`} />
+    <div className={`bg-zinc-800 rounded animate-shimmer ${className}`} />
   );
 }
 
-export function TableSkeleton({ rows = 5, cols = 5 }: { rows?: number; cols?: number }) {
+export function TableSkeleton({ rows = 5, cols = 5, colWidths }: { rows?: number; cols?: number; colWidths?: string[] }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <div className="p-4 space-y-3">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex gap-4">
             {Array.from({ length: cols }).map((_, j) => (
-              <Skeleton key={j} className="h-4 flex-1" />
+              <Skeleton key={j} className={`h-4 ${colWidths?.[j] ?? "flex-1"}`} />
             ))}
           </div>
         ))}

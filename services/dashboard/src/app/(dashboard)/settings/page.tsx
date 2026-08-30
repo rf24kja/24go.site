@@ -71,7 +71,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex gap-6 max-w-6xl">
+    <div className={`flex gap-6 max-w-6xl${!loading ? " animate-fade-in" : ""}`}>
       {/* Sidebar nav */}
       <nav className="w-52 shrink-0 space-y-1">
         <h1 className="text-lg font-bold mb-4">Settings</h1>
@@ -90,7 +90,7 @@ export default function SettingsPage() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-zinc-900 rounded-xl animate-pulse" />
+              <div key={i} className="h-24 bg-zinc-900 border border-zinc-800 rounded-xl animate-shimmer" />
             ))}
           </div>
         ) : (

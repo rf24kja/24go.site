@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign, previewCron } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
+import { Spinner } from "@/components/Spinner";
 
 type Campaign = {
   id: string;
@@ -138,7 +139,7 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Campaigns</h1>
         <button onClick={openCreate}
@@ -304,7 +305,9 @@ export default function CampaignsPage() {
             </div>
 
             {loadingStats ? (
-              <p className="text-zinc-500 text-sm">Loading...</p>
+              <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                <Spinner size={14} /> Loading...
+              </div>
             ) : statsCampaign.error ? (
               <p className="text-rose-400 text-sm">Failed to load stats</p>
             ) : (

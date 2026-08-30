@@ -38,6 +38,137 @@ class ConfirmPasswordRequest(BaseModel):
     password: str  # 2FA cloud password
 
 
+# ── Bulk Account Operations ─────────────────────────────────────────────
+
+class BulkCreateRequest(BaseModel):
+    accounts: list[dict]
+
+class BulkConnectRequest(BaseModel):
+    account_ids: list[str]
+
+
+@router.post("/bulk", status_code=201)
+async def bulk_create_accounts(
+    body: BulkCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk create accounts. Max 50 per request."""
+    if len(body.accounts) > 50:
+        raise HTTPException(400, "Max 50 accounts per request")
+
+    created = 0
+    errors: list[str] = []
+
+    # Fetch existing identifiers for dedup
+    existing_result = await db.execute(
+        select(AccountPool.account_identifier).where(
+            AccountPool.tenant_id == current_user.tenant_id
+        )
+    )
+    existing_ids = {row[0] for row in existing_result.all()}
+
+    for i, acct in enumerate(body.accounts):
+        platform = acct.get("platform", "")
+        identifier = acct.get("account_identifier", "").strip()
+
+        if platform not in ("telegram", "vkontakte"):
+            errors.append(f"[{i}] Invalid platform: {platform}")
+            continue
+        if not identifier:
+            errors.append(f"[{i}] Empty account_identifier")
+            continue
+        if identifier in existing_ids:
+            errors.append(f"[{i}] Duplicate: {identifier}")
+            continue
+
+        account = AccountPool(
+            tenant_id=current_user.tenant_id,
+            platform=platform,
+            account_identifier=identifier,
+        )
+        db.add(account)
+        existing_ids.add(identifier)
+        created += 1
+
+    if created:
+        await db.commit()
+
+    return {"created": created, "errors": errors}
+
+
+@router.post("/connect-all")
+async def bulk_connect_accounts(
+    body: BulkConnectRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk send connection codes. Max 10 per request. 2s delay between sends."""
+    if len(body.account_ids) > 10:
+        raise HTTPException(400, "Max 10 accounts per connect-all request")
+
+    import asyncio
+
+    sent = 0
+    failed: list[str] = []
+
+    for account_id_str in body.account_ids:
+        try:
+            account_id = UUID(account_id_str)
+        except ValueError:
+            failed.append(f"{account_id_str}: invalid UUID")
+            continue
+
+        result = await db.execute(
+            select(AccountPool).where(
+                AccountPool.id == account_id,
+                AccountPool.tenant_id == current_user.tenant_id,
+            )
+        )
+        account = result.scalar_one_or_none()
+        if not account:
+            failed.append(f"{account_id_str}: not found")
+            continue
+
+        import os
+        api_id = int(os.getenv("TG_API_ID", "0"))
+        api_hash = os.getenv("TG_API_HASH", "")
+        if not api_id or not api_hash:
+            failed.append(f"{account_id_str}: TG API not configured")
+            continue
+
+        try:
+            from telethon import TelegramClient
+            from telethon.sessions import StringSession
+
+            client = TelegramClient(StringSession(), api_id, api_hash)
+            await client.connect()
+            sent_code = await client.send_code_request(account.account_identifier)
+            session_string = client.session.save()
+            await client.disconnect()
+
+            import redis, json as _json
+            r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+            r.setex(f"tg_code:{account_id}", 600, _json.dumps({
+                "phone": account.account_identifier,
+                "phone_code_hash": str(sent_code.phone_code_hash),
+                "session_string": session_string,
+            }))
+            sent += 1
+            log.info(f"bulk_connect: code sent to {_mask_phone(account.account_identifier)} for {account_id}")
+
+        except Exception as e:
+            log.error(f"bulk_connect failed for {account_id}: {e}")
+            failed.append(f"{account_id_str}: {str(e)[:100]}")
+
+        # 2-second delay between requests
+        if body.account_ids.index(account_id_str) < len(body.account_ids) - 1:
+            await asyncio.sleep(2)
+
+    return {"sent": sent, "failed": failed}
+
+
 @router.get("/")
 async def list_accounts(
     status_filter: str | None = None,

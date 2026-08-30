@@ -6,8 +6,10 @@ import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
   disconnectTelegram, getTelegramStatus,
+  bulkCreateAccounts, bulkConnectAccounts,
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
+import { Spinner } from "@/components/Spinner";
 
 type Account = {
   id: string;
@@ -58,6 +60,13 @@ export default function AccountsPage() {
   const [connectPassword, setConnectPassword] = useState("");
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState("");
+
+  // Bulk import state
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkPlatform, setBulkPlatform] = useState("telegram");
+  const [bulkPhones, setBulkPhones] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; errors: string[]; sent: number; failed: string[] } | null>(null);
 
   const load = () => {
     if (!auth?.token) return;
@@ -191,6 +200,42 @@ export default function AccountsPage() {
     } catch (e: any) { setConnectError(e?.message || "Add account failed"); } finally { setAddSaving(false); }
   };
 
+  // ── Bulk Import ──────────────────────────────────────────────────────
+  const bulkParsed = bulkPhones
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const handleBulkImport = async () => {
+    if (!auth?.token || bulkParsed.length === 0) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    try {
+      const accounts = bulkParsed.map((p) => ({ platform: bulkPlatform, account_identifier: p }));
+      const createRes = await bulkCreateAccounts(auth.token, accounts);
+      // Auto-connect all created accounts (up to 10)
+      let connectRes = { sent: 0, failed: [] as string[] };
+      if (createRes.created > 0) {
+        // Re-fetch to get IDs of new accounts
+        const refreshed = await getAccounts(auth.token);
+        const items = refreshed.items || refreshed;
+        const newIds = items
+          .filter((a: any) => bulkParsed.includes(a.account_identifier))
+          .slice(0, 10)
+          .map((a: any) => a.id);
+        if (newIds.length > 0) {
+          connectRes = await bulkConnectAccounts(auth.token, newIds);
+        }
+      }
+      setBulkResult({ created: createRes.created, errors: createRes.errors, sent: connectRes.sent, failed: connectRes.failed });
+      load();
+    } catch (e: any) {
+      setBulkResult({ created: 0, errors: [e?.message || "Import failed"], sent: 0, failed: [] });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const stats = {
     total: accounts.length,
     connected: Object.values(tgStatuses).filter((s) => s.connected).length,
@@ -199,13 +244,19 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`p-6 space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-zinc-100">Accounts</h1>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
-          + Add Account
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => { setShowBulk(!showBulk); setBulkResult(null); }}
+            className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium border border-zinc-700 hover:bg-zinc-700">
+            Bulk Import
+          </button>
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
+            + Add Account
+          </button>
+        </div>
       </div>
 
       {/* How it works */}
@@ -294,8 +345,16 @@ export default function AccountsPage() {
             {loading ? (
               <tr><td colSpan={7} className="px-4 py-8">
                 <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
                   ))}
                 </div>
               </td></tr>
@@ -451,6 +510,69 @@ export default function AccountsPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Import Modal ──────────────────────────────────────────── */}
+      {showBulk && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowBulk(false)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-zinc-100">Bulk Import Accounts</h2>
+            <p className="text-xs text-zinc-500">Paste phone numbers or VK identifiers, one per line. Accounts will be created and codes sent automatically.</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Platform</label>
+                <select value={bulkPlatform} onChange={(e) => setBulkPlatform(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
+                  <option value="telegram">Telegram</option>
+                  <option value="vkontakte">VKontakte</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Count: {bulkParsed.length}</label>
+                <p className="text-[10px] text-zinc-600 mt-2">Max 50 accounts. Codes auto-sent to first 10.</p>
+              </div>
+            </div>
+
+            <textarea
+              placeholder={bulkPlatform === "telegram" ? "+1234567890\n+0987654321" : "group_token_abc123\ngroup_token_def456"}
+              value={bulkPhones}
+              onChange={(e) => { setBulkPhones(e.target.value); setBulkResult(null); }}
+              rows={8}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono resize-none"
+            />
+
+            {/* Preview */}
+            {bulkParsed.length > 0 && (
+              <div className="text-xs text-zinc-500">
+                Preview: {bulkParsed.slice(0, 5).join(", ")}{bulkParsed.length > 5 ? ` ... +${bulkParsed.length - 5} more` : ""}
+              </div>
+            )}
+
+            {/* Result */}
+            {bulkResult && (
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 text-xs space-y-1">
+                <p className="text-emerald-400">Created: {bulkResult.created}</p>
+                <p className="text-emerald-400">Codes sent: {bulkResult.sent}</p>
+                {bulkResult.errors.length > 0 && (
+                  <p className="text-rose-400">Errors: {bulkResult.errors.join("; ")}</p>
+                )}
+                {bulkResult.failed.length > 0 && (
+                  <p className="text-rose-400">Connect failed: {bulkResult.failed.join("; ")}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={handleBulkImport} disabled={bulkBusy || bulkParsed.length === 0}
+                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {bulkBusy ? "Importing..." : "Import & Send Codes"}
+              </button>
+              <button onClick={() => setShowBulk(false)}
+                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+            </div>
           </div>
         </div>
       )}
