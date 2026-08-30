@@ -90,13 +90,17 @@ async def _run():
                 continue
 
             # ── Pick a matching target ─────────────────────────────────
+            target_geos = c["target_geos"] or []
+            if isinstance(target_geos, str):
+                import json as _json
+                target_geos = _json.loads(target_geos)
             target = await conn.fetchrow(
                 "SELECT id, target_id_code, title FROM targets "
                 "WHERE tenant_id = $1 AND is_active = true "
                 "AND (geo_tag = ANY($2) OR $2 = '{}') "
                 "ORDER BY random() LIMIT 1",
                 c["tenant_id"],
-                c["target_geos"] or [],
+                target_geos,
             )
             if not target:
                 continue

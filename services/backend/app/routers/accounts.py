@@ -86,6 +86,7 @@ async def bulk_create_accounts(
             tenant_id=current_user.tenant_id,
             platform=platform,
             account_identifier=identifier,
+            session_data="",  # populated on connect
         )
         db.add(account)
         existing_ids.add(identifier)
