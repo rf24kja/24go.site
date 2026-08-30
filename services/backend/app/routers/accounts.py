@@ -87,6 +87,7 @@ async def bulk_create_accounts(
             platform=platform,
             account_identifier=identifier,
             session_data="",  # populated on connect
+            device_fingerprint={},  # populated on connect
         )
         db.add(account)
         existing_ids.add(identifier)

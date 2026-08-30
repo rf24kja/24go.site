@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Enum, ForeignKey, Index, Integer, BigInteger,
-    Numeric, String, Text, UniqueConstraint,
+    Numeric, String, Text, UniqueConstraint, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -290,3 +290,26 @@ class TenantSettings(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=datetime.utcnow)
 
     tenant = relationship("Tenant")
+
+
+class BlogPost(Base):
+    __tablename__ = "blog_posts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    slug = Column(String(255), nullable=False)
+    title_ru = Column(String(500), nullable=False, default="")
+    title_en = Column(String(500), nullable=False, default="")
+    content_ru = Column(Text, nullable=False, default="")
+    content_en = Column(Text, nullable=False, default="")
+    excerpt_ru = Column(String(1000), nullable=False, default="")
+    excerpt_en = Column(String(1000), nullable=False, default="")
+    tags = Column(JSONB, nullable=False, server_default="[]")
+    published = Column(Boolean, nullable=False, server_default=text("false"))
+    meta_description_ru = Column(String(300), nullable=False, default="")
+    meta_description_en = Column(String(300), nullable=False, default="")
+    og_image_url = Column(String(500), nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "slug"),)

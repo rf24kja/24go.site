@@ -1,0 +1,19 @@
+# 24GO — AI Lead Generation Platform
+
+## About
+24GO is a B2B SaaS platform for automated lead generation in Telegram and VK social media. It uses AI to discover, qualify, and manage prospects from target communities.
+
+## Key Features
+- Auto-discovery of prospects in Telegram and VK groups
+- AI-powered lead scoring (HOT/WARM/COLD intent classification)
+- Multi-account management with automatic warm-up
+- Smart campaign scheduling with spintax and cron
+- Real-time Kanban pipeline dashboard
+- Stripe and YooKassa billing integration
+
+## Blog
+24GO publishes articles about lead generation, SEO, Telegram automation, and AI-powered sales. See https://www.24go.site/blog for the full list.
+
+## Contact
+Website: https://www.24go.site
+API: https://api.24go.site

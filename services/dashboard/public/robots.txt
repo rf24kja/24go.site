@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /leads/
+
+Sitemap: https://www.24go.site/sitemap.xml

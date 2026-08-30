@@ -435,3 +435,33 @@ export async function updateSettingsSection(token: string, section: string, sett
 export async function resetSettingsSection(token: string, section: string) {
   return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/reset/${section}`, { method: "POST", token });
 }
+
+// ── Blog ─────────────────────────────────────────────────────────────
+
+export async function listBlogPosts(token: string) {
+  return api<any>("/api/v1/blog/admin/list", { token });
+}
+
+export async function createBlogPost(token: string, post: any) {
+  return api<any>("/api/v1/blog/admin", { method: "POST", body: JSON.stringify(post), token });
+}
+
+export async function updateBlogPost(token: string, postId: string, post: any) {
+  return api<any>(`/api/v1/blog/admin/${postId}`, { method: "PUT", body: JSON.stringify(post), token });
+}
+
+export async function deleteBlogPost(token: string, postId: string) {
+  return api<any>(`/api/v1/blog/admin/${postId}`, { method: "DELETE", token });
+}
+
+export async function getPublicBlogPosts(locale = "en") {
+  return api<any>(`/api/v1/blog?locale=${locale}`);
+}
+
+export async function getPublicBlogPost(slug: string, locale = "en") {
+  return api<any>(`/api/v1/blog/${slug}?locale=${locale}`);
+}
+
+export async function getBlogSlugs() {
+  return api<{ slug: string }[]>("/api/v1/blog/slugs");
+}

@@ -8,7 +8,7 @@ import { useWebSocket } from "@/lib/useWebSocket";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
-  Cog, LogOut, Cross, Menu,
+  Cog, LogOut, Cross, Menu, Pen,
 } from "@/components/Icons";
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { href: "/groups", label: "Groups", icon: Radio },
   { href: "/accounts", label: "Accounts", icon: UserCircle },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/blog", label: "Blog", icon: Pen },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/users", label: "Team", icon: UsersGroup },
   { href: "/audit", label: "Audit Log", icon: FileText },

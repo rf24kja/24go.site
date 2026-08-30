@@ -119,6 +119,36 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Why 24GO ─────────────────────────────────────────── */}
+      <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">Автоматическая лидогенерация для роста бизнеса</h2>
+            <p className="text-zinc-400 max-w-2xl mx-auto">
+              24GO помогает B2B-компаниям находить клиентов в Telegram и ВКонтакте.
+              Наш AI анализирует сообщения в целевых группах и автоматически определяет потенциальных клиентов — лидов с высоким намерением на покупку.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-8">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+              <h3 className="font-semibold text-zinc-100 mb-3">SEO и маркетинг</h3>
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Парсинг Telegram-групп позволяет находить аудиторию, заинтересованную в вашем продукте.
+                Автоматический сбор лидов из социальных сетей — самый эффективный способ увеличить трафик и продажи.
+              </p>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+              <h3 className="font-semibold text-zinc-100 mb-3">AI-классификация лидов</h3>
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Искусственный интеллект анализирует каждое сообщение и определяет температуру лида:
+                HOT (горячий), WARM (тёплый) или COLD (холодный). Фокусируйтесь на самых перспективных клиентах.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-3xl mx-auto text-center">

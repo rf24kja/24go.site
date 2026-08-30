@@ -242,3 +242,10 @@ export const ChevronDown = (p: IconProps) => (
     <polyline points="6 9 12 15 18 9" />
   </S>
 );
+
+export const Pen = (p: IconProps) => (
+  <S {...p}>
+    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
+  </S>
+);
