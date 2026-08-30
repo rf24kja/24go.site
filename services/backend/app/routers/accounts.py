@@ -18,6 +18,13 @@ from app.schemas import AccountCreate, AccountResponse
 router = APIRouter(prefix="/api/v1/accounts", tags=["accounts"])
 log = logging.getLogger(__name__)
 
+
+def _mask_phone(phone: str) -> str:
+    """Mask phone for logs: +66987654321 → +669****4321."""
+    if not phone or len(phone) < 6:
+        return "****"
+    return phone[:4] + "*" * (len(phone) - 8) + phone[-4:]
+
 # ── Telegram connection request models ────────────────────────────────────
 
 class ConnectPhoneRequest(BaseModel):
@@ -26,6 +33,9 @@ class ConnectPhoneRequest(BaseModel):
 class ConfirmCodeRequest(BaseModel):
     phone: str
     code: str  # Telegram verification code
+
+class ConfirmPasswordRequest(BaseModel):
+    password: str  # 2FA cloud password
 
 
 @router.get("/")
@@ -133,20 +143,28 @@ async def connect_telegram(
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
+        # Create client, send code request, and save SESSION STATE (not just hash)
+        # This keeps the same DC connection for the confirm step
         client = TelegramClient(StringSession(), api_id, api_hash)
         await client.connect()
         sent_code = await client.send_code_request(body.phone)
+
+        # Export session state BEFORE disconnecting (preserves DC + auth_key)
+        session_string = client.session.save()
         await client.disconnect()
 
-        # Store phone_code_hash in Redis for confirm step (expires in 5 min)
+        log.info(f"connect_telegram: phone={_mask_phone(body.phone)} has_hash=True")
+
+        # Store BOTH session string and phone_code_hash in Redis
         import redis, json
         r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
         r.setex(f"tg_code:{account_id}", 600, json.dumps({
             "phone": body.phone,
-            "phone_code_hash": sent_code.phone_code_hash,
+            "phone_code_hash": str(sent_code.phone_code_hash),
+            "session_string": session_string,
         }))
 
-        log.info(f"Code request sent to {body.phone} for account {account_id}")
+        log.info(f"Code request sent to {_mask_phone(body.phone)} for account {account_id}")
         await log_event(
             url=settings.DATABASE_URL.replace("+asyncpg", ""),
             tenant_id=current_user.tenant_id, action="connected", entity_type="account",
@@ -191,6 +209,7 @@ async def confirm_telegram(
     try:
         from telethon import TelegramClient
         from telethon.sessions import StringSession
+        from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneCodeExpiredError
 
         # Retrieve phone_code_hash from Redis
         import redis as _redis, json as _json
@@ -200,10 +219,37 @@ async def confirm_telegram(
             raise HTTPException(400, "Code expired. Please request a new code via /connect.")
         stored = _json.loads(raw)
         phone_code_hash = stored["phone_code_hash"]
+        session_string = stored.get("session_string", "")
+        stored_phone = stored.get("phone", "unknown")
 
-        client = TelegramClient(StringSession(), api_id, api_hash)
+        log.info(f"confirm_telegram: account={account_id} stored_phone={_mask_phone(stored_phone)} submitted_phone={_mask_phone(body.phone)} has_hash=True has_session={bool(session_string)}")
+
+        # Reuse session from connect step to keep same DC connection
+        if session_string:
+            client = TelegramClient(StringSession(session_string), api_id, api_hash)
+        else:
+            client = TelegramClient(StringSession(), api_id, api_hash)
         await client.connect()
-        await client.sign_in(body.phone, code=body.code, phone_code_hash=phone_code_hash)
+        log.info(f"confirm_telegram: calling sign_in for {_mask_phone(body.phone)}")
+
+        try:
+            await client.sign_in(body.phone, code=body.code, phone_code_hash=phone_code_hash)
+        except SessionPasswordNeededError:
+            # 2FA is enabled — save session state to Redis, ask frontend for password
+            pending_session = client.session.save()
+            r.setex(f"tg_2fa:{account_id}", 600, _json.dumps({
+                "phone": body.phone,
+                "session_string": pending_session,
+            }))
+            await client.disconnect()
+            log.info(f"confirm_telegram: 2FA required for account {account_id}, awaiting password")
+            return {"status": "password_required", "account_id": str(account_id)}
+        except PhoneCodeInvalidError:
+            await client.disconnect()
+            raise HTTPException(400, "Invalid code. Please check and try again.")
+        except PhoneCodeExpiredError:
+            await client.disconnect()
+            raise HTTPException(400, "Code expired. Click 'Resend Code' to get a new one.")
 
         session_string = await client.export_session_string()
         await client.disconnect()
@@ -282,6 +328,127 @@ async def confirm_telegram(
     except Exception as e:
         log.error(f"confirm_telegram failed: {e}")
         raise HTTPException(502, f"Authorization failed: {str(e)[:200]}")
+
+
+@router.post("/{account_id}/confirm-password")
+async def confirm_password(
+    account_id: UUID,
+    body: ConfirmPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Complete 2FA: submit cloud password after code was accepted."""
+    result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.id == account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    import os
+    api_id = int(os.getenv("TG_API_ID", "0"))
+    api_hash = os.getenv("TG_API_HASH", "")
+    if not api_id or not api_hash:
+        raise HTTPException(500, "Telegram API credentials not configured")
+
+    try:
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+
+        import redis as _redis, json as _json
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+        raw = r.get(f"tg_2fa:{account_id}")
+        if not raw:
+            raise HTTPException(400, "2FA session expired. Please start over from Connect.")
+
+        stored = _json.loads(raw)
+        pending_session = stored["session_string"]
+        phone = stored["phone"]
+
+        client = TelegramClient(StringSession(pending_session), api_id, api_hash)
+        await client.connect()
+        await client.sign_in(password=body.password)
+
+        session_string = await client.export_session_string()
+        await client.disconnect()
+        r.delete(f"tg_2fa:{account_id}")
+        r.delete(f"tg_code:{account_id}")
+
+        # Save session to DB (same as confirm_telegram)
+        import uuid as _uuid
+        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        import asyncpg
+        conn = await asyncpg.connect(conn_url)
+        try:
+            from app.crypto import encrypt as enc
+            encrypted_session = enc(session_string)
+            existing = await conn.fetchrow(
+                "SELECT id FROM account_sessions WHERE account_id = $1",
+                _uuid.UUID(str(account_id)),
+            )
+            if existing:
+                await conn.execute(
+                    "UPDATE account_sessions SET session_data = $1, updated_at = NOW() WHERE account_id = $2",
+                    encrypted_session, _uuid.UUID(str(account_id)),
+                )
+            else:
+                await conn.execute(
+                    """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
+                    _uuid.UUID(str(account_id)), encrypted_session,
+                )
+        except Exception as db_err:
+            log.error(f"Failed to save session for {account_id}: {db_err}")
+            raise HTTPException(500, f"Session authorized but save failed: {db_err}")
+        finally:
+            await conn.close()
+
+        if not account.status or account.status == "warming_up":
+            account.status = "warming_up"
+        else:
+            account.status = "active"
+        account.warmup_stage = account.warmup_stage or 1
+        await db.commit()
+
+        # Auto-dispatch listener + warmup
+        try:
+            from app.celery_app import celery
+            celery.send_task(
+                "app.tasks.listener.start_lead_listener",
+                args=[str(current_user.tenant_id), account_id],
+                queue="listener",
+            )
+            celery.send_task(
+                "app.tasks.warmup.run_warmup_cycle",
+                args=[str(current_user.tenant_id), str(account_id)],
+                queue="warmup",
+            )
+            import redis as _r2
+            r2 = _r2.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
+            import time as _t
+            r2.setex(
+                f"tg_status:{account_id}", 300,
+                _json.dumps({"status": "online", "platform": "telegram", "updated_at": _t.time()}),
+            )
+            log.info(f"Auto-dispatched listener + warmup for account {account_id} (via 2FA)")
+        except Exception as dispatch_err:
+            log.warning(f"Failed to auto-dispatch tasks: {dispatch_err}")
+
+        log.info(f"Telegram 2FA authorized for account {account_id}")
+        await log_event(
+            url=settings.DATABASE_URL.replace("+asyncpg", ""),
+            tenant_id=current_user.tenant_id, action="confirmed_2fa", entity_type="account",
+            entity_id=str(account_id), user_id=current_user.id,
+            ip_address=request.client.host if request else None,
+        )
+        return {"status": "connected", "account_id": str(account_id)}
+    except Exception as e:
+        log.error(f"confirm_password failed: {e}")
+        raise HTTPException(502, f"2FA authorization failed: {str(e)[:200]}")
 
 
 @router.post("/{account_id}/disconnect")

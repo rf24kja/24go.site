@@ -32,6 +32,11 @@ def _get_fernet():
         return None
 
 
+def is_encrypted() -> bool:
+    """Return True if encryption is active (key is set and Fernet is available)."""
+    return _get_fernet() is not None
+
+
 def encrypt(plaintext: str) -> str:
     """Encrypt a string. Returns plaintext if encryption is unavailable."""
     f = _get_fernet()

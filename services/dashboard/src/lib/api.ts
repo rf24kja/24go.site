@@ -78,9 +78,9 @@ export async function getMe(token: string) {
 // ── Leads ─────────────────────────────────────────────────────────────
 
 export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
-  const mapped = params ? { ...params } : undefined;
+  const mapped: any = params ? { ...params } : undefined;
   if (mapped?.status) { mapped.status_filter = mapped.status; delete mapped.status; }
-  const qs = new URLSearchParams(mapped as any).toString();
+  const qs = new URLSearchParams(mapped).toString();
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -115,6 +115,12 @@ export async function connectTelegram(token: string, accountId: string, phone: s
 export async function confirmTelegram(token: string, accountId: string, phone: string, code: string) {
   return api<any>(`/api/v1/accounts/${accountId}/confirm`, {
     method: "POST", body: JSON.stringify({ phone, code }), token,
+  });
+}
+
+export async function confirmPassword2FA(token: string, accountId: string, password: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/confirm-password`, {
+    method: "POST", body: JSON.stringify({ password }), token,
   });
 }
 

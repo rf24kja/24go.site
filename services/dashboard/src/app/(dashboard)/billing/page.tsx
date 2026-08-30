@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getSubscription, getUsage, createCheckout } from "@/lib/api";
+import { useToast } from "@/components/Toast";
 
 const PLANS = [
   {
@@ -34,6 +35,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function BillingPage() {
   const { auth } = useAuth();
+  const { toast } = useToast();
   const [subscription, setSubscription] = useState<any>(null);
   const [usage, setUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function BillingPage() {
       if (res.checkout_url) window.open(res.checkout_url);
     } catch (e) {
       console.error("Checkout failed", e);
+      toast("Checkout failed. Please try again.", "error");
     } finally {
       setCheckoutBusy(null);
     }
@@ -122,7 +125,7 @@ export default function BillingPage() {
             <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full bg-sky-500 transition-all"
-                style={{ width: `${tokenBalance > 0 ? Math.max(10, 100 - Math.round((tokensUsed / Math.max(tokenBalance + tokensUsed, 1)) * 100)) : 0}%` }}
+                style={{ width: `${tokenBalance + tokensUsed > 0 ? Math.round((tokenBalance / (tokenBalance + tokensUsed)) * 100) : 0}%` }}
               />
             </div>
           </div>

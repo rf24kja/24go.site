@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, dispatchParser, scrapeTargetComments } from "@/lib/api";
+import { getTargets, discoverGroups, scrapeTargetComments } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -51,14 +51,11 @@ export default function TargetsPage() {
     if (!auth?.token) return;
     setScanning(true);
     try {
-      await dispatchParser(auth.token, {
-        platforms: ["telegram"],
-        target_geos: scanGeo.split(",").map((s) => s.trim()),
-        niches: scanNiche.split(",").map((s) => s.trim()),
-        max_results_per_niche: 20,
-      });
-      toast("Scan dispatched", "success");
-      setTimeout(load, 3000);
+      const geo = scanGeo.split(",").map((s) => s.trim()).filter(Boolean)[0] || "global";
+      const niche = scanNiche.split(",").map((s) => s.trim()).filter(Boolean)[0] || "general";
+      await discoverGroups(auth.token, { geo_tag: geo, niche, platform: "telegram" });
+      toast("Scan started — results will appear shortly", "success");
+      setTimeout(load, 5000);
     } catch (e: any) {
       toast(e.message || "Scan failed", "error");
     } finally {

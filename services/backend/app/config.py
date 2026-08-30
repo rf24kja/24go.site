@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+asyncpg://app_user:secure_password@postgres:5432/app_db"
-    DATABASE_URL_SYNC: str = "postgresql://app_user:secure_password@postgres:5432/app_db"
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/no_such_db"
+    DATABASE_URL_SYNC: str = "postgresql://user:password@localhost:5432/no_such_db"
     REDIS_URL: str = "redis://redis:6379/0"
 
     JWT_SECRET: str = ""  # REQUIRED — app refuses to start without it

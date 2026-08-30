@@ -118,6 +118,8 @@ export default function CampaignsPage() {
       }
       setModalMode(null);
       load();
+    } catch (e: any) {
+      toast(e.message || "Failed to save campaign", "error");
     } finally {
       setSaving(false);
     }
@@ -125,13 +127,13 @@ export default function CampaignsPage() {
 
   const handleDelete = async (id: string) => {
     if (!auth?.token || !confirm("Delete this campaign?")) return;
-    try { await deleteCampaign(auth.token, id); } catch { /* empty */ }
+    try { await deleteCampaign(auth.token, id); } catch { toast("Failed to delete campaign", "error"); }
     load();
   };
 
   const toggleActive = async (c: Campaign) => {
     if (!auth?.token) return;
-    try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); } catch { /* empty */ }
+    try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); } catch { toast("Failed to toggle campaign", "error"); }
     load();
   };
 

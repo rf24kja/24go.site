@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import {
   getAccounts, createAccount, startListener, stopListener,
-  getListenerStatus, connectTelegram, confirmTelegram,
+  getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
   disconnectTelegram, getTelegramStatus,
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
@@ -52,9 +52,10 @@ export default function AccountsPage() {
   const [addSaving, setAddSaving] = useState(false);
 
   // Connect modal state
-  const [connectModal, setConnectModal] = useState<{ accountId: string; phone: string; step: "phone" | "code" } | null>(null);
+  const [connectModal, setConnectModal] = useState<{ accountId: string; phone: string; step: "phone" | "code" | "password" } | null>(null);
   const [connectPhone, setConnectPhone] = useState("");
   const [connectCode, setConnectCode] = useState("");
+  const [connectPassword, setConnectPassword] = useState("");
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState("");
 
@@ -71,13 +72,13 @@ export default function AccountsPage() {
 
       // Fetch TG status for each account
       const statuses: Record<string, TgStatus> = {};
-      for (const acct of items) {
-        try {
-          statuses[acct.id] = await getTelegramStatus(auth.token!, acct.id);
-        } catch {
-          statuses[acct.id] = { has_session: false, connected: false, tg_status: "unknown" };
-        }
-      }
+      const results = await Promise.allSettled(
+        items.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
+      );
+      items.forEach((acct: any, i: number) => {
+        const r = results[i];
+        statuses[acct.id] = r.status === "fulfilled" ? r.value : { has_session: false, connected: false, tg_status: "unknown" };
+      });
       setTgStatuses(statuses);
     }).finally(() => setLoading(false));
   };
@@ -132,12 +133,35 @@ export default function AccountsPage() {
     setConnectBusy(true);
     setConnectError("");
     try {
-      await confirmTelegram(auth.token, connectModal.accountId, connectPhone, connectCode);
-      setConnectModal(null);
-      setConnectCode("");
-      load();
+      const res = await confirmTelegram(auth.token, connectModal.accountId, connectPhone, connectCode);
+      if (res?.status === "password_required") {
+        setConnectModal({ ...connectModal, step: "password" });
+        setConnectError("");
+      } else {
+        setConnectModal(null);
+        setConnectCode("");
+        setConnectPassword("");
+        load();
+      }
     } catch (e: any) {
       setConnectError(e.message || "Invalid code");
+    } finally {
+      setConnectBusy(false);
+    }
+  };
+
+  const handleConnectPassword = async () => {
+    if (!auth?.token || !connectModal) return;
+    setConnectBusy(true);
+    setConnectError("");
+    try {
+      await confirmPassword2FA(auth.token, connectModal.accountId, connectPassword);
+      setConnectModal(null);
+      setConnectCode("");
+      setConnectPassword("");
+      load();
+    } catch (e: any) {
+      setConnectError(e.message || "Invalid password");
     } finally {
       setConnectBusy(false);
     }
@@ -385,7 +409,7 @@ export default function AccountsPage() {
                     className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
                 </div>
               </>
-            ) : (
+            ) : connectModal.step === "code" ? (
               <>
                 <h2 className="text-lg font-bold text-zinc-100">Enter Code</h2>
                 <p className="text-xs text-zinc-500">Check Telegram for the verification code sent to <strong className="text-zinc-300">{connectPhone}</strong></p>
@@ -393,10 +417,34 @@ export default function AccountsPage() {
                   onChange={(e) => setConnectCode(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono text-center text-lg tracking-widest" />
                 {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
+                <p className="text-[10px] text-zinc-600">Code expires in ~2 minutes. Check Telegram for the code.</p>
                 <div className="flex gap-3">
                   <button onClick={handleConnectConfirm} disabled={connectBusy || !connectCode}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                     {connectBusy ? "Connecting..." : "Confirm"}
+                  </button>
+                  <button onClick={handleConnectSendCode} disabled={connectBusy}
+                    className="py-2 px-3 bg-zinc-800 text-zinc-400 border border-zinc-700 rounded-lg text-xs hover:bg-zinc-700 transition disabled:opacity-50 whitespace-nowrap">
+                    {connectBusy ? "..." : "Resend Code"}
+                  </button>
+                  <button onClick={() => setConnectModal(null)}
+                    className="py-2 px-3 bg-zinc-800 text-zinc-400 rounded-lg text-xs">Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-zinc-100">Two-Factor Password</h2>
+                <p className="text-xs text-zinc-500">This Telegram account has 2FA enabled. Enter your <strong className="text-zinc-300">cloud password</strong> to complete login.</p>
+                <input type="password" placeholder="Your 2FA password" value={connectPassword}
+                  onChange={(e) => setConnectPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleConnectPassword()}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+                {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
+                <p className="text-[10px] text-zinc-600">This is the password you set in Telegram → Settings → Privacy → Two-Step Verification. Not the SMS code.</p>
+                <div className="flex gap-3">
+                  <button onClick={handleConnectPassword} disabled={connectBusy || !connectPassword}
+                    className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                    {connectBusy ? "Authorizing..." : "Confirm Password"}
                   </button>
                   <button onClick={() => setConnectModal(null)}
                     className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>

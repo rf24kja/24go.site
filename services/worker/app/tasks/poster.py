@@ -15,8 +15,9 @@ import re
 from celery import shared_task
 
 from app.celery_app import celery
-from app.locks import acquire_account_lock, get_daily_action_count, increment_daily_actions
+from app.locks import acquire_account_lock, increment_daily_actions
 from app.config import WARMUP_LIMITS
+from app.telegram_client import disconnect_client
 
 log = logging.getLogger(__name__)
 
@@ -66,16 +67,23 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
             log.warning(f"Account {account_id} locked by another worker, retrying")
             raise self.retry(countdown=30, exc=Exception("Account lock active"))
 
-        # Check daily limits
-        current_actions = get_daily_action_count(tenant_id, account_id)
         from app.tenant_settings import get_tenant_settings_from_db
         posting_cfg = get_tenant_settings_from_db(
             __import__("os").getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
             tenant_id
         ).get("posting", {})
         limit = posting_cfg.get("stage3_daily_limit", WARMUP_LIMITS.get(3, 20))
-        if current_actions >= limit:
-            log.info(f"Account {account_id} reached daily limit ({current_actions}/{limit})")
+
+        # Atomic daily limit: INCR first, check, decrement if over
+        from app.locks import _get_redis
+        daily_key = f"daily_actions:{tenant_id}:{account_id}:{__import__('time').strftime('%Y-%m-%d')}"
+        r = _get_redis()
+        new_count = r.incr(daily_key)
+        if new_count == 1:
+            r.expire(daily_key, 86400)
+        if new_count > limit:
+            r.decr(daily_key)
+            log.info(f"Account {account_id} reached daily limit ({new_count}/{limit})")
             return {"status": "skipped", "reason": "daily_limit_reached"}
 
         # Render content
@@ -93,11 +101,10 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
                 _send_message(account_id, target_channel, full_text)
             )
         finally:
+            loop.run_until_complete(disconnect_client(account_id))
             loop.close()
 
         if result.get("status") == "ok":
-            increment_daily_actions(tenant_id, account_id)
-
             # Save to posting_logs with message_id for comment scraper
             _save_posting_log(tenant_id, campaign_id, target_id, account_id,
                               full_text, utm_url, result.get("message_id"))

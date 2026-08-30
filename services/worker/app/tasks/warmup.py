@@ -23,6 +23,7 @@ from celery import shared_task
 from app.celery_app import celery
 from app.locks import acquire_account_lock, increment_daily_actions
 from app.config import WARMUP_LIMITS, DATABASE_URL
+from app.telegram_client import disconnect_client
 
 log = logging.getLogger(__name__)
 DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
@@ -165,6 +166,8 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
 
     except Exception as e:
         log.error(f"Warmup actions failed: {e}")
+    finally:
+        await disconnect_client(account_id)
 
     # Update daily action count
     for _ in range(actions):

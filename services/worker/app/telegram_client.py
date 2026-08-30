@@ -274,7 +274,13 @@ def get_status(account_id: str) -> dict:
 def get_all_statuses() -> dict[str, dict]:
     """Get status for all accounts with active sessions."""
     r = _get_redis()
-    keys = r.keys("tg_status:*")
+    keys = []
+    cursor = 0
+    while True:
+        cursor, batch = r.scan(cursor, match="tg_status:*", count=100)
+        keys.extend(batch)
+        if cursor == 0:
+            break
     statuses = {}
     for key in keys:
         account_id = key.split(":", 1)[1]

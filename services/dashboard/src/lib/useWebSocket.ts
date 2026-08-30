@@ -36,6 +36,7 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
   const pollTimer = useRef<NodeJS.Timeout | null>(null);
   const sinceRef = useRef<number>(0);
   const modeRef = useRef<"ws" | "poll" | "detecting">("detecting");
+  const reconnectAttempt = useRef(0);
 
   const wsBase = getWsUrl();
   const apiBase = getApiUrl();
@@ -90,6 +91,7 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
 
       ws.onopen = () => {
         clearTimeout(fallbackTimer);
+        reconnectAttempt.current = 0;
         modeRef.current = "ws";
         setConnected(true);
       };
@@ -99,7 +101,12 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
         wsRef.current = null;
         if (modeRef.current === "ws") {
           modeRef.current = "detecting";
-          startPolling();
+          if (reconnectAttempt.current < 1) {
+            reconnectAttempt.current += 1;
+            setTimeout(() => connectWs(), 2000);
+          } else {
+            startPolling();
+          }
         }
       };
       ws.onerror = () => { clearTimeout(fallbackTimer); ws.close(); };

@@ -15,6 +15,7 @@ celery.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    result_expires=3600,
     task_routes={
         "app.tasks.parser.*": {"queue": "parser"},
         "app.tasks.poster.*": {"queue": "poster"},

@@ -2,7 +2,9 @@
 
 Uses celery.send_task() to dispatch by name — no import of worker code needed.
 """
-from fastapi import APIRouter, Depends
+import uuid as _uuid
+import asyncpg
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from celery import Celery
 
@@ -64,6 +66,20 @@ async def dispatch_poster(
     current_user: User = Depends(get_current_user),
 ):
     """Dispatch a posting task to the poster worker pool."""
+    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(conn_url)
+    try:
+        row = await conn.fetchrow(
+            "SELECT base_text FROM campaigns WHERE id = $1 AND tenant_id = $2",
+            _uuid.UUID(body.campaign_id),
+            current_user.tenant_id,
+        )
+    finally:
+        await conn.close()
+
+    if not row:
+        raise HTTPException(404, "Campaign not found")
+
     task = _celery.send_task(
         "app.tasks.poster.publish_post",
         args=[
@@ -71,7 +87,7 @@ async def dispatch_poster(
             body.campaign_id,
             body.target_id,
             body.account_id,
-            "Check out our {offer|deal|special}! Visit {url|link}",
+            row["base_text"],
             "https://example.com",
         ],
         queue="poster",
