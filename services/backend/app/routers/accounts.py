@@ -141,7 +141,7 @@ async def connect_telegram(
         # Store phone_code_hash in Redis for confirm step (expires in 5 min)
         import redis, json
         r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
-        r.setex(f"tg_code:{account_id}", 300, json.dumps({
+        r.setex(f"tg_code:{account_id}", 600, json.dumps({
             "phone": body.phone,
             "phone_code_hash": sent_code.phone_code_hash,
         }))

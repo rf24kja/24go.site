@@ -51,7 +51,11 @@ LLM_COST_PER_MILLION = {
 
 
 def _get_redis() -> redis.Redis:
-    return redis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        return redis.from_url(settings.REDIS_URL, decode_responses=True)
+    except Exception:
+        # ponytail: fallback if REDIS_URL format is wrong
+        return redis.from_url("redis://redis:6379/0", decode_responses=True)
 
 
 async def check_quota(

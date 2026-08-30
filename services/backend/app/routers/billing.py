@@ -75,7 +75,20 @@ async def get_subscription(
     )
     sub = result.scalar_one_or_none()
     if not sub:
-        raise HTTPException(404, "No subscription found")
+        # Auto-create trial subscription if missing
+        from datetime import timezone as _tz
+        sub = Subscription(
+            tenant_id=current_user.tenant_id,
+            plan="trial",
+            status="active",
+            current_period_start=datetime.now(_tz.utc),
+            current_period_end=datetime.now(_tz.utc) + timedelta(days=14),
+            monthly_posts_limit=PLAN_LIMITS["trial"]["monthly_posts_limit"],
+            token_credits_balance=PLAN_LIMITS["trial"]["token_credits_balance"],
+        )
+        db.add(sub)
+        await db.commit()
+        await db.refresh(sub)
     return SubscriptionResponse(
         plan=sub.plan.value if hasattr(sub.plan, "value") else sub.plan,
         status=sub.status,
@@ -100,7 +113,13 @@ async def get_usage(
     )
     sub = sub_result.scalar_one_or_none()
     if not sub:
-        raise HTTPException(404, "No subscription found")
+        # Return zero usage for new tenants
+        return UsageSummary(
+            total_tokens_used=0, total_cost_usd=0.0,
+            posts_used=0, posts_limit=PLAN_LIMITS["trial"]["monthly_posts_limit"],
+            tokens_balance=PLAN_LIMITS["trial"]["token_credits_balance"],
+            plan="trial",
+        )
 
     # Aggregate usage for current period
     usage_result = await db.execute(
@@ -227,7 +246,7 @@ async def stripe_webhook(request: Request):
     sig = request.headers.get("stripe-signature", "")
 
     # Verify signature in production
-    if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
+    if STRIPE_WEBHOOK_SECRET and STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
         try:
             import stripe
             stripe.api_key = STRIPE_SECRET_KEY
@@ -235,9 +254,9 @@ async def stripe_webhook(request: Request):
         except Exception as e:
             log.error(f"Stripe signature verification failed: {e}")
             raise HTTPException(400, "Invalid signature")
-    elif STRIPE_WEBHOOK_SECRET and STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
-        # Dev mode with placeholder secret — skip verification, log warning
-        log.warning("Stripe webhook: using placeholder whsec_ secret — signature NOT verified")
+    elif STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
+        # Dev mode with non-whsec secret — skip verification, log warning
+        log.warning("Stripe webhook: using non-standard secret — signature NOT verified")
         event = json.loads(body)
     else:
         # No secret configured — parse raw JSON (dev mode)
@@ -251,7 +270,7 @@ async def stripe_webhook(request: Request):
         data = event["data"]["object"]
         tenant_id = data.get("metadata", {}).get("tenant_id")
         plan_tier = data.get("metadata", {}).get("plan_tier", "starter")
-        amount = data.get("amount_total", 0) / 100
+        amount = (data.get("amount_total") or 0) / 100
         provider_tx_id = data.get("id", "")
 
         await _process_payment(
@@ -339,18 +358,21 @@ async def _process_payment(
             tenant_uuid, amount_usd, provider, provider_tx_id,
         )
 
-        # Upgrade subscription
+        # Upgrade subscription (UPSERT — create if missing)
         limits = get_plan_limits(plan_tier)
         await conn.execute(
-            """UPDATE subscriptions SET
+            """INSERT INTO subscriptions (id, tenant_id, plan, status, current_period_start, current_period_end,
+                monthly_posts_used, monthly_posts_limit, token_credits_balance)
+               VALUES (gen_random_uuid(), $4, $1::tenant_plan_type, 'active', NOW(), NOW() + INTERVAL '1 month',
+                0, $2, $3)
+               ON CONFLICT (tenant_id) DO UPDATE SET
                 plan = $1::tenant_plan_type,
                 status = 'active',
                 current_period_start = NOW(),
                 current_period_end = NOW() + INTERVAL '1 month',
                 monthly_posts_used = 0,
                 monthly_posts_limit = $2,
-                token_credits_balance = $3
-               WHERE tenant_id = $4""",
+                token_credits_balance = $3""",
             plan_tier,
             limits["monthly_posts_limit"],
             limits["token_credits_balance"],

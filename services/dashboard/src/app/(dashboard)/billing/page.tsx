@@ -9,19 +9,19 @@ const PLANS = [
     name: "Starter",
     price: "$149",
     period: "/mo",
-    features: ["500 posts/mo", "10k tokens", "1 workspace", "Email support"],
+    features: ["1,500 posts/mo", "1M tokens", "5 accounts", "Email support"],
   },
   {
     name: "Pro",
     price: "$399",
     period: "/mo",
-    features: ["2,000 posts/mo", "50k tokens", "5 workspaces", "Priority support", "API access"],
+    features: ["7,500 posts/mo", "5M tokens", "20 accounts", "Priority support", "API access"],
   },
   {
     name: "Enterprise",
     price: "$999",
     period: "/mo",
-    features: ["Unlimited posts", "200k tokens", "Unlimited workspaces", "Dedicated support", "Custom integrations", "SLA"],
+    features: ["Unlimited posts", "Unlimited tokens", "Unlimited accounts", "Dedicated support", "Custom integrations", "SLA"],
   },
 ];
 

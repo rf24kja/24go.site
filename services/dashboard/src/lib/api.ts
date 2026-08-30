@@ -78,7 +78,9 @@ export async function getMe(token: string) {
 // ── Leads ─────────────────────────────────────────────────────────────
 
 export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const mapped = params ? { ...params } : undefined;
+  if (mapped?.status) { mapped.status_filter = mapped.status; delete mapped.status; }
+  const qs = new URLSearchParams(mapped as any).toString();
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
 }
 

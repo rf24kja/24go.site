@@ -37,7 +37,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
 
-    # Create default subscription
+    # Create default subscription (trial — 14 days, 100 posts, 100k tokens)
     now = datetime.now(timezone.utc)
     sub = Subscription(
         tenant_id=tenant.id,
@@ -45,8 +45,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         status="active",
         current_period_start=now,
         current_period_end=now + timedelta(days=14),
-        monthly_posts_limit=500,
-        token_credits_balance=200000,
+        monthly_posts_limit=100,
+        token_credits_balance=100_000,
     )
     db.add(sub)
     await db.commit()

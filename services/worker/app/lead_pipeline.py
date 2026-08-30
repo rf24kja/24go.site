@@ -64,7 +64,7 @@ async def process_incoming_message(
     # 1. Classify via LLM (keyword heuristic fallback)
     from app.tenant_settings import get_tenant_settings_from_db
     tenant_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id)
-    classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)
+    classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)  # ponytail: tenant_cfg passed for keyword merge
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL
