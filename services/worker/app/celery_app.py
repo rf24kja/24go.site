@@ -56,6 +56,11 @@ celery.conf.update(
             "schedule": crontab(hour=9, minute=0),
             "options": {"queue": "billing"},
         },
+        "expire-trial-subscriptions": {
+            "task": "app.tasks.billing.expire_trials",
+            "schedule": crontab(hour=2, minute=0),
+            "options": {"queue": "billing"},
+        },
     },
 )
 

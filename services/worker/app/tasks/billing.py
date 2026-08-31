@@ -160,6 +160,32 @@ def deduct_tokens(tenant_id: str, service_type: str, quantity: int, cost_usd: fl
     return asyncio.run(_deduct())
 
 
+@celery.task(name="app.tasks.billing.expire_trials", queue="billing", max_retries=3)
+def expire_trials():
+    """Expire trial subscriptions that have passed their period_end."""
+    log.info("expire_trials: triggered by Beat scheduler")
+    import asyncio
+
+    async def _run():
+        conn = await asyncpg.connect(DB_URL_SYNC)
+        try:
+            expired = await conn.execute(
+                """UPDATE subscriptions 
+                   SET status = 'expired', updated_at = NOW()
+                   WHERE plan = 'trial' 
+                   AND status = 'active' 
+                   AND current_period_end < NOW()"""
+            )
+            count = int(expired.split()[-1])
+            if count:
+                log.info(f"Expired {count} trial subscriptions")
+            return {"expired": count}
+        finally:
+            await conn.close()
+
+    return asyncio.run(_run())
+
+
 @celery.task(name="app.tasks.billing.daily_summary_emails", queue="billing", max_retries=3)
 def daily_summary_emails():
     """Daily at 9am: send summary emails to all tenants with leads today.

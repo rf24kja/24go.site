@@ -139,7 +139,14 @@ export default function BillingPage() {
             </span>
           </div>
           <div className="text-sm text-zinc-500">
-            Renews: {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—"}
+            {currentPlan === "trial" && sub.current_period_end ? (
+              (() => {
+                const daysLeft = Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000));
+                return daysLeft > 0 ? `Trial ends in ${daysLeft} days` : "Trial expired";
+              })()
+            ) : (
+              <>Renews: {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—"}</>
+            )}
           </div>
         </div>
 
