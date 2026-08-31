@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 import asyncpg
 import httpx
+import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -245,23 +246,19 @@ async def stripe_webhook(request: Request):
     body = await request.body()
     sig = request.headers.get("stripe-signature", "")
 
-    # Verify signature in production
-    if STRIPE_WEBHOOK_SECRET and STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
-        try:
-            import stripe
-            stripe.api_key = STRIPE_SECRET_KEY
-            event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
-        except Exception as e:
-            log.error(f"Stripe signature verification failed: {e}")
-            raise HTTPException(400, "Invalid signature")
-    elif STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
-        # Dev mode with non-whsec secret — skip verification, log warning
-        log.warning("Stripe webhook: using non-standard secret — signature NOT verified")
-        event = json.loads(body)
-    else:
-        # No secret configured — parse raw JSON (dev mode)
-        log.info("Stripe webhook: no STRIPE_WEBHOOK_SECRET set — dev mode")
-        event = json.loads(body)
+    if not STRIPE_WEBHOOK_SECRET or not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
+        log.error("STRIPE_WEBHOOK_SECRET not configured — rejecting webhook")
+        raise HTTPException(500, "Webhook not configured")
+
+    stripe.api_key = STRIPE_SECRET_KEY
+    try:
+        event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
+    except ValueError:
+        log.error("Stripe webhook: invalid payload")
+        raise HTTPException(400, "Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        log.error("Stripe webhook: invalid signature")
+        raise HTTPException(400, "Invalid signature")
 
     event_type = event.get("type", "")
     log.info(f"Stripe webhook: {event_type}")

@@ -288,6 +288,13 @@ export async function exportLeadsCsv(token: string, params?: { intent_score?: st
   const res = await fetch(`${API_URL}/api/v1/leads/export${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
   return res.blob();
 }
@@ -407,6 +414,13 @@ export async function backupLeads(token: string) {
   const res = await fetch(`${API_URL}/api/v1/system/backup/leads`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
   if (!res.ok) throw new Error(`Backup failed: ${res.status}`);
   return res.blob();
 }

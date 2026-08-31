@@ -146,7 +146,7 @@ async def list_users(
     return result.scalars().all()
 
 
-@router.post("/invite", response_model=UserResponse, status_code=201)
+@router.post("/invite", status_code=201)
 async def invite_user(
     body: InviteRequest,
     request: Request,
@@ -181,8 +181,28 @@ async def invite_user(
         user_id=current_user.id, ip_address=request.client.host if request else None,
     )
 
-    # ponytail: in prod, send email with temp_password. For now, return it.
-    return user
+    invite_body = (
+        f"You've been invited to join on 24GO.\n\n"
+        f"Email: {body.email}\n"
+        f"Temporary password: {temp_password}\n\n"
+        f"Please log in and change your password immediately."
+    )
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = settings.FROM_EMAIL
+        msg["To"] = body.email
+        msg["Subject"] = "You're invited to 24GO"
+        msg.attach(MIMEText(invite_body, "plain"))
+
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASS)
+            server.sendmail(settings.FROM_EMAIL, body.email, msg.as_string())
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to send invite email to {body.email}: {e}")
+
+    return {"status": "invited", "email": body.email}
 
 
 @router.patch("/users/{user_id}/role")

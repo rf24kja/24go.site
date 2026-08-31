@@ -9,6 +9,8 @@ celery = Celery(
     backend=os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/2"),
 )
 
+celery.conf.broker_connection_retry_on_startup = True
+
 celery.conf.update(
     task_serializer="json",
     accept_content=["json"],

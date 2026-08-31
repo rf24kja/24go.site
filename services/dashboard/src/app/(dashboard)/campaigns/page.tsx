@@ -266,7 +266,7 @@ export default function CampaignsPage() {
                     <option value="UTC">{t("campaigns.tz.utc")}</option>
                     <option value="Europe/Moscow">{t("campaigns.tz.moscow")}</option>
                     <option value="Asia/Bangkok">{t("campaigns.tz.bangkok")}</option>
-                    <option value="Asia/Phuket">{t("campaigns.tz.phuket")}</option>
+
                     <option value="Europe/London">{t("campaigns.tz.london")}</option>
                     <option value="America/New_York">{t("campaigns.tz.newYork")}</option>
                     <option value="Asia/Dubai">{t("campaigns.tz.dubai")}</option>
