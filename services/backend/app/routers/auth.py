@@ -9,8 +9,22 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
 from app.config import settings
+
+# Simple in-memory rate limiter
+_rate_limits: dict[str, list[datetime]] = defaultdict(list)
+
+def _check_rate_limit(key: str, max_requests: int = 5, window_seconds: int = 60) -> bool:
+    """Returns True if request is allowed."""
+    now = datetime.utcnow()
+    cutoff = now - timedelta(seconds=window_seconds)
+    _rate_limits[key] = [t for t in _rate_limits[key] if t > cutoff]
+    if len(_rate_limits[key]) >= max_requests:
+        return False
+    _rate_limits[key].append(now)
+    return True
 from app.audit import log_event
 from app.database import get_db
 from app.models import User, Tenant
@@ -22,7 +36,12 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    # Rate limit: 5 registrations per minute per IP
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(f"register:{ip}", max_requests=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many registration attempts. Try again later.")
+
     # Check unique email
     existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
@@ -72,7 +91,12 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    # Rate limit: 10 login attempts per minute per IP
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(f"login:{ip}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(body.password, user.password_hash):

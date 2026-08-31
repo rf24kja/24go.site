@@ -239,7 +239,7 @@ async def _create_yookassa_checkout(tenant_id: str, plan: str, price_usd: int) -
 
 # ── Webhook Handlers ──────────────────────────────────────────────────
 
-@router.post("/webhook/stripe")
+@router.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events (payment_intent.succeeded, etc.)."""
     body = await request.body()
