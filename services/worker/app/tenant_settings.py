@@ -77,7 +77,19 @@ DEFAULTS = {
 }
 
 
+def _ensure_dict(val):
+    """If val is a JSON string, parse it. Otherwise return as-is."""
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, dict) else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return val if isinstance(val, dict) else {}
+
+
 def _deep_merge(base: dict, override: dict) -> dict:
+    override = _ensure_dict(override)
     result = base.copy()
     for k, v in override.items():
         if isinstance(v, dict) and isinstance(result.get(k), dict):
@@ -116,19 +128,15 @@ async def _fetch_settings(url: str, tenant_id: str) -> dict:
 
 
 def get_tenant_settings_from_db(url: str, tenant_id: str) -> dict:
-    """Fully sync version using raw asyncpg (no event loop)."""
+    """Sync version using a fresh event loop (safe for Celery workers)."""
     try:
         plain_url = url.replace("+asyncpg", "")
-        import asyncpg as _apg
-        # Use a new event loop for this sync call
-        loop = None
+        import asyncio
+        loop = asyncio.new_event_loop()
         try:
-            import asyncio
-            loop = asyncio.new_event_loop()
             settings = loop.run_until_complete(_fetch_settings(plain_url, tenant_id))
         finally:
-            if loop:
-                loop.close()
+            loop.close()
         return settings
     except Exception as e:
         log.warning(f"Failed to load tenant settings: {e}, using defaults")

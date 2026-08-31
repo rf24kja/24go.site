@@ -93,8 +93,20 @@ DEFAULTS = {
 }
 
 
+def _ensure_dict(val):
+    """If val is a JSON string, parse it. Otherwise return as-is."""
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, dict) else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return val if isinstance(val, dict) else {}
+
+
 def _deep_merge(base: dict, override: dict) -> dict:
     """Merge override into base, returning new dict. Lists are replaced, not merged."""
+    override = _ensure_dict(override)
     result = base.copy()
     for k, v in override.items():
         if isinstance(v, dict) and isinstance(result.get(k), dict):
