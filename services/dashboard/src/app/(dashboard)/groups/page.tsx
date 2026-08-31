@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, getAccounts, discoverGroups } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
+import { useI18n } from "@/lib/i18n";
 
 type Group = {
   id: string;
@@ -34,6 +35,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function GroupsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [groups, setGroups] = useState<Group[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export default function GroupsPage() {
       });
       setDiscoverResults(res.results || []);
     } catch (e: any) {
-      toast(e.message || "Discovery failed", "error");
+      toast(e.message || t("groups.discoverFailed"), "error");
       setDiscoverResults([]);
     } finally {
       setDiscoverLoading(false);
@@ -88,15 +90,15 @@ export default function GroupsPage() {
 
   const handleAddDiscovered = async (identifier: string, platform: string, title: string) => {
     if (!auth?.token || !addAccountId) {
-      toast("Select an account first", "error");
+      toast(t("groups.selectAccountFirst"), "error");
       return;
     }
     try {
       await addGroup(auth.token, { platform, group_identifier: identifier, account_id: addAccountId });
-      toast(`Added: ${title}`, "success");
+      toast(t("groups.addedSuccess", { title }), "success");
       load();
     } catch (e: any) {
-      toast(e.message || "Failed to add", "error");
+      toast(e.message || t("groups.addFailed"), "error");
     }
   };
 
@@ -110,12 +112,12 @@ export default function GroupsPage() {
         group_identifier: addIdentifier.trim(),
         account_id: addAccountId,
       });
-      toast("Group added successfully", "success");
+      toast(t("groups.groupAdded"), "success");
       setShowAdd(false);
       setAddIdentifier("");
       load();
     } catch (e: any) {
-      toast(e.message || "Failed to add group", "error");
+      toast(e.message || t("groups.addGroupFailed"), "error");
     } finally {
       setAddSaving(false);
     }
@@ -126,10 +128,10 @@ export default function GroupsPage() {
     setActionBusy(groupId);
     try {
       await startGroupScanner(auth.token, groupId);
-      toast("Scanner started", "success");
+      toast(t("groups.scannerStarted"), "success");
       setTimeout(load, 2000);
     } catch (e: any) {
-      toast(e.message || "Failed to start scanner", "error");
+      toast(e.message || t("groups.startFailed"), "error");
     } finally {
       setActionBusy(null);
     }
@@ -140,24 +142,24 @@ export default function GroupsPage() {
     setActionBusy(groupId);
     try {
       await stopGroupScanner(auth.token, groupId);
-      toast("Scanner stopped", "success");
+      toast(t("groups.scannerStopped"), "success");
       setTimeout(load, 2000);
     } catch (e: any) {
-      toast(e.message || "Failed to stop scanner", "error");
+      toast(e.message || t("groups.stopFailed"), "error");
     } finally {
       setActionBusy(null);
     }
   };
 
   const handleRemove = async (groupId: string) => {
-    if (!auth?.token || !confirm("Remove this group from monitoring?")) return;
+    if (!auth?.token || !confirm(t("groups.removeConfirm"))) return;
     setActionBusy(groupId);
     try {
       await removeGroup(auth.token, groupId);
-      toast("Group removed", "success");
+      toast(t("groups.groupRemoved"), "success");
       load();
     } catch (e: any) {
-      toast(e.message || "Failed to remove group", "error");
+      toast(e.message || t("groups.removeFailed"), "error");
     } finally {
       setActionBusy(null);
     }
@@ -166,32 +168,32 @@ export default function GroupsPage() {
   return (
     <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Monitored Groups</h1>
+        <h1 className="text-2xl font-bold">{t("groups.title")}</h1>
         <button onClick={() => setShowAdd(!showAdd)}
           className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
-          + Add Group
+          {t("groups.addGroup")}
         </button>
       </div>
 
       {/* How it works */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-300 mb-2">How group monitoring works</h2>
+        <h2 className="text-sm font-medium text-zinc-300 mb-2">{t("groups.howItWorks")}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-zinc-400">
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">1</span>
-            <div><strong className="text-zinc-300">Add group</strong> — enter @username (Telegram) or group ID (VK)</div>
+            <div><strong className="text-zinc-300">{t("groups.step1Title")}</strong> — {t("groups.step1Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">2</span>
-            <div><strong className="text-zinc-300">Connect account</strong> — select an active account to join the group</div>
+            <div><strong className="text-zinc-300">{t("groups.step2Title")}</strong> — {t("groups.step2Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">3</span>
-            <div><strong className="text-zinc-300">Start scanner</strong> — system joins the group and listens 24/7</div>
+            <div><strong className="text-zinc-300">{t("groups.step3Title")}</strong> — {t("groups.step3Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">4</span>
-            <div><strong className="text-zinc-300">Get leads</strong> — messages with buying intent are classified and sent to you</div>
+            <div><strong className="text-zinc-300">{t("groups.step4Title")}</strong> — {t("groups.step4Desc")}</div>
           </div>
         </div>
       </div>
@@ -199,32 +201,32 @@ export default function GroupsPage() {
       {/* Auto-Discovery */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-zinc-300">🔍 Auto-Discover Groups</h2>
+          <h2 className="text-sm font-medium text-zinc-300">{t("groups.autoDiscover")}</h2>
           <button onClick={() => setShowDiscover(!showDiscover)}
             className="text-xs text-zinc-500 hover:text-zinc-300 transition">
-            {showDiscover ? "Hide" : "Show"}
+            {showDiscover ? t("groups.hide") : t("groups.show")}
           </button>
         </div>
         {showDiscover && (
           <div className="space-y-3">
             <p className="text-xs text-zinc-500">
-              Enter your GEO and niche — the system will find relevant public groups automatically.
+              {t("groups.discoverDesc")}
             </p>
             <div className="flex gap-3 items-end">
               <div className="flex-1">
-                <label className="text-xs text-zinc-500 mb-1 block">GEO</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("groups.geoLabel")}</label>
                 <input type="text" value={discoverGeo} onChange={(e) => setDiscoverGeo(e.target.value)}
-                  placeholder="Phuket, Moscow, Bangkok..."
+                  placeholder={t("groups.geoPlaceholder")}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
               <div className="flex-1">
-                <label className="text-xs text-zinc-500 mb-1 block">Niche</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("groups.nicheLabel")}</label>
                 <input type="text" value={discoverNiche} onChange={(e) => setDiscoverNiche(e.target.value)}
-                  placeholder="real_estate, tourism, IT..."
+                  placeholder={t("groups.nichePlaceholder")}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
               <div className="w-32">
-                <label className="text-xs text-zinc-500 mb-1 block">Platform</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
                 <select value={discoverPlatform} onChange={(e) => setDiscoverPlatform(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                   <option value="telegram">Telegram</option>
@@ -232,10 +234,10 @@ export default function GroupsPage() {
                 </select>
               </div>
               <div className="w-48">
-                <label className="text-xs text-zinc-500 mb-1 block">Use Account</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("groups.useAccount")}</label>
                 <select value={addAccountId} onChange={(e) => setAddAccountId(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                  <option value="">Select...</option>
+                  <option value="">{t("groups.selectAccount")}</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>{a.account_identifier}</option>
                   ))}
@@ -243,7 +245,7 @@ export default function GroupsPage() {
               </div>
               <button onClick={handleDiscover} disabled={discoverLoading || !discoverGeo.trim() || !discoverNiche.trim()}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 whitespace-nowrap">
-                {discoverLoading ? "Searching..." : "🔍 Discover"}
+                {discoverLoading ? t("groups.searching") : t("groups.discover")}
               </button>
             </div>
 
@@ -258,7 +260,7 @@ export default function GroupsPage() {
                   </div>
                 ) : discoverResults.length === 0 ? (
                   <p className="text-xs text-zinc-500 text-center py-4">
-                    No groups found. Try different GEO or niche keywords.
+                    {t("groups.noResults")}
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -266,12 +268,12 @@ export default function GroupsPage() {
                       <div key={i} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-zinc-200 truncate">{r.title}</p>
-                          <p className="text-xs text-zinc-500 font-mono">{r.group_identifier} · {(r.members_count || 0).toLocaleString()} members</p>
+                          <p className="text-xs text-zinc-500 font-mono">{r.group_identifier} · {(r.members_count || 0).toLocaleString()} {t("groups.members")}</p>
                         </div>
                         <button onClick={() => handleAddDiscovered(r.group_identifier, r.platform, r.title)}
                           disabled={!addAccountId}
                           className="px-3 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition disabled:opacity-40 ml-3 whitespace-nowrap">
-                          + Add
+                          {t("groups.addDiscovered")}
                         </button>
                       </div>
                     ))}
@@ -286,10 +288,10 @@ export default function GroupsPage() {
       {/* Add Group Form */}
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-medium text-zinc-400">Add Group for Monitoring</h2>
+          <h2 className="text-sm font-medium text-zinc-400">{t("groups.addFormTitle")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Platform</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
               <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                 <option value="telegram">Telegram</option>
@@ -298,18 +300,18 @@ export default function GroupsPage() {
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">
-                {addPlatform === "telegram" ? "Group @username" : "VK Group ID"}
+                {addPlatform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")}
               </label>
               <input type="text" required value={addIdentifier}
-                placeholder={addPlatform === "telegram" ? "@phuket_rentals" : "12345678"}
+                placeholder={addPlatform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}
                 onChange={(e) => setAddIdentifier(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
             </div>
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Account</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.accountLabel")}</label>
               <select value={addAccountId} onChange={(e) => setAddAccountId(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                <option value="">Select account...</option>
+                <option value="">{t("groups.selectAccountPlaceholder")}</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.account_identifier} ({a.platform})</option>
                 ))}
@@ -318,16 +320,16 @@ export default function GroupsPage() {
           </div>
           <p className="text-[10px] text-zinc-600">
             {addPlatform === "telegram"
-              ? "The account will join this group and listen for messages. Use public groups only."
-              : "Enter the VK community ID (numeric). The system will monitor wall posts and comments."}
+              ? t("groups.hintTg")
+              : t("groups.hintVk")}
           </p>
           <div className="flex gap-3">
             <button type="submit" disabled={addSaving || !addIdentifier.trim() || !addAccountId}
               className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
-              {addSaving ? "Adding..." : "Add Group"}
+              {addSaving ? t("groups.adding") : t("groups.addBtn")}
             </button>
             <button type="button" onClick={() => setShowAdd(false)}
-              className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+              className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("groups.cancel")}</button>
           </div>
         </form>
       )}
@@ -337,12 +339,12 @@ export default function GroupsPage() {
         <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Platform</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Group</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Members</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Status</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Last Scan</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colPlatform")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colGroup")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colMembers")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colStatus")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colLastScan")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -363,9 +365,9 @@ export default function GroupsPage() {
               </td></tr>
             ) : groups.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                <p className="text-zinc-300 font-medium mb-2">No groups being monitored</p>
-                <p className="text-xs text-zinc-500 mb-1">Add a Telegram group or VK community to start monitoring for leads.</p>
-                <p className="text-xs text-zinc-600">The system will join the group and listen for messages 24/7.</p>
+                <p className="text-zinc-300 font-medium mb-2">{t("groups.empty")}</p>
+                <p className="text-xs text-zinc-500 mb-1">{t("groups.emptyDesc")}</p>
+                <p className="text-xs text-zinc-600">{t("groups.emptyHint")}</p>
               </td></tr>
             ) : (
               groups.map((g) => (
@@ -382,11 +384,11 @@ export default function GroupsPage() {
                   <td className="px-4 py-3 text-zinc-400">{(g.members_count || 0).toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[g.status] ?? STATUS_STYLES.idle}`}>
-                      {g.status === "scanning" ? "🟢 Scanning" : g.status === "error" ? "❌ Error" : "⏸ Idle"}
+                      {g.status === "scanning" ? t("groups.status.scanning") : g.status === "error" ? t("groups.status.error") : t("groups.status.idle")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-zinc-400 text-xs">
-                    {g.last_scan_at ? new Date(g.last_scan_at).toLocaleString() : <span className="text-zinc-600">never</span>}
+                    {g.last_scan_at ? new Date(g.last_scan_at).toLocaleString() : <span className="text-zinc-600">{t("groups.never")}</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
@@ -394,21 +396,21 @@ export default function GroupsPage() {
                         <button onClick={() => handleStop(g.id)}
                           disabled={actionBusy === g.id}
                           className="px-2.5 py-1 text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded hover:bg-rose-500/20 transition disabled:opacity-40">
-                          {actionBusy === g.id ? "..." : "Stop"}
+                          {actionBusy === g.id ? "..." : t("groups.stop")}
                         </button>
                       ) : (
                         <button onClick={() => handleStart(g.id)}
                           disabled={actionBusy === g.id || !g.account_id}
                           className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition disabled:opacity-40"
-                          title={!g.account_id ? "No account assigned" : "Start monitoring"}>
-                          {actionBusy === g.id ? "..." : "Start"}
+                          title={!g.account_id ? t("groups.noAccount") : t("groups.startMonitoring")}>
+                          {actionBusy === g.id ? "..." : t("groups.start")}
                         </button>
                       )}
                       <button onClick={() => handleRemove(g.id)}
                         disabled={actionBusy === g.id || g.status === "scanning"}
                         className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 transition disabled:opacity-40"
-                        title="Remove from monitoring">
-                        Remove
+                        title={t("groups.removeMonitoring")}>
+                        {t("groups.remove")}
                       </button>
                     </div>
                   </td>

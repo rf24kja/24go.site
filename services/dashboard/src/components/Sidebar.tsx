@@ -5,48 +5,47 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useWebSocket } from "@/lib/useWebSocket";
+import { useI18n } from "@/lib/i18n";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
   Cog, LogOut, Cross, Menu, Pen,
 } from "@/components/Icons";
 
-const NAV = [
-  { href: "/analytics", label: "Analytics", icon: ChartBar },
-  { href: "/leads", label: "Leads", icon: Crosshair },
-  { href: "/scoring", label: "Scoring", icon: Scales },
-  { href: "/targets", label: "Targets", icon: Radar },
-  { href: "/groups", label: "Groups", icon: Radio },
-  { href: "/accounts", label: "Accounts", icon: UserCircle },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/blog-admin", label: "Blog", icon: Pen },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/users", label: "Team", icon: UsersGroup },
-  { href: "/audit", label: "Audit Log", icon: FileText },
-  { href: "/health", label: "Health", icon: Heartbeat },
-  { href: "/settings", label: "Settings", icon: Cog },
-];
-
 export function Sidebar() {
   const pathname = usePathname();
   const { auth, logout } = useAuth();
   const { connected } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
+  const { t, lang, setLang } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Auto-close mobile sidebar on route change
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (!auth.token) return null;
 
+  const NAV = [
+    { href: "/analytics", label: t("nav.analytics"), icon: ChartBar },
+    { href: "/leads", label: t("nav.leads"), icon: Crosshair },
+    { href: "/scoring", label: t("nav.scoring"), icon: Scales },
+    { href: "/targets", label: t("nav.targets"), icon: Radar },
+    { href: "/groups", label: t("nav.groups"), icon: Radio },
+    { href: "/accounts", label: t("nav.accounts"), icon: UserCircle },
+    { href: "/campaigns", label: t("nav.campaigns"), icon: Megaphone },
+    { href: "/blog-admin", label: t("nav.blog"), icon: Pen },
+    { href: "/billing", label: t("nav.billing"), icon: CreditCard },
+    { href: "/users", label: t("nav.team"), icon: UsersGroup },
+    { href: "/audit", label: t("nav.audit"), icon: FileText },
+    { href: "/health", label: t("nav.health"), icon: Heartbeat },
+    { href: "/settings", label: t("nav.settings"), icon: Cog },
+  ];
+
   return (
     <>
-      {/* Mobile hamburger */}
       <button onClick={() => setMobileOpen(!mobileOpen)}
         className="fixed top-4 left-4 z-50 md:hidden bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-zinc-300 hover:text-zinc-100 transition">
         {mobileOpen ? <Cross className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
-      {/* Backdrop */}
       {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setMobileOpen(false)} />}
 
       <aside className={`fixed top-0 bottom-0 z-40 bg-zinc-950 border-r border-zinc-800 flex flex-col transition-all duration-200
@@ -55,7 +54,7 @@ export function Sidebar() {
           <h1 className="text-lg font-bold text-zinc-100">24<span className="text-emerald-400">GO</span></h1>
           <div className="flex items-center gap-2 mt-1">
             <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`} />
-            <p className="text-xs text-zinc-500">{connected ? "Live" : "Offline"}</p>
+            <p className="text-xs text-zinc-500">{connected ? t("sidebar.live") : t("sidebar.offline")}</p>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -78,10 +77,25 @@ export function Sidebar() {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-zinc-800">
+        <div className="p-4 border-t border-zinc-800 space-y-2">
+          {/* Language toggle */}
+          <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
+            <button
+              onClick={() => setLang("en")}
+              className={`flex-1 text-xs py-1 rounded transition ${lang === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLang("ru")}
+              className={`flex-1 text-xs py-1 rounded transition ${lang === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              RU
+            </button>
+          </div>
           <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
-          <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 mt-1.5 transition flex items-center gap-1.5">
-            <LogOut className="w-4 h-4" /> Sign out
+          <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5">
+            <LogOut className="w-4 h-4" /> {t("sidebar.signOut")}
           </button>
         </div>
       </aside>

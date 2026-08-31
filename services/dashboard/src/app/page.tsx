@@ -5,9 +5,11 @@ import Link from "next/link";
 import {
   Search, Bot, ChartBar, UsersGroup, Megaphone, CreditCard,
 } from "@/components/Icons";
+import { useI18n } from "@/lib/i18n";
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
+  const { t } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -24,11 +26,11 @@ export default function LandingPage() {
             <span className="text-xl font-bold tracking-tight">24<span className="text-emerald-400">GO</span></span>
           </Link>
           <div className="flex items-center gap-6 text-sm">
-            <a href="#features" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">Features</a>
-            <a href="#how" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">How it works</a>
-            <Link href="/login" className="text-zinc-400 hover:text-zinc-100 transition">Sign in</Link>
+            <a href="#features" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navFeatures")}</a>
+            <a href="#how" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navHow")}</a>
+            <Link href="/login" className="text-zinc-400 hover:text-zinc-100 transition">{t("landing.navSignIn")}</Link>
             <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/20">
-              Get Started
+              {t("landing.ctaButton")}
             </Link>
           </div>
         </div>
@@ -36,49 +38,46 @@ export default function LandingPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <section className="relative pt-32 pb-24 lg:pt-44 lg:pb-36 px-6 lg:px-12 overflow-hidden">
-        {/* Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-4xl mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-full border border-emerald-500/20 mb-8">
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-            B2B Lead Generation Platform
+            {t("landing.badge")}
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-[1.1] tracking-tight mb-6">
-            Find <span className="text-emerald-400 relative">qualified leads
+            {t("landing.heroTitle1")}<span className="text-emerald-400 relative">{t("landing.heroTitleHighlight")}
               <svg className="absolute -bottom-1 left-0 w-full h-3 text-emerald-500/30" viewBox="0 0 200 12" fill="none"><path d="M2 8c30-6 60-6 90-3s60 3 106-2" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
             </span>
-            <br />in Telegram &amp; VK
+            <br />{t("landing.heroTitle2")}
           </h1>
 
           <p className="text-lg lg:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            AI-powered platform that discovers, qualifies, and manages B2B prospects
-            from social media. Multi-account, multi-tenant, fully automated.
+            {t("landing.heroDesc")}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/login" className="w-full sm:w-auto px-8 py-3.5 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-base shadow-xl shadow-emerald-500/25">
-              Start Free Trial
+              {t("landing.startTrial")}
             </Link>
             <a href="#features" className="w-full sm:w-auto px-8 py-3.5 bg-zinc-800/80 text-zinc-300 rounded-xl font-medium hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 transition text-base">
-              See Features
+              {t("landing.seeFeatures")}
             </a>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-8 mt-16 max-w-lg mx-auto">
             <div>
-              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">10x</div>
-              <div className="text-xs text-zinc-500 mt-1">Lead discovery speed</div>
+              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">{t("landing.stat1Value")}</div>
+              <div className="text-xs text-zinc-500 mt-1">{t("landing.stat1Label")}</div>
             </div>
             <div>
-              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">AI</div>
-              <div className="text-xs text-zinc-500 mt-1">Intent classification</div>
+              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">{t("landing.stat2Value")}</div>
+              <div className="text-xs text-zinc-500 mt-1">{t("landing.stat2Label")}</div>
             </div>
             <div>
-              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">24/7</div>
-              <div className="text-xs text-zinc-500 mt-1">Automated pipeline</div>
+              <div className="text-2xl lg:text-3xl font-bold text-zinc-100">{t("landing.stat3Value")}</div>
+              <div className="text-xs text-zinc-500 mt-1">{t("landing.stat3Label")}</div>
             </div>
           </div>
         </div>
@@ -88,17 +87,17 @@ export default function LandingPage() {
       <section id="features" className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">Everything you need</h2>
-            <p className="text-zinc-400 max-w-lg mx-auto">From discovery to conversion — one platform for your entire lead generation workflow.</p>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.featuresTitle")}</h2>
+            <p className="text-zinc-400 max-w-lg mx-auto">{t("landing.featuresDesc")}</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <FeatureCard Icon={Search} title="Auto-Discovery" desc="Find prospects in target groups automatically. Parse members, messages, and engagement signals across Telegram and VK." />
-            <FeatureCard Icon={Bot} title="AI Classification" desc="LLM-powered lead scoring. HOT/WARM/COLD intent detection with customizable scoring rules." />
-            <FeatureCard Icon={ChartBar} title="Real-time Dashboard" desc="Kanban pipeline, analytics, CSV export. Track every lead from discovery to conversion in real-time." />
-            <FeatureCard Icon={UsersGroup} title="Multi-Account" desc="Manage dozens of Telegram accounts with automatic warm-up, daily quotas, and anti-spam protection." />
-            <FeatureCard Icon={Megaphone} title="Smart Campaigns" desc="Schedule posts with spintax, cron expressions, and per-campaign analytics." />
-            <FeatureCard Icon={CreditCard} title="Billing & Plans" desc="Stripe and YooKassa integration. Usage-based limits with real-time quota enforcement." />
+            <FeatureCard Icon={Search} title={t("landing.feature1Title")} desc={t("landing.feature1Desc")} />
+            <FeatureCard Icon={Bot} title={t("landing.feature2Title")} desc={t("landing.feature2Desc")} />
+            <FeatureCard Icon={ChartBar} title={t("landing.feature3Title")} desc={t("landing.feature3Desc")} />
+            <FeatureCard Icon={UsersGroup} title={t("landing.feature4Title")} desc={t("landing.feature4Desc")} />
+            <FeatureCard Icon={Megaphone} title={t("landing.feature5Title")} desc={t("landing.feature5Desc")} />
+            <FeatureCard Icon={CreditCard} title={t("landing.feature6Title")} desc={t("landing.feature6Desc")} />
           </div>
         </div>
       </section>
@@ -107,14 +106,14 @@ export default function LandingPage() {
       <section id="how" className="py-24 px-6 lg:px-12 bg-zinc-900/50 border-t border-zinc-800/50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">How it works</h2>
-            <p className="text-zinc-400">Three steps to automated lead generation.</p>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.howTitle")}</h2>
+            <p className="text-zinc-400">{t("landing.howDesc")}</p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-8">
-            <Step num="1" title="Connect" desc="Add your Telegram accounts and set target groups. We handle warm-up and quotas automatically." />
-            <Step num="2" title="Discover" desc="AI scans target communities, captures messages, and qualifies leads in real-time." />
-            <Step num="3" title="Convert" desc="Qualified leads appear in your Kanban pipeline. Export to CRM or push to n8n webhooks." />
+            <Step num="1" title={t("landing.step1Title")} desc={t("landing.step1Desc")} />
+            <Step num="2" title={t("landing.step2Title")} desc={t("landing.step2Desc")} />
+            <Step num="3" title={t("landing.step3Title")} desc={t("landing.step3Desc")} />
           </div>
         </div>
       </section>
@@ -123,26 +122,23 @@ export default function LandingPage() {
       <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">Автоматическая лидогенерация для роста бизнеса</h2>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.whyTitle")}</h2>
             <p className="text-zinc-400 max-w-2xl mx-auto">
-              24GO помогает B2B-компаниям находить клиентов в Telegram и ВКонтакте.
-              Наш AI анализирует сообщения в целевых группах и автоматически определяет потенциальных клиентов — лидов с высоким намерением на покупку.
+              {t("landing.whyDesc")}
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-8">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-              <h3 className="font-semibold text-zinc-100 mb-3">SEO и маркетинг</h3>
+              <h3 className="font-semibold text-zinc-100 mb-3">{t("landing.seoTitle")}</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
-                Парсинг Telegram-групп позволяет находить аудиторию, заинтересованную в вашем продукте.
-                Автоматический сбор лидов из социальных сетей — самый эффективный способ увеличить трафик и продажи.
+                {t("landing.seoDesc")}
               </p>
             </div>
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-              <h3 className="font-semibold text-zinc-100 mb-3">AI-классификация лидов</h3>
+              <h3 className="font-semibold text-zinc-100 mb-3">{t("landing.aiTitle")}</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
-                Искусственный интеллект анализирует каждое сообщение и определяет температуру лида:
-                HOT (горячий), WARM (тёплый) или COLD (холодный). Фокусируйтесь на самых перспективных клиентах.
+                {t("landing.aiDesc")}
               </p>
             </div>
           </div>
@@ -152,10 +148,10 @@ export default function LandingPage() {
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold mb-6">Ready to automate your lead generation?</h2>
-          <p className="text-zinc-400 mb-10 max-w-lg mx-auto">Start your free trial today. No credit card required.</p>
+          <h2 className="text-3xl lg:text-4xl font-bold mb-6">{t("landing.ctaTitle")}</h2>
+          <p className="text-zinc-400 mb-10 max-w-lg mx-auto">{t("landing.ctaDesc")}</p>
           <Link href="/login" className="inline-block px-10 py-4 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition text-lg shadow-xl shadow-emerald-500/25">
-            Get Started Free
+            {t("landing.ctaButton")}
           </Link>
         </div>
       </section>
@@ -167,10 +163,10 @@ export default function LandingPage() {
             <span className="text-lg font-bold">24<span className="text-emerald-400">GO</span></span>
           </div>
           <div className="flex items-center gap-6 text-sm text-zinc-500">
-            <a href="#features" className="hover:text-zinc-300 transition">Features</a>
-            <Link href="/login" className="hover:text-zinc-300 transition">Sign in</Link>
+            <a href="#features" className="hover:text-zinc-300 transition">{t("landing.navFeatures")}</a>
+            <Link href="/login" className="hover:text-zinc-300 transition">{t("landing.navSignIn")}</Link>
           </div>
-          <span className="text-xs text-zinc-600">&copy; {new Date().getFullYear()} 24GO. All rights reserved.</span>
+          <span className="text-xs text-zinc-600">{t("landing.copyright", { year: new Date().getFullYear() })}</span>
         </div>
       </footer>
     </div>

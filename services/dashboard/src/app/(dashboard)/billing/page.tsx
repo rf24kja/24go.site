@@ -5,25 +5,26 @@ import { useAuth } from "@/lib/auth";
 import { getSubscription, getUsage, createCheckout } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
+import { useI18n } from "@/lib/i18n";
 
-const PLANS = [
+const getPlans = (t: (k: string) => string) => [
   {
-    name: "Starter",
-    price: "$75",
-    period: "/mo",
-    features: ["1,500 posts/mo", "1M tokens", "5 accounts", "Email support"],
+    name: t("plans.starter"),
+    price: t("plans.starterPrice"),
+    period: t("plans.perMonth"),
+    features: [t("plans.starterPosts"), t("plans.starterTokens"), t("plans.starterAccounts"), t("plans.starterSupport")],
   },
   {
-    name: "Pro",
-    price: "$199",
-    period: "/mo",
-    features: ["7,500 posts/mo", "5M tokens", "20 accounts", "Priority support", "API access"],
+    name: t("plans.pro"),
+    price: t("plans.proPrice"),
+    period: t("plans.perMonth"),
+    features: [t("plans.proPosts"), t("plans.proTokens"), t("plans.proAccounts"), t("plans.proSupport"), t("plans.proApi")],
   },
   {
-    name: "Enterprise",
-    price: "$499",
-    period: "/mo",
-    features: ["Unlimited posts", "Unlimited tokens", "Unlimited accounts", "Dedicated support", "Custom integrations", "SLA"],
+    name: t("plans.enterprise"),
+    price: t("plans.enterprisePrice"),
+    period: t("plans.perMonth"),
+    features: [t("plans.enterprisePosts"), t("plans.enterpriseTokens"), t("plans.enterpriseAccounts"), t("plans.enterpriseSupport"), t("plans.enterpriseIntegrations"), t("plans.enterpriseSla")],
   },
 ];
 
@@ -37,10 +38,13 @@ const PLAN_COLORS: Record<string, string> = {
 export default function BillingPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [subscription, setSubscription] = useState<any>(null);
   const [usage, setUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
+
+  const plans = getPlans(t);
 
   useEffect(() => {
     if (!auth?.token) return;
@@ -60,7 +64,7 @@ export default function BillingPage() {
       if (res.checkout_url) window.open(res.checkout_url);
     } catch (e) {
       console.error("Checkout failed", e);
-      toast("Checkout failed. Please try again.", "error");
+      toast(t("billing.checkoutFailed"), "error");
     } finally {
       setCheckoutBusy(null);
     }
@@ -124,11 +128,11 @@ export default function BillingPage() {
 
   return (
     <div className="p-6 space-y-8 animate-fade-in">
-      <h1 className="text-2xl font-semibold text-zinc-100">Billing</h1>
+      <h1 className="text-2xl font-semibold text-zinc-100">{t("billing.title")}</h1>
 
       {/* Current Subscription */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-medium text-zinc-400">Current Subscription</h2>
+        <h2 className="text-sm font-medium text-zinc-400">{t("billing.currentSubscription")}</h2>
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 rounded-lg text-sm font-medium border ${planBadge} capitalize`}>
@@ -142,10 +146,12 @@ export default function BillingPage() {
             {currentPlan === "trial" && sub.current_period_end ? (
               (() => {
                 const daysLeft = Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000));
-                return daysLeft > 0 ? `Trial ends in ${daysLeft} days` : "Trial expired";
+                return daysLeft > 0
+                  ? t("billing.trialEnds").replace("{daysLeft}", String(daysLeft))
+                  : t("billing.trialExpired");
               })()
             ) : (
-              <>Renews: {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—"}</>
+              <>{t("billing.renews").replace("{date}", sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—")}</>
             )}
           </div>
         </div>
@@ -154,7 +160,7 @@ export default function BillingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <div>
             <div className="flex justify-between text-xs text-zinc-500 mb-1">
-              <span>Posts This Month</span>
+              <span>{t("billing.postsThisMonth")}</span>
               <span>{postsUsed} / {postsLimit}</span>
             </div>
             <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
@@ -166,8 +172,8 @@ export default function BillingPage() {
           </div>
           <div>
             <div className="flex justify-between text-xs text-zinc-500 mb-1">
-              <span>Token Credits</span>
-              <span>{tokenBalance.toLocaleString()} remaining</span>
+              <span>{t("billing.tokenCredits")}</span>
+              <span>{t("billing.remaining").replace("{balance}", tokenBalance.toLocaleString())}</span>
             </div>
             <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
@@ -182,15 +188,15 @@ export default function BillingPage() {
       {/* Usage */}
       {usage && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Usage Summary</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("billing.usageSummary")}</h2>
           <div className="flex gap-8">
             <div>
               <p className="text-2xl font-semibold text-zinc-100">{(usage.total_tokens_used ?? 0).toLocaleString()}</p>
-              <p className="text-zinc-400 text-xs">Total Tokens Used</p>
+              <p className="text-zinc-400 text-xs">{t("billing.totalTokensUsed")}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold text-zinc-100">${(usage.total_cost_usd ?? 0).toFixed(2)}</p>
-              <p className="text-zinc-400 text-xs">Total Cost</p>
+              <p className="text-zinc-400 text-xs">{t("billing.totalCost")}</p>
             </div>
           </div>
         </div>
@@ -198,9 +204,9 @@ export default function BillingPage() {
 
       {/* Plan cards */}
       <div>
-        <h2 className="text-sm font-medium text-zinc-400 mb-4">Available Plans</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("billing.availablePlans")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PLANS.map((p) => {
+          {plans.map((p) => {
             const isCurrent = currentPlan === p.name.toLowerCase();
             return (
               <div
@@ -211,7 +217,7 @@ export default function BillingPage() {
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-zinc-100 font-medium text-lg">{p.name}</h3>
-                  {isCurrent && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">CURRENT</span>}
+                  {isCurrent && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">{t("billing.current")}</span>}
                 </div>
                 <div className="mt-2 mb-4">
                   <span className="text-3xl font-bold text-zinc-100">{p.price}</span>
@@ -236,7 +242,7 @@ export default function BillingPage() {
                         : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
                   }`}
                 >
-                  {isCurrent ? "Current Plan" : checkoutBusy === p.name.toLowerCase() ? "Redirecting..." : "Upgrade"}
+                  {isCurrent ? t("billing.currentPlan") : checkoutBusy === p.name.toLowerCase() ? t("billing.redirecting") : t("billing.upgrade")}
                 </button>
               </div>
             );

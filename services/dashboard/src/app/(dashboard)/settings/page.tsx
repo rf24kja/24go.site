@@ -12,20 +12,22 @@ import {
   BrainCircuit, Flame, Send, Bell, UsersGroup, Cog,
   type IconProps,
 } from "@/components/Icons";
+import { useI18n } from "@/lib/i18n";
 
 type Section = "llm" | "warmup" | "posting" | "notifications" | "groups" | "account";
 
-const SECTIONS: { key: Section; label: string; Icon: React.FC<IconProps> }[] = [
-  { key: "llm", label: "AI & Classification", Icon: BrainCircuit },
-  { key: "warmup", label: "Account Warmup", Icon: Flame },
-  { key: "posting", label: "Posting & UTM", Icon: Send },
-  { key: "notifications", label: "Notifications", Icon: Bell },
-  { key: "groups", label: "Group Scanning", Icon: UsersGroup },
-  { key: "account", label: "Account & Billing", Icon: Cog },
+const getSections = (t: (k: string) => string): { key: Section; label: string; Icon: React.FC<IconProps> }[] => [
+  { key: "llm", label: t("settings.section.ai"), Icon: BrainCircuit },
+  { key: "warmup", label: t("settings.section.warmup"), Icon: Flame },
+  { key: "posting", label: t("settings.section.posting"), Icon: Send },
+  { key: "notifications", label: t("settings.section.notifications"), Icon: Bell },
+  { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
+  { key: "account", label: t("settings.section.account"), Icon: Cog },
 ];
 
 export default function SettingsPage() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [activeSection, setActiveSection] = useState<Section>("llm");
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [defaults, setDefaults] = useState<Record<string, any>>({});
@@ -33,6 +35,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+
+  const SECTIONS = getSections(t);
 
   const loadSettings = useCallback(async () => {
     if (!auth?.token) return;
@@ -56,14 +60,14 @@ export default function SettingsPage() {
       setTimeout(() => setSaved(false), 2000);
       await loadSettings();
     } catch (e: any) {
-      setError(e.message || "Failed to save");
+      setError(e.message || t("settings.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleResetSection = async (section: string) => {
-    if (!auth?.token || !confirm(`Reset ${section} to defaults?`)) return;
+    if (!auth?.token || !confirm(t("settings.resetConfirm").replace("{section}", section))) return;
     try {
       await resetSettingsSection(auth.token, section);
       await loadSettings();
@@ -74,7 +78,7 @@ export default function SettingsPage() {
     <div className={`flex gap-6 max-w-6xl${!loading ? " animate-fade-in" : ""}`}>
       {/* Sidebar nav */}
       <nav className="w-52 shrink-0 space-y-1">
-        <h1 className="text-lg font-bold mb-4">Settings</h1>
+        <h1 className="text-lg font-bold mb-4">{t("settings.title")}</h1>
         {SECTIONS.map((s) => (
           <button key={s.key} onClick={() => { setActiveSection(s.key); setSaved(false); setError(""); }}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
@@ -95,7 +99,7 @@ export default function SettingsPage() {
           </div>
         ) : (
           <>
-            {saved && <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-400">Saved!</div>}
+            {saved && <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-400">{t("settings.saved")}</div>}
             {error && <div className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">{error}</div>}
 
             {activeSection === "llm" && <LLMSection settings={settings.llm || {}} defaults={defaults.llm || {}} onSave={(v: Record<string, any>) => handleSaveSection("llm", v)} onReset={() => handleResetSection("llm")} saving={saving} />}
@@ -175,14 +179,14 @@ function ListInput({ value, onChange, placeholder }: { value: string[]; onChange
   );
 }
 
-function SectionActions({ onSave, onReset, saving }: { onSave: () => void; onReset: () => void; saving: boolean }) {
+function SectionActions({ onSave, onReset, saving, t }: { onSave: () => void; onReset: () => void; saving: boolean; t: (k: string) => string }) {
   return (
     <div className="flex items-center gap-3 pt-4 border-t border-zinc-800">
       <button onClick={onSave} disabled={saving}
         className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
-        {saving ? "Saving..." : "Save Settings"}
+        {saving ? t("settings.saving") : t("settings.save")}
       </button>
-      <button onClick={onReset} className="px-4 py-2 text-zinc-500 text-sm hover:text-zinc-300 transition">Reset to defaults</button>
+      <button onClick={onReset} className="px-4 py-2 text-zinc-500 text-sm hover:text-zinc-300 transition">{t("settings.resetDefaults")}</button>
     </div>
   );
 }
@@ -191,65 +195,66 @@ function SectionActions({ onSave, onReset, saving }: { onSave: () => void; onRes
 function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={BrainCircuit} title="AI & Classification" desc="Configure how incoming messages are classified into HOT / WARM / COLD / SPAM" />
+      <SectionHeader Icon={BrainCircuit} title={t("settings.aiClassification")} desc={t("settings.aiDesc")} />
 
-      <Card title="LLM Provider">
+      <Card title={t("settings.llmProvider")}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Provider" hint="DeepSeek is cheaper, keyword_only skips LLM entirely">
-            <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)} 
+          <Field label={t("settings.provider")} hint={t("settings.providerHint")}>
+            <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)}
               options={[
-                { value: "auto", label: "Auto (try all providers)" },
-                { value: "openrouter", label: "OpenRouter (free models)" },
-                { value: "deepseek", label: "DeepSeek" },
-                { value: "openai", label: "OpenAI" },
-                { value: "keyword_only", label: "Keywords only (no LLM)" },
+                { value: "auto", label: t("settings.providerAuto") },
+                { value: "openrouter", label: t("settings.providerOpenrouter") },
+                { value: "deepseek", label: t("settings.providerDeepseek") },
+                { value: "openai", label: t("settings.providerOpenai") },
+                { value: "keyword_only", label: t("settings.providerKeyword") },
               ]} />
           </Field>
-          <Field label="Model">
+          <Field label={t("settings.model")}>
             <Input value={cfg.model || ""} onChange={(v) => set("model", v)} placeholder="deepseek-chat" />
           </Field>
         </div>
       </Card>
 
-      <Card title="System Prompt">
-        <Field label="LLM System Prompt" hint="Instructions sent to the LLM for classification">
+      <Card title={t("settings.systemPrompt")}>
+        <Field label={t("settings.llmPrompt")} hint={t("settings.llmPromptHint")}>
           <textarea value={cfg.system_prompt || ""} onChange={(e) => set("system_prompt", e.target.value)} rows={8}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
         </Field>
       </Card>
 
-      <Card title="Keyword Rules">
+      <Card title={t("settings.keywordRules")}>
         <div className="space-y-4">
-          <Field label="HOT Keywords" hint={`Minimum ${cfg.hot_threshold || 2} matches = HOT`}>
-            <ListInput value={cfg.hot_keywords || []} onChange={(v) => set("hot_keywords", v)} placeholder="Add keyword..." />
+          <Field label={t("settings.hotKeywords")} hint={t("settings.hotKeywordsHint").replace("{threshold}", String(cfg.hot_threshold || 2))}>
+            <ListInput value={cfg.hot_keywords || []} onChange={(v) => set("hot_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
-          <Field label="WARM Keywords" hint={`Minimum ${cfg.warm_threshold || 1} matches = WARM`}>
-            <ListInput value={cfg.warm_keywords || []} onChange={(v) => set("warm_keywords", v)} placeholder="Add keyword..." />
+          <Field label={t("settings.warmKeywords")} hint={t("settings.warmKeywordsHint").replace("{threshold}", String(cfg.warm_threshold || 1))}>
+            <ListInput value={cfg.warm_keywords || []} onChange={(v) => set("warm_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
-          <Field label="SPAM Keywords">
-            <ListInput value={cfg.spam_keywords || []} onChange={(v) => set("spam_keywords", v)} placeholder="Add keyword..." />
+          <Field label={t("settings.spamKeywords")}>
+            <ListInput value={cfg.spam_keywords || []} onChange={(v) => set("spam_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Thresholds">
+      <Card title={t("settings.thresholds")}>
         <div className="grid grid-cols-3 gap-4">
-          <Field label="HOT min matches" hint="Keyword matches needed for HOT">
+          <Field label={t("settings.hotMinMatches")} hint={t("settings.hotMinHint")}>
             <NumberInput value={cfg.hot_threshold || 2} onChange={(v) => set("hot_threshold", v)} min={1} max={10} />
           </Field>
-          <Field label="WARM min matches">
+          <Field label={t("settings.warmMinMatches")}>
             <NumberInput value={cfg.warm_threshold || 1} onChange={(v) => set("warm_threshold", v)} min={1} max={10} />
           </Field>
-          <Field label="LLM confidence threshold" hint="Min confidence to accept LLM result">
+          <Field label={t("settings.confidenceThreshold")} hint={t("settings.confidenceHint")}>
             <NumberInput value={cfg.confidence_threshold || 0.5} onChange={(v) => set("confidence_threshold", v)} min={0} max={1} step={0.05} />
           </Field>
         </div>
       </Card>
 
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} />
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }
@@ -258,59 +263,60 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
 function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={Flame} title="Account Warmup" desc="Configure how new Telegram accounts are warmed up before production use" />
+      <SectionHeader Icon={Flame} title={t("settings.accountWarmup")} desc={t("settings.warmupDesc")} />
 
-      <Card title="Warmup Channels">
-        <Field label="Reading Channels" hint="Safe channels for passive reading during warmup">
-          <ListInput value={cfg.channels || []} onChange={(v) => set("channels", v)} placeholder="https://t.me/s/channelname" />
+      <Card title={t("settings.warmupChannels")}>
+        <Field label={t("settings.readingChannels")} hint={t("settings.readingChannelsHint")}>
+          <ListInput value={cfg.channels || []} onChange={(v) => set("channels", v)} placeholder={t("settings.channelPlaceholder")} />
         </Field>
         <div className="mt-4">
-          <Field label="Reactions" hint="Emoji used for passive reactions">
-            <ListInput value={cfg.reactions || []} onChange={(v) => set("reactions", v)} placeholder="Add emoji..." />
+          <Field label={t("settings.reactions")} hint={t("settings.reactionsHint")}>
+            <ListInput value={cfg.reactions || []} onChange={(v) => set("reactions", v)} placeholder={t("settings.addEmoji")} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Stage Duration">
+      <Card title={t("settings.stageDuration")}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Stage 1 (Passive)" hint="Days of read-only activity">
+          <Field label={t("settings.stage1Passive")} hint={t("settings.stage1Hint")}>
             <NumberInput value={cfg.stage1_days || 3} onChange={(v) => set("stage1_days", v)} min={1} max={14} />
           </Field>
-          <Field label="Stage 2 (Soft Engagement)" hint="Days of light interactions">
+          <Field label={t("settings.stage2Engagement")} hint={t("settings.stage2Hint")}>
             <NumberInput value={cfg.stage2_days || 4} onChange={(v) => set("stage2_days", v)} min={1} max={14} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Action Limits">
+      <Card title={t("settings.actionLimits")}>
         <div className="grid grid-cols-3 gap-4">
-          <Field label="Stage 1 actions/day">
+          <Field label={t("settings.stage1Actions")}>
             <NumberInput value={cfg.stage1_actions_per_day || 5} onChange={(v) => set("stage1_actions_per_day", v)} min={1} max={20} />
           </Field>
-          <Field label="Stage 2 actions/day">
+          <Field label={t("settings.stage2Actions")}>
             <NumberInput value={cfg.stage2_actions_per_day || 10} onChange={(v) => set("stage2_actions_per_day", v)} min={1} max={30} />
           </Field>
-          <Field label="Stage 3 (Production) limit">
+          <Field label={t("settings.stage3Limit")}>
             <NumberInput value={cfg.stage3_daily_limit || 20} onChange={(v) => set("stage3_daily_limit", v)} min={5} max={50} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Timing">
+      <Card title={t("settings.timing")}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Min delay between actions (sec)">
+          <Field label={t("settings.minDelay")}>
             <NumberInput value={cfg.random_delay_min_sec || 2} onChange={(v) => set("random_delay_min_sec", v)} min={1} max={30} />
           </Field>
-          <Field label="Max delay between actions (sec)">
+          <Field label={t("settings.maxDelay")}>
             <NumberInput value={cfg.random_delay_max_sec || 8} onChange={(v) => set("random_delay_max_sec", v)} min={2} max={60} />
           </Field>
         </div>
       </Card>
 
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} />
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }
@@ -319,43 +325,44 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
 function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={Send} title="Posting & UTM" desc="Configure default posting behavior and UTM tracking parameters" />
+      <SectionHeader Icon={Send} title={t("settings.postingUtm")} desc={t("settings.postingDesc")} />
 
-      <Card title="UTM Defaults">
+      <Card title={t("settings.utmDefaults")}>
         <div className="grid grid-cols-3 gap-4">
-          <Field label="UTM Source">
+          <Field label={t("settings.utmSource")}>
             <Input value={cfg.utm_source || "leadgen"} onChange={(v) => set("utm_source", v)} />
           </Field>
-          <Field label="UTM Medium">
+          <Field label={t("settings.utmMedium")}>
             <Input value={cfg.utm_medium || "social"} onChange={(v) => set("utm_medium", v)} />
           </Field>
-          <Field label="UTM Campaign">
+          <Field label={t("settings.utmCampaign")}>
             <Input value={cfg.utm_campaign || "auto"} onChange={(v) => set("utm_campaign", v)} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Posting Behavior">
+      <Card title={t("settings.postingBehavior")}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Delay between posts (sec)" hint="Minimum time between posts from same account">
+          <Field label={t("settings.delayBetweenPosts")} hint={t("settings.delayHint")}>
             <NumberInput value={cfg.delay_between_posts_sec || 30} onChange={(v) => set("delay_between_posts_sec", v)} min={5} max={300} />
           </Field>
-          <Field label="Max comment replies per post">
+          <Field label={t("settings.maxCommentReplies")}>
             <NumberInput value={cfg.max_comment_replies_per_post || 10} onChange={(v) => set("max_comment_replies_per_post", v)} min={1} max={50} />
           </Field>
-          <Field label="Comment scrape delay (sec)" hint="Wait before scraping comments on own post">
+          <Field label={t("settings.commentScrapeDelay")} hint={t("settings.commentScrapeHint")}>
             <NumberInput value={cfg.comment_scrape_delay_sec || 120} onChange={(v) => set("comment_scrape_delay_sec", v)} min={30} max={600} />
           </Field>
-          <Field label="Spintax max depth">
+          <Field label={t("settings.spintaxDepth")}>
             <NumberInput value={cfg.spintax_max_depth || 10} onChange={(v) => set("spintax_max_depth", v)} min={1} max={20} />
           </Field>
         </div>
       </Card>
 
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} />
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }
@@ -364,14 +371,15 @@ function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
 function NotificationsSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={Bell} title="Notifications" desc="Configure when and how you receive notifications about new leads" />
+      <SectionHeader Icon={Bell} title={t("settings.notifications")} desc={t("settings.notifDesc")} />
 
-      <Card title="Email Notifications">
+      <Card title={t("settings.emailNotifications")}>
         <div className="space-y-4">
-          <Field label="Notify on intent scores" hint="Which lead scores trigger email notifications">
+          <Field label={t("settings.notifyOnScores")} hint={t("settings.notifyHint")}>
             <div className="flex gap-3">
               {["HOT", "WARM", "COLD", "SPAM"].map((score) => {
                 const active = (cfg.notify_on || ["HOT", "WARM"]).includes(score);
@@ -387,22 +395,22 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
               })}
             </div>
           </Field>
-          <Field label="Email subject prefix">
+          <Field label={t("settings.emailSubjectPrefix")}>
             <Input value={cfg.email_subject_prefix || "[LeadGen]"} onChange={(v) => set("email_subject_prefix", v)} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Daily Summary">
+      <Card title={t("settings.dailySummary")}>
         <div className="space-y-4">
-          <Toggle value={cfg.daily_summary !== false} onChange={(v) => set("daily_summary", v)} label="Send daily summary email" />
-          <Field label="Summary hour (UTC)">
+          <Toggle value={cfg.daily_summary !== false} onChange={(v) => set("daily_summary", v)} label={t("settings.sendDailySummary")} />
+          <Field label={t("settings.summaryHour")}>
             <NumberInput value={cfg.daily_summary_hour || 9} onChange={(v) => set("daily_summary_hour", v)} min={0} max={23} />
           </Field>
         </div>
       </Card>
 
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} />
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }
@@ -411,38 +419,39 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
 function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={UsersGroup} title="Group Scanning" desc="Configure how monitored Telegram groups and VK communities are scanned for leads" />
+      <SectionHeader Icon={UsersGroup} title={t("settings.groupScanning")} desc={t("settings.groupsDesc")} />
 
-      <Card title="Scan Behavior">
+      <Card title={t("settings.scanBehavior")}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Scan interval (minutes)" hint="How often groups are checked for new messages">
+          <Field label={t("settings.scanInterval")} hint={t("settings.scanIntervalHint")}>
             <NumberInput value={cfg.scan_interval_min || 30} onChange={(v) => set("scan_interval_min", v)} min={5} max={180} />
           </Field>
-          <Field label="Max messages per scan">
+          <Field label={t("settings.maxMessagesPerScan")}>
             <NumberInput value={cfg.max_messages_per_scan || 50} onChange={(v) => set("max_messages_per_scan", v)} min={10} max={200} />
           </Field>
         </div>
       </Card>
 
-      <Card title="Auto-Discovery">
+      <Card title={t("settings.autoDiscovery")}>
         <div className="space-y-4">
-          <Toggle value={cfg.auto_discover_enabled !== false} onChange={(v) => set("auto_discover_enabled", v)} label="Enable auto-discovery of groups" />
+          <Toggle value={cfg.auto_discover_enabled !== false} onChange={(v) => set("auto_discover_enabled", v)} label={t("settings.enableAutoDiscover")} />
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Discovery interval (hours)">
+            <Field label={t("settings.discoverInterval")}>
               <NumberInput value={cfg.auto_discover_interval_hours || 6} onChange={(v) => set("auto_discover_interval_hours", v)} min={1} max={48} />
             </Field>
-            <Field label="Min members count" hint="Only discover groups with this many members">
+            <Field label={t("settings.minMembers")} hint={t("settings.minMembersHint")}>
               <NumberInput value={cfg.min_members_count || 100} onChange={(v) => set("min_members_count", v)} min={10} max={10000} />
             </Field>
           </div>
-          <Toggle value={cfg.prefer_open_comments !== false} onChange={(v) => set("prefer_open_comments", v)} label="Prefer groups with open comments" />
+          <Toggle value={cfg.prefer_open_comments !== false} onChange={(v) => set("prefer_open_comments", v)} label={t("settings.preferOpenComments")} />
         </div>
       </Card>
 
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} />
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }
@@ -450,6 +459,7 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
 // ── Section: Account & Billing ───────────────────────────────────
 function AccountSection() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [companyName, setCompanyName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -484,7 +494,7 @@ function AccountSection() {
   };
 
   const handleSeed = async () => {
-    if (!auth?.token || !confirm("Load demo data?")) return;
+    if (!auth?.token || !confirm(t("settings.loadDemoConfirm"))) return;
     setSeeding(true);
     try { const r = await seedDemoData(auth.token); setSeedResult(r); getSystemInfo(auth.token).then(setSysInfo); }
     finally { setSeeding(false); }
@@ -503,55 +513,55 @@ function AccountSection() {
   const handlePassChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth?.token) return;
-    if (newPass !== confirmPass) { setPassErr("Passwords don't match"); return; }
-    if (newPass.length < 8) { setPassErr("Min 8 characters"); return; }
+    if (newPass !== confirmPass) { setPassErr(t("settings.passwordsMismatch")); return; }
+    if (newPass.length < 8) { setPassErr(t("settings.minChars")); return; }
     setPassErr(""); setPassMsg("");
-    try { await changePassword(auth.token, currentPass, newPass); setPassMsg("Changed!"); setCurrentPass(""); setNewPass(""); setConfirmPass(""); }
-    catch (err: any) { setPassErr(err.message || "Failed"); }
+    try { await changePassword(auth.token, currentPass, newPass); setPassMsg(t("settings.changed")); setCurrentPass(""); setNewPass(""); setConfirmPass(""); }
+    catch (err: any) { setPassErr(err.message || t("settings.saveFailed")); }
   };
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={Cog} title="Account & Billing" desc="Company profile, subscription, and security" />
+      <SectionHeader Icon={Cog} title={t("settings.accountBilling")} desc={t("settings.accountDesc")} />
 
-      <Card title="Company Profile">
+      <Card title={t("settings.companyProfile")}>
         <form onSubmit={handleSave} className="space-y-4">
-          <Field label="Company Name">
+          <Field label={t("settings.companyName")}>
             <Input value={companyName} onChange={setCompanyName} />
           </Field>
           <div className="flex items-center gap-3">
             <button type="submit" disabled={saving} className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
-              {saving ? "Saving..." : "Save"}
+              {saving ? t("settings.saving") : t("settings.saveBtn")}
             </button>
-            {saved && <span className="text-emerald-400 text-sm">Saved!</span>}
+            {saved && <span className="text-emerald-400 text-sm">{t("settings.saved")}</span>}
           </div>
         </form>
       </Card>
 
       {sub && (
-        <Card title="Subscription">
+        <Card title={t("settings.subscription")}>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-zinc-500">Plan:</span><span className="text-zinc-200 ml-2 font-medium capitalize">{sub.plan}</span></div>
-            <div><span className="text-zinc-500">Status:</span>
+            <div><span className="text-zinc-500">{t("settings.planLabel")}</span><span className="text-zinc-200 ml-2 font-medium capitalize">{sub.plan}</span></div>
+            <div><span className="text-zinc-500">{t("settings.statusLabel")}</span>
               <span className={`ml-2 font-medium ${sub.status === "active" ? "text-emerald-400" : "text-rose-400"}`}>{sub.status}</span></div>
-            <div><span className="text-zinc-500">Posts Used:</span><span className="text-zinc-200 ml-2">{sub.monthly_posts_used} / {sub.monthly_posts_limit}</span></div>
-            <div><span className="text-zinc-500">Token Credits:</span><span className="text-zinc-200 ml-2">{(sub.token_credits_balance || 0).toLocaleString()}</span></div>
-            <div className="col-span-2"><span className="text-zinc-500">Renews:</span><span className="text-zinc-200 ml-2">{new Date(sub.current_period_end).toLocaleDateString()}</span></div>
+            <div><span className="text-zinc-500">{t("settings.postsUsed")}</span><span className="text-zinc-200 ml-2">{sub.monthly_posts_used} / {sub.monthly_posts_limit}</span></div>
+            <div><span className="text-zinc-500">{t("settings.tokenCredits")}</span><span className="text-zinc-200 ml-2">{(sub.token_credits_balance || 0).toLocaleString()}</span></div>
+            <div className="col-span-2"><span className="text-zinc-500">{t("settings.renewsLabel")}</span><span className="text-zinc-200 ml-2">{new Date(sub.current_period_end).toLocaleDateString()}</span></div>
           </div>
         </Card>
       )}
 
       {usage && (
-        <Card title="Usage This Period">
+        <Card title={t("settings.usagePeriod")}>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-zinc-500">Tokens Used:</span><span className="text-zinc-200 ml-2">{(usage.total_tokens_used || 0).toLocaleString()}</span></div>
-            <div><span className="text-zinc-500">Cost:</span><span className="text-zinc-200 ml-2">${(usage.total_cost_usd || 0).toFixed(4)}</span></div>
+            <div><span className="text-zinc-500">{t("settings.tokensUsed")}</span><span className="text-zinc-200 ml-2">{(usage.total_tokens_used || 0).toLocaleString()}</span></div>
+            <div><span className="text-zinc-500">{t("settings.costLabel")}</span><span className="text-zinc-200 ml-2">${(usage.total_cost_usd || 0).toFixed(4)}</span></div>
           </div>
         </Card>
       )}
 
       {sysInfo && (
-        <Card title="System Info">
+        <Card title={t("settings.systemInfo")}>
           <div className="grid grid-cols-3 gap-3 text-sm">
             {Object.entries(sysInfo.record_counts || {}).map(([table, count]) => (
               <div key={table} className="bg-zinc-800 rounded-lg px-3 py-2">
@@ -563,32 +573,32 @@ function AccountSection() {
         </Card>
       )}
 
-      <Card title="Demo & Backup">
+      <Card title={t("settings.demoBackup")}>
         <div className="flex gap-3">
           <button onClick={handleSeed} disabled={seeding}
             className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium hover:bg-emerald-500/20 disabled:opacity-50">
-            {seeding ? "Loading..." : "Load Demo Data"}
+            {seeding ? t("settings.loading") : t("settings.loadDemo")}
           </button>
           <button onClick={handleBackup}
             className="px-4 py-2 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700">
-            Download Backup
+            {t("settings.downloadBackup")}
           </button>
         </div>
         {seedResult && (
           <div className="mt-3 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-400">
-            {seedResult.status === "already_seeded" ? `Already seeded (${seedResult.leads} leads)` :
-              `Seeded: ${seedResult.targets} targets, ${seedResult.accounts} accounts, ${seedResult.campaigns} campaigns, ${seedResult.leads} leads`}
+            {seedResult.status === "already_seeded" ? t("settings.alreadySeeded").replace("{leads}", String(seedResult.leads)) :
+              t("settings.seeded").replace("{targets}", String(seedResult.targets)).replace("{accounts}", String(seedResult.accounts)).replace("{campaigns}", String(seedResult.campaigns)).replace("{leads}", String(seedResult.leads))}
           </div>
         )}
       </Card>
 
-      <Card title="Change Password">
+      <Card title={t("settings.changePassword")}>
         <form onSubmit={handlePassChange} className="space-y-3">
-          <Input type="password" value={currentPass} onChange={setCurrentPass} placeholder="Current password" />
-          <Input type="password" value={newPass} onChange={setNewPass} placeholder="New password (min 8 chars)" />
-          <Input type="password" value={confirmPass} onChange={setConfirmPass} placeholder="Confirm new password" />
+          <Input type="password" value={currentPass} onChange={setCurrentPass} placeholder={t("settings.currentPassword")} />
+          <Input type="password" value={newPass} onChange={setNewPass} placeholder={t("settings.newPassword")} />
+          <Input type="password" value={confirmPass} onChange={setConfirmPass} placeholder={t("settings.confirmPassword")} />
           <div className="flex items-center gap-3">
-            <button type="submit" className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">Change Password</button>
+            <button type="submit" className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">{t("settings.changePassword")}</button>
             {passMsg && <span className="text-emerald-400 text-sm">{passMsg}</span>}
             {passErr && <span className="text-rose-400 text-sm">{passErr}</span>}
           </div>

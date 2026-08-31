@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getTargets, discoverGroups, scrapeTargetComments } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
+import { useI18n } from "@/lib/i18n";
 
 type Target = {
   id: string;
@@ -30,6 +31,7 @@ const PLATFORM_ICONS: Record<string, string> = {
 export default function TargetsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -55,13 +57,13 @@ export default function TargetsPage() {
       const niche = scanNiche.split(",").map((s) => s.trim()).filter(Boolean)[0] || "general";
       const res = await discoverGroups(auth.token, { geo_tag: geo, niche, platform: "telegram" });
       if (res.total > 0) {
-        toast(`Found ${res.total} targets`, "success");
+        toast(t("targets.found").replace("{total}", String(res.total)), "success");
       } else {
-        toast("No targets found — try different GEO/niche, or connect a Telegram account", "info");
+        toast(t("targets.noneFound"), "info");
       }
       load();
     } catch (e: any) {
-      toast(e.message || "Scan failed", "error");
+      toast(e.message || t("targets.scanFailed"), "error");
     } finally {
       setScanning(false);
     }
@@ -72,11 +74,11 @@ export default function TargetsPage() {
     setScraping(true);
     try {
       await scrapeTargetComments(auth.token, scrapeModal, scrapePostId.trim());
-      toast("Comment scrape started", "success");
+      toast(t("targets.scrapeStarted"), "success");
       setScrapeModal(null);
       setScrapePostId("");
     } catch (e: any) {
-      toast(e.message || "Scrape failed", "error");
+      toast(e.message || t("targets.scrapeFailed"), "error");
     } finally {
       setScraping(false);
     }
@@ -85,36 +87,36 @@ export default function TargetsPage() {
   return (
     <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Target Discovery</h1>
+        <h1 className="text-2xl font-bold">{t("targets.title")}</h1>
       </div>
 
       {/* How targets work */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-300 mb-2">How targets work</h2>
+        <h2 className="text-sm font-medium text-zinc-300 mb-2">{t("targets.howItWorks")}</h2>
         <p className="text-xs text-zinc-500">
-          Targets are Telegram groups and channels where your audience hangs out.
-          Scan by <strong className="text-zinc-400">GEO</strong> (city/country) and <strong className="text-zinc-400">niche</strong> to discover them.
-          Once found, connect an account and start a listener to intercept DMs, or post campaigns and scrape comments.
+          {t("targets.howDesc")}{" "}
+          {t("targets.howScan")}{" "}
+          {t("targets.howAction")}
         </p>
       </div>
 
       {/* Scan controls */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-400 mb-3">Discover New Targets</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("targets.discoverNew")}</h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 mb-1 block">GEOs (comma-separated)</label>
+            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")}</label>
             <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 mb-1 block">Niches (comma-separated)</label>
+            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")}</label>
             <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>
           <button onClick={handleScan} disabled={scanning}
             className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 whitespace-nowrap">
-            {scanning ? "Scanning..." : "🔍 Scan"}
+            {scanning ? t("targets.scanning") : t("targets.scan")}
           </button>
         </div>
       </div>
@@ -124,15 +126,15 @@ export default function TargetsPage() {
         <table className="w-full text-sm min-w-[1000px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Platform</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Title</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">GEO</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Niche</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Access</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Members</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Last Parsed</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Status</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colPlatform")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colTitle")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colGeo")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colNiche")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colAccess")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colMembers")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colLastParsed")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colStatus")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -156,35 +158,35 @@ export default function TargetsPage() {
               </td></tr>
             ) : targets.length === 0 ? (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-500">
-                <p className="text-zinc-300 font-medium mb-2">No targets discovered yet</p>
-                <p className="text-xs text-zinc-500 mb-1">Use the scan above to find Telegram groups and channels in your GEO and niche.</p>
-                <p className="text-xs text-zinc-600">Example: GEO = &quot;Moscow&quot;, Niche = &quot;thailand_travel&quot;</p>
+                <p className="text-zinc-300 font-medium mb-2">{t("targets.empty")}</p>
+                <p className="text-xs text-zinc-500 mb-1">{t("targets.emptyDesc")}</p>
+                <p className="text-xs text-zinc-600">{t("targets.emptyHint")}</p>
               </td></tr>
             ) : (
-              targets.map((t) => (
-                <tr key={t.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
-                  <td className="px-4 py-3">{PLATFORM_ICONS[t.platform] ?? "❓"} {t.platform}</td>
-                  <td className="px-4 py-3 text-zinc-100 truncate max-w-[200px]">{t.title}</td>
-                  <td className="px-4 py-3 text-zinc-400">{t.geo_tag}</td>
+              targets.map((target) => (
+                <tr key={target.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
+                  <td className="px-4 py-3">{PLATFORM_ICONS[target.platform] ?? "❓"} {target.platform}</td>
+                  <td className="px-4 py-3 text-zinc-100 truncate max-w-[200px]">{target.title}</td>
+                  <td className="px-4 py-3 text-zinc-400">{target.geo_tag}</td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-xs">{t.niche}</span>
+                    <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-xs">{target.niche}</span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 text-xs">{t.access}</td>
-                  <td className="px-4 py-3 text-zinc-400">{(t.members_count || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-zinc-400 text-xs">{target.access}</td>
+                  <td className="px-4 py-3 text-zinc-400">{(target.members_count || 0).toLocaleString()}</td>
                   <td className="px-4 py-3 text-zinc-400 text-xs">
-                    {t.last_parsed_at
-                      ? new Date(t.last_parsed_at).toLocaleString()
-                      : <span className="text-zinc-600">never</span>}
+                    {target.last_parsed_at
+                      ? new Date(target.last_parsed_at).toLocaleString()
+                      : <span className="text-zinc-600">{t("targets.never")}</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${t.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
-                      {t.is_active ? "Active" : "Inactive"}
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${target.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                      {target.is_active ? t("targets.active") : t("targets.inactive")}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setScrapeModal(t.id)}
+                    <button onClick={() => setScrapeModal(target.id)}
                       className="px-2.5 py-1 text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 rounded hover:bg-zinc-700 transition">
-                      💭 Scrape Comments
+                      {t("targets.scrapeComments")}
                     </button>
                   </td>
                 </tr>
@@ -198,19 +200,19 @@ export default function TargetsPage() {
       {scrapeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setScrapeModal(null)}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-zinc-100">Scrape Comments</h2>
-            <p className="text-xs text-zinc-500">Enter the Telegram post message ID to scrape comments from.</p>
-            <input type="text" placeholder="Message ID (e.g. 12345)" value={scrapePostId}
+            <h2 className="text-lg font-bold text-zinc-100">{t("targets.scrapeTitle")}</h2>
+            <p className="text-xs text-zinc-500">{t("targets.scrapeDesc")}</p>
+            <input type="text" placeholder={t("targets.scrapePlaceholder")} value={scrapePostId}
               onChange={(e) => setScrapePostId(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
-            <p className="text-[10px] text-zinc-600">Find the message ID from the post URL: t.me/channel/<strong>12345</strong></p>
+            <p className="text-[10px] text-zinc-600">{t("targets.scrapeHint")}</p>
             <div className="flex gap-3">
               <button onClick={handleScrape} disabled={scraping || !scrapePostId.trim()}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                {scraping ? "Scraping..." : "Start Scraping"}
+                {scraping ? t("targets.scraping") : t("targets.startScraping")}
               </button>
               <button onClick={() => setScrapeModal(null)}
-                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("targets.cancel")}</button>
             </div>
           </div>
         </div>

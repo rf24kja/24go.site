@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { getUsers, inviteUser, updateUserRole, removeUser } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -22,6 +23,7 @@ const ROLE_STYLES: Record<string, string> = {
 
 export default function UsersPage() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -47,7 +49,7 @@ export default function UsersPage() {
       setInviteEmail("");
       load();
     } catch (err: any) {
-      setError(err.message || "Failed to invite");
+      setError(err.message || t("users.inviteFailed"));
     } finally {
       setInviting(false);
     }
@@ -62,7 +64,7 @@ export default function UsersPage() {
   };
 
   const handleRemove = async (userId: string) => {
-    if (!auth?.token || !confirm("Remove this user?")) return;
+    if (!auth?.token || !confirm(t("users.removeConfirm"))) return;
     try {
       await removeUser(auth.token, userId);
       load();
@@ -74,23 +76,23 @@ export default function UsersPage() {
 
   return (
     <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
-      <h1 className="text-2xl font-bold">Team Members</h1>
+      <h1 className="text-2xl font-bold">{t("users.title")}</h1>
 
       {/* Invite form */}
       {isAdmin && (
         <form onSubmit={handleInvite} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3">
           <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
             className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500"
-            placeholder="colleague@company.com" required />
+            placeholder={t("users.emailPlaceholder")} required />
           <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
             className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-            <option value="viewer">Viewer</option>
+            <option value="member">{t("users.roleMember")}</option>
+            <option value="admin">{t("users.roleAdmin")}</option>
+            <option value="viewer">{t("users.roleViewer")}</option>
           </select>
           <button type="submit" disabled={inviting || !inviteEmail.trim()}
             className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
-            {inviting ? "..." : "Invite"}
+            {inviting ? "..." : t("users.invite")}
           </button>
         </form>
       )}
@@ -101,10 +103,10 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Email</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Role</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Joined</th>
-              {isAdmin && <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>}
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colEmail")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colRole")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colJoined")}</th>
+              {isAdmin && <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colActions")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -122,7 +124,7 @@ export default function UsersPage() {
                 </div>
               </td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-zinc-500">No users found.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-zinc-500">{t("users.empty")}</td></tr>
             ) : (
               users.map((u) => (
                 <tr key={u.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
@@ -143,15 +145,15 @@ export default function UsersPage() {
                             value={u.role}
                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                             className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-300">
-                            <option value="admin">Admin</option>
-                            <option value="member">Member</option>
-                            <option value="viewer">Viewer</option>
+                            <option value="admin">{t("users.roleAdmin")}</option>
+                            <option value="member">{t("users.roleMember")}</option>
+                            <option value="viewer">{t("users.roleViewer")}</option>
                           </select>
                         )}
                         {u.role !== "owner" && u.id !== auth?.user?.id && (
                           <button onClick={() => handleRemove(u.id)}
                             className="px-2 py-1 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition">
-                            Remove
+                            {t("users.remove")}
                           </button>
                         )}
                       </div>
@@ -166,12 +168,12 @@ export default function UsersPage() {
 
       {/* Role descriptions */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-400 mb-3">Role Permissions</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("users.rolePermissions")}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-          <div><span className="text-amber-400 font-medium">Owner</span><p className="text-zinc-500 mt-1">Full access, billing, delete tenant</p></div>
-          <div><span className="text-sky-400 font-medium">Admin</span><p className="text-zinc-500 mt-1">Manage users, all CRUD, settings</p></div>
-          <div><span className="text-emerald-400 font-medium">Member</span><p className="text-zinc-500 mt-1">Leads, campaigns, accounts</p></div>
-          <div><span className="text-zinc-400 font-medium">Viewer</span><p className="text-zinc-500 mt-1">Read-only access to dashboard</p></div>
+          <div><span className="text-amber-400 font-medium">{t("users.roleOwner")}</span><p className="text-zinc-500 mt-1">{t("users.roleOwnerDesc")}</p></div>
+          <div><span className="text-sky-400 font-medium">{t("users.roleAdmin")}</span><p className="text-zinc-500 mt-1">{t("users.roleAdminDesc")}</p></div>
+          <div><span className="text-emerald-400 font-medium">{t("users.roleMember")}</span><p className="text-zinc-500 mt-1">{t("users.roleMemberDesc")}</p></div>
+          <div><span className="text-zinc-400 font-medium">{t("users.roleViewer")}</span><p className="text-zinc-500 mt-1">{t("users.roleViewerDesc")}</p></div>
         </div>
       </div>
     </div>

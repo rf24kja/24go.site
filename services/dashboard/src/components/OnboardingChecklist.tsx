@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getTargets, getAccounts, getCampaigns, getLeads, getListenerStatus } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import {
   Radar, Plane, Flame, Radio, Megaphone, Crosshair, CheckCircle,
   type IconProps,
@@ -20,6 +21,7 @@ type Step = {
 
 export function OnboardingChecklist() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [steps, setSteps] = useState<Step[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
@@ -46,55 +48,55 @@ export function OnboardingChecklist() {
       setSteps([
         {
           id: "targets",
-          label: "Discover targets",
-          description: "Find Telegram groups and channels in your niche",
+          label: t("onboarding.targets"),
+          description: t("onboarding.targetsDesc"),
           href: "/targets",
           done: hasTargets,
           Icon: Radar,
         },
         {
           id: "account",
-          label: "Connect Telegram",
-          description: "Link your Telegram account to start intercepting DMs",
+          label: t("onboarding.connect"),
+          description: t("onboarding.connectDesc"),
           href: "/accounts",
           done: hasAccounts,
           Icon: Plane,
         },
         {
           id: "warmup",
-          label: "Warm up account",
-          description: "Build reputation before active outreach",
+          label: t("onboarding.warmup"),
+          description: t("onboarding.warmupDesc"),
           href: "/accounts",
           done: hasActiveAccount,
           Icon: Flame,
         },
         {
           id: "listener",
-          label: "Start listener",
-          description: "Begin intercepting incoming messages as leads",
+          label: t("onboarding.listener"),
+          description: t("onboarding.listenerDesc"),
           href: "/accounts",
           done: hasListener,
           Icon: Radio,
         },
         {
           id: "campaign",
-          label: "Create campaign",
-          description: "Set up automated posting to your targets",
+          label: t("onboarding.campaign"),
+          description: t("onboarding.campaignDesc"),
           href: "/campaigns",
           done: hasCampaigns,
           Icon: Megaphone,
         },
         {
           id: "leads",
-          label: "First lead captured",
-          description: "Wait for incoming messages to be classified",
+          label: t("onboarding.leads"),
+          description: t("onboarding.leadsDesc"),
           href: "/leads",
           done: hasLeads,
           Icon: Crosshair,
         },
       ]);
     }).finally(() => setLoading(false));
-  }, [auth?.token]);
+  }, [auth?.token, t]);
 
   if (loading || steps.length === 0) return null;
 
@@ -102,22 +104,20 @@ export function OnboardingChecklist() {
   const allDone = completed === steps.length;
   const pct = Math.round((completed / steps.length) * 100);
 
-  // If everything is done, collapse automatically
   if (allDone && collapsed) return null;
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl mb-6 overflow-hidden">
-      {/* Header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="w-full flex items-center justify-between px-5 py-3 hover:bg-zinc-800/50 transition"
       >
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-zinc-100">
-            {allDone ? "🎉 Setup complete!" : `Setup progress — ${completed}/${steps.length} steps`}
+            {allDone ? t("onboarding.complete") : t("onboarding.progress", { completed, total: steps.length })}
           </span>
           {!allDone && (
-            <span className="text-xs text-zinc-500">Click each step to get started</span>
+            <span className="text-xs text-zinc-500">{t("onboarding.clickStep")}</span>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -134,7 +134,6 @@ export function OnboardingChecklist() {
         </div>
       </button>
 
-      {/* Steps */}
       {!collapsed && (
         <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {steps.map((step, i) => (

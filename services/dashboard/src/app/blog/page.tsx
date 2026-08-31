@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getPublicBlogPosts } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 type Post = {
   id: string;
@@ -17,6 +18,7 @@ export default function BlogPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [locale, setLocale] = useState<"en" | "ru">("en");
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     setLoading(true);
@@ -32,14 +34,14 @@ export default function BlogPage() {
         <div className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href="/" className="text-lg font-bold">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex gap-1 bg-zinc-800 rounded-lg p-1">
-            <button onClick={() => setLocale("en")} className={`px-3 py-1 rounded text-xs font-medium transition ${locale === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>EN</button>
-            <button onClick={() => setLocale("ru")} className={`px-3 py-1 rounded text-xs font-medium transition ${locale === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>RU</button>
+            <button onClick={() => setLocale("en")} className={`px-3 py-1 rounded text-xs font-medium transition ${locale === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>{t("blog.en")}</button>
+            <button onClick={() => setLocale("ru")} className={`px-3 py-1 rounded text-xs font-medium transition ${locale === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>{t("blog.ru")}</button>
           </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold mb-8">Blog</h1>
+        <h1 className="text-3xl font-bold mb-8">{t("blog.title")}</h1>
 
         {loading ? (
           <div className="space-y-6">
@@ -52,7 +54,7 @@ export default function BlogPage() {
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <p className="text-zinc-500">No posts yet.</p>
+          <p className="text-zinc-500">{t("blog.noPosts")}</p>
         ) : (
           <div className="space-y-6">
             {posts.map((post) => (

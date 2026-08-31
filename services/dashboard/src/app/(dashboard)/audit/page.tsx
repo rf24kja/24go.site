@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { getAuditLog } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -27,6 +28,7 @@ const ENTITY_FILTERS = ["all", "lead", "campaign", "account", "target", "subscri
 
 export default function AuditPage() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [entityFilter, setEntityFilter] = useState<string>("all");
@@ -42,12 +44,12 @@ export default function AuditPage() {
   return (
     <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Audit Log</h1>
+        <h1 className="text-2xl font-bold">{t("audit.title")}</h1>
         <div className="flex gap-1">
           {ENTITY_FILTERS.map((f) => (
             <button key={f} onClick={() => setEntityFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-sm transition capitalize ${entityFilter === f ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
-              {f}
+              {t(`audit.filter${f.charAt(0).toUpperCase() + f.slice(1)}`) || f}
             </button>
           ))}
         </div>
@@ -57,11 +59,11 @@ export default function AuditPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Time</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Action</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Entity</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Details</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">IP</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colTime")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colAction")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colEntity")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colDetails")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colIp")}</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +82,7 @@ export default function AuditPage() {
                 </div>
               </td></tr>
             ) : entries.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No audit entries yet.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">{t("audit.empty")}</td></tr>
             ) : (
               entries.map((e) => (
                 <tr key={e.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">

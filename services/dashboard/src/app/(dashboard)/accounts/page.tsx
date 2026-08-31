@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
@@ -32,10 +33,13 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-slate-500/10 text-slate-400 border border-slate-500/20",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  active: "Active", warming_up: "Warming Up", cooldown: "Cooldown",
-  banned: "Banned", paused: "Paused",
-};
+const getStatusLabels = (t: (k: string) => string) => ({
+  active: t("accounts.status.active"),
+  warming_up: t("accounts.status.warmingUp"),
+  cooldown: t("accounts.status.cooldown"),
+  banned: t("accounts.status.banned"),
+  paused: t("accounts.status.paused"),
+});
 
 const WARMUP_COLORS: Record<number, string> = {
   0: "bg-zinc-600", 1: "bg-amber-500", 2: "bg-amber-400", 3: "bg-emerald-500",
@@ -43,6 +47,7 @@ const WARMUP_COLORS: Record<number, string> = {
 
 export default function AccountsPage() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tgStatuses, setTgStatuses] = useState<Record<string, TgStatus>>({});
   const [listeners, setListeners] = useState<ListenerInfo[]>([]);
@@ -131,7 +136,7 @@ export default function AccountsPage() {
       await connectTelegram(auth.token, connectModal.accountId, connectPhone);
       setConnectModal({ ...connectModal, step: "code" });
     } catch (e: any) {
-      setConnectError(e.message || "Failed to send code");
+      setConnectError(e.message || t("accounts.failedToSendCode"));
     } finally {
       setConnectBusy(false);
     }
@@ -153,7 +158,7 @@ export default function AccountsPage() {
         load();
       }
     } catch (e: any) {
-      setConnectError(e.message || "Invalid code");
+      setConnectError(e.message || t("accounts.invalidCode"));
     } finally {
       setConnectBusy(false);
     }
@@ -170,19 +175,19 @@ export default function AccountsPage() {
       setConnectPassword("");
       load();
     } catch (e: any) {
-      setConnectError(e.message || "Invalid password");
+      setConnectError(e.message || t("accounts.invalidPassword"));
     } finally {
       setConnectBusy(false);
     }
   };
 
   const handleDisconnect = async (accountId: string) => {
-    if (!auth?.token || !confirm("Disconnect this Telegram account?")) return;
+    if (!auth?.token || !confirm(t("accounts.disconnectConfirm"))) return;
     setActionBusy(accountId);
     try {
       await disconnectTelegram(auth.token, accountId);
       load();
-    } catch (e: any) { setConnectError(e?.message || "Disconnect failed"); } finally { setActionBusy(null); }
+    } catch (e: any) { setConnectError(e?.message || t("accounts.disconnectFailed")); } finally { setActionBusy(null); }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -197,7 +202,7 @@ export default function AccountsPage() {
       setShowAdd(false);
       setAddPhone("");
       load();
-    } catch (e: any) { setConnectError(e?.message || "Add account failed"); } finally { setAddSaving(false); }
+    } catch (e: any) { setConnectError(e?.message || t("accounts.addFailed")); } finally { setAddSaving(false); }
   };
 
   // ── Bulk Import ──────────────────────────────────────────────────────
@@ -230,7 +235,7 @@ export default function AccountsPage() {
       setBulkResult({ created: createRes.created, errors: createRes.errors, sent: connectRes.sent, failed: connectRes.failed });
       load();
     } catch (e: any) {
-      setBulkResult({ created: 0, errors: [e?.message || "Import failed"], sent: 0, failed: [] });
+      setBulkResult({ created: 0, errors: [e?.message || t("accounts.importFailed")], sent: 0, failed: [] });
     } finally {
       setBulkBusy(false);
     }
@@ -243,41 +248,43 @@ export default function AccountsPage() {
     banned: accounts.filter((a) => a.status === "banned").length,
   };
 
+  const statusLabels = getStatusLabels(t);
+
   return (
     <div className={`p-6 space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-100">Accounts</h1>
+        <h1 className="text-2xl font-semibold text-zinc-100">{t("accounts.title")}</h1>
         <div className="flex gap-3">
           <button onClick={() => { setShowBulk(!showBulk); setBulkResult(null); }}
             className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium border border-zinc-700 hover:bg-zinc-700">
-            Bulk Import
+            {t("accounts.bulkImport")}
           </button>
           <button onClick={() => setShowAdd(!showAdd)}
             className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
-            + Add Account
+            {t("accounts.addAccount")}
           </button>
         </div>
       </div>
 
       {/* How it works */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-300 mb-3">How Telegram accounts work</h2>
+        <h2 className="text-sm font-medium text-zinc-300 mb-3">{t("accounts.howItWorks")}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-zinc-400">
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">1</span>
-            <div><strong className="text-zinc-300">Add account</strong> — enter your Telegram phone number</div>
+            <div><strong className="text-zinc-300">{t("accounts.step1Title")}</strong> — {t("accounts.step1Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">2</span>
-            <div><strong className="text-zinc-300">Connect</strong> — Telegram sends a code to your app, enter it here</div>
+            <div><strong className="text-zinc-300">{t("accounts.step2Title")}</strong> — {t("accounts.step2Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">3</span>
-            <div><strong className="text-zinc-300">Warm up</strong> — the system gradually builds your account&apos;s reputation (2-5 days)</div>
+            <div><strong className="text-zinc-300">{t("accounts.step3Title")}</strong> — {t("accounts.step3Desc")}</div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">4</span>
-            <div><strong className="text-zinc-300">Listen</strong> — start intercepting DMs as leads automatically</div>
+            <div><strong className="text-zinc-300">{t("accounts.step4Title")}</strong> — {t("accounts.step4Desc")}</div>
           </div>
         </div>
       </div>
@@ -285,29 +292,29 @@ export default function AccountsPage() {
       {/* Add Account Form */}
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-medium text-zinc-400">Add New Account</h2>
+          <h2 className="text-sm font-medium text-zinc-400">{t("accounts.addNew")}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Platform</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")}</label>
               <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                <option value="telegram">Telegram</option>
-                <option value="vkontakte">VKontakte</option>
+                <option value="telegram">{t("accounts.telegram")}</option>
+                <option value="vkontakte">{t("accounts.vkontakte")}</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Phone Number</label>
-              <input type="tel" placeholder="+66123456789" required value={addPhone} onChange={(e) => setAddPhone(e.target.value)}
+              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.phoneNumber")}</label>
+              <input type="tel" placeholder={t("accounts.phonePlaceholder")} required value={addPhone} onChange={(e) => setAddPhone(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
             </div>
           </div>
           <div className="flex gap-3">
             <button type="submit" disabled={addSaving || !addPhone}
               className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
-              {addSaving ? "Adding..." : "Add Account"}
+              {addSaving ? t("accounts.adding") : t("accounts.addBtn")}
             </button>
             <button type="button" onClick={() => setShowAdd(false)}
-              className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+              className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
           </div>
         </form>
       )}
@@ -315,10 +322,10 @@ export default function AccountsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total", value: stats.total, color: "text-zinc-100" },
-          { label: "Connected (TG)", value: stats.connected, color: "text-emerald-400" },
-          { label: "Warming Up", value: stats.warming, color: "text-amber-400" },
-          { label: "Banned", value: stats.banned, color: "text-rose-400" },
+          { label: t("accounts.statTotal"), value: stats.total, color: "text-zinc-100" },
+          { label: t("accounts.statConnected"), value: stats.connected, color: "text-emerald-400" },
+          { label: t("accounts.statWarming"), value: stats.warming, color: "text-amber-400" },
+          { label: t("accounts.statBanned"), value: stats.banned, color: "text-rose-400" },
         ].map((s) => (
           <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p className="text-zinc-500 text-xs mb-1">{s.label}</p>
@@ -332,13 +339,13 @@ export default function AccountsPage() {
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">TG Status</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Identifier</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Platform</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Account Status</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Warmup</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Quota</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colPlatform")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colWarmup")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colQuota")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -360,9 +367,9 @@ export default function AccountsPage() {
               </td></tr>
             ) : accounts.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
-                <p className="mb-2 text-zinc-300 font-medium">No accounts connected yet</p>
-                <p className="text-xs text-zinc-500 mb-3">Click <strong>&quot;+ Add Account&quot;</strong> above to add your first Telegram account.</p>
-                <p className="text-xs text-zinc-600">You&apos;ll need access to the Telegram app on your phone to receive the verification code.</p>
+                <p className="mb-2 text-zinc-300 font-medium">{t("accounts.empty")}</p>
+                <p className="text-xs text-zinc-500 mb-3">{t("accounts.emptyDesc")}</p>
+                <p className="text-xs text-zinc-600">{t("accounts.emptyHint")}</p>
               </td></tr>
             ) : (
               accounts.map((acct) => {
@@ -381,7 +388,7 @@ export default function AccountsPage() {
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${tgConnected ? "bg-emerald-400 animate-pulse" : tgHasSession ? "bg-amber-400" : "bg-zinc-600"}`} />
                         <span className="text-xs text-zinc-400">
-                          {tgConnected ? "Online" : tgHasSession ? "Session" : "No session"}
+                          {tgConnected ? t("accounts.tgOnline") : tgHasSession ? t("accounts.tgSession") : t("accounts.tgNoSession")}
                         </span>
                       </div>
                     </td>
@@ -389,7 +396,7 @@ export default function AccountsPage() {
                     <td className="px-4 py-3 text-zinc-400 capitalize">{acct.platform}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[acct.status] ?? ""}`}>
-                        {STATUS_LABELS[acct.status] ?? acct.status}
+                        {statusLabels[acct.status] ?? acct.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -416,7 +423,7 @@ export default function AccountsPage() {
                         {!tgHasSession ? (
                           <button onClick={() => handleConnectStart(acct.id)}
                             className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
-                            Connect TG
+                            {t("accounts.connectTg")}
                           </button>
                         ) : (
                           <>
@@ -427,13 +434,13 @@ export default function AccountsPage() {
                                   ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
                                   : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
                               } disabled:opacity-40`}>
-                              {actionBusy === acct.id ? "..." : listenerActive ? "Stop" : "Listen"}
+                              {actionBusy === acct.id ? "..." : listenerActive ? t("accounts.stop") : t("accounts.listen")}
                             </button>
                             <button onClick={() => handleDisconnect(acct.id)}
                               disabled={actionBusy === acct.id || listenerActive}
                               className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
-                              title="Disconnect Telegram account (stops listener first)">
-                              Disconnect
+                              title={t("accounts.disconnect")}>
+                              {t("accounts.disconnect")}
                             </button>
                           </>
                         )}
@@ -453,60 +460,60 @@ export default function AccountsPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
             {connectModal.step === "phone" ? (
               <>
-                <h2 className="text-lg font-bold text-zinc-100">Connect Telegram</h2>
-                <p className="text-xs text-zinc-500">Enter the phone number for this account. Telegram will send a verification code.</p>
-                <input type="tel" placeholder="+66123456789" value={connectPhone}
+                <h2 className="text-lg font-bold text-zinc-100">{t("accounts.connectTitle")}</h2>
+                <p className="text-xs text-zinc-500">{t("accounts.connectDesc")}</p>
+                <input type="tel" placeholder={t("accounts.phonePlaceholder")} value={connectPhone}
                   onChange={(e) => setConnectPhone(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                 {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
                 <div className="flex gap-3">
                   <button onClick={handleConnectSendCode} disabled={connectBusy || !connectPhone}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                    {connectBusy ? "Sending..." : "Send Code"}
+                    {connectBusy ? t("accounts.sending") : t("accounts.sendCode")}
                   </button>
                   <button onClick={() => setConnectModal(null)}
-                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
                 </div>
               </>
             ) : connectModal.step === "code" ? (
               <>
-                <h2 className="text-lg font-bold text-zinc-100">Enter Code</h2>
-                <p className="text-xs text-zinc-500">Check Telegram for the verification code sent to <strong className="text-zinc-300">{connectPhone}</strong></p>
-                <input type="text" placeholder="12345" value={connectCode}
+                <h2 className="text-lg font-bold text-zinc-100">{t("accounts.enterCode")}</h2>
+                <p className="text-xs text-zinc-500">{t("accounts.enterCodeDesc")} <strong className="text-zinc-300">{connectPhone}</strong></p>
+                <input type="text" placeholder={t("accounts.codePlaceholder")} value={connectCode}
                   onChange={(e) => setConnectCode(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono text-center text-lg tracking-widest" />
                 {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
-                <p className="text-[10px] text-zinc-600">Code expires in ~2 minutes. Check Telegram for the code.</p>
+                <p className="text-[10px] text-zinc-600">{t("accounts.codeHint")}</p>
                 <div className="flex gap-3">
                   <button onClick={handleConnectConfirm} disabled={connectBusy || !connectCode}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                    {connectBusy ? "Connecting..." : "Confirm"}
+                    {connectBusy ? t("accounts.connecting") : t("accounts.confirm")}
                   </button>
                   <button onClick={handleConnectSendCode} disabled={connectBusy}
                     className="py-2 px-3 bg-zinc-800 text-zinc-400 border border-zinc-700 rounded-lg text-xs hover:bg-zinc-700 transition disabled:opacity-50 whitespace-nowrap">
-                    {connectBusy ? "..." : "Resend Code"}
+                    {connectBusy ? "..." : t("accounts.resendCode")}
                   </button>
                   <button onClick={() => setConnectModal(null)}
-                    className="py-2 px-3 bg-zinc-800 text-zinc-400 rounded-lg text-xs">Cancel</button>
+                    className="py-2 px-3 bg-zinc-800 text-zinc-400 rounded-lg text-xs">{t("accounts.cancel")}</button>
                 </div>
               </>
             ) : (
               <>
-                <h2 className="text-lg font-bold text-zinc-100">Two-Factor Password</h2>
-                <p className="text-xs text-zinc-500">This Telegram account has 2FA enabled. Enter your <strong className="text-zinc-300">cloud password</strong> to complete login.</p>
-                <input type="password" placeholder="Your 2FA password" value={connectPassword}
+                <h2 className="text-lg font-bold text-zinc-100">{t("accounts.twofaTitle")}</h2>
+                <p className="text-xs text-zinc-500">{t("accounts.twofaDesc")}</p>
+                <input type="password" placeholder={t("accounts.twofaPlaceholder")} value={connectPassword}
                   onChange={(e) => setConnectPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleConnectPassword()}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                 {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
-                <p className="text-[10px] text-zinc-600">This is the password you set in Telegram → Settings → Privacy → Two-Step Verification. Not the SMS code.</p>
+                <p className="text-[10px] text-zinc-600">{t("accounts.twofaHint")}</p>
                 <div className="flex gap-3">
                   <button onClick={handleConnectPassword} disabled={connectBusy || !connectPassword}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                    {connectBusy ? "Authorizing..." : "Confirm Password"}
+                    {connectBusy ? t("accounts.authorizing") : t("accounts.confirmPassword")}
                   </button>
                   <button onClick={() => setConnectModal(null)}
-                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
                 </div>
               </>
             )}
@@ -518,21 +525,21 @@ export default function AccountsPage() {
       {showBulk && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowBulk(false)}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-zinc-100">Bulk Import Accounts</h2>
-            <p className="text-xs text-zinc-500">Paste phone numbers or VK identifiers, one per line. Accounts will be created and codes sent automatically.</p>
+            <h2 className="text-lg font-bold text-zinc-100">{t("accounts.bulkTitle")}</h2>
+            <p className="text-xs text-zinc-500">{t("accounts.bulkDesc")}</p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">Platform</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")}</label>
                 <select value={bulkPlatform} onChange={(e) => setBulkPlatform(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                  <option value="telegram">Telegram</option>
-                  <option value="vkontakte">VKontakte</option>
+                  <option value="telegram">{t("accounts.telegram")}</option>
+                  <option value="vkontakte">{t("accounts.vkontakte")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">Count: {bulkParsed.length}</label>
-                <p className="text-[10px] text-zinc-600 mt-2">Max 50 accounts. Codes auto-sent to first 10.</p>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.bulkCount", { count: String(bulkParsed.length) })}</label>
+                <p className="text-[10px] text-zinc-600 mt-2">{t("accounts.bulkMax")}</p>
               </div>
             </div>
 
@@ -547,20 +554,20 @@ export default function AccountsPage() {
             {/* Preview */}
             {bulkParsed.length > 0 && (
               <div className="text-xs text-zinc-500">
-                Preview: {bulkParsed.slice(0, 5).join(", ")}{bulkParsed.length > 5 ? ` ... +${bulkParsed.length - 5} more` : ""}
+                {t("accounts.bulkPreview", { preview: bulkParsed.slice(0, 5).join(", ") + (bulkParsed.length > 5 ? ` ... +${bulkParsed.length - 5} more` : "") })}
               </div>
             )}
 
             {/* Result */}
             {bulkResult && (
               <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 text-xs space-y-1">
-                <p className="text-emerald-400">Created: {bulkResult.created}</p>
-                <p className="text-emerald-400">Codes sent: {bulkResult.sent}</p>
+                <p className="text-emerald-400">{t("accounts.bulkCreated", { created: String(bulkResult.created) })}</p>
+                <p className="text-emerald-400">{t("accounts.bulkSent", { sent: String(bulkResult.sent) })}</p>
                 {bulkResult.errors.length > 0 && (
-                  <p className="text-rose-400">Errors: {bulkResult.errors.join("; ")}</p>
+                  <p className="text-rose-400">{t("accounts.bulkErrors", { errors: bulkResult.errors.join("; ") })}</p>
                 )}
                 {bulkResult.failed.length > 0 && (
-                  <p className="text-rose-400">Connect failed: {bulkResult.failed.join("; ")}</p>
+                  <p className="text-rose-400">{t("accounts.bulkFailed", { failed: bulkResult.failed.join("; ") })}</p>
                 )}
               </div>
             )}
@@ -568,10 +575,10 @@ export default function AccountsPage() {
             <div className="flex gap-3">
               <button onClick={handleBulkImport} disabled={bulkBusy || bulkParsed.length === 0}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                {bulkBusy ? "Importing..." : "Import & Send Codes"}
+                {bulkBusy ? t("accounts.importing") : t("accounts.importSendCodes")}
               </button>
               <button onClick={() => setShowBulk(false)}
-                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
             </div>
           </div>
         </div>

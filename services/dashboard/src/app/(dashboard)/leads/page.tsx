@@ -7,6 +7,7 @@ import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
+import { useI18n } from "@/lib/i18n";
 
 type Lead = {
   id: string;
@@ -44,17 +45,12 @@ const COLUMNS = [
 
 const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;
 
-const STATUS_LABELS: Record<string, string> = {
-  new: "New", in_progress: "In Progress", converted: "Converted", rejected: "Rejected",
-};
-
-const FILTERS = ["ALL", "HOT", "WARM", "COLD"] as const;
-const SOURCE_FILTERS = ["all", "dm", "comment", "manual"] as const;
 const SOURCE_ICONS: Record<string, string> = { dm: "💬", comment: "💭", manual: "✏️", import: "📥", webhook: "🔗" };
 
 export default function LeadsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -73,6 +69,18 @@ export default function LeadsPage() {
   const [detailSaving, setDetailSaving] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const PAGE_SIZE = 50;
+
+  const STATUS_LABELS: Record<string, string> = {
+    new: t("leads.status.new"),
+    in_progress: t("leads.status.inProgress"),
+    converted: t("leads.status.converted"),
+    rejected: t("leads.status.rejected"),
+  };
+
+  const columns = COLUMNS.map((c) => ({
+    ...c,
+    label: c.key === "new" ? t("leads.status.new") : c.key === "in_progress" ? t("leads.status.inProgress") : c.key === "converted" ? t("leads.status.converted") : t("leads.status.rejected"),
+  }));
 
   // Real-time: when a new lead event arrives, add it to the list
   useEffect(() => {
@@ -199,32 +207,37 @@ export default function LeadsPage() {
   return (
     <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Leads</h1>
+        <h1 className="text-2xl font-bold">{t("leads.title")}</h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
-            {FILTERS.map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition ${filter === f ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
-                {f}
+            {[{ key: "ALL", label: t("leads.filterAll") }, { key: "HOT", label: t("leads.filterHot") }, { key: "WARM", label: t("leads.filterWarm") }, { key: "COLD", label: t("leads.filterCold") }].map((f) => (
+              <button key={f.key} onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition ${filter === f.key ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
+                {f.label}
               </button>
             ))}
           </div>
           <div className="flex gap-1 text-xs">
-            {SOURCE_FILTERS.map((s) => (
-              <button key={s} onClick={() => setSourceFilter(s)}
-                className={`px-2 py-1 rounded transition ${sourceFilter === s ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"}`}>
-                {s === "all" ? "All sources" : s === "dm" ? "💬 DM" : s === "comment" ? "💭 Comments" : "✏️ Manual"}
+            {[
+              { key: "all", label: t("leads.sourceAll") },
+              { key: "dm", label: t("leads.sourceDm") },
+              { key: "comment", label: t("leads.sourceComment") },
+              { key: "manual", label: t("leads.sourceManual") },
+            ].map((s) => (
+              <button key={s.key} onClick={() => setSourceFilter(s.key)}
+                className={`px-2 py-1 rounded transition ${sourceFilter === s.key ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"}`}>
+                {s.label}
               </button>
             ))}
           </div>
           <div className="flex bg-zinc-800 rounded-lg p-0.5">
             <button onClick={() => setView("table")}
               className={`px-3 py-1 rounded-md text-sm transition ${view === "table" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400"}`}>
-              ☰ Table
+              {t("leads.viewTable")}
             </button>
             <button onClick={() => setView("kanban")}
               className={`px-3 py-1 rounded-md text-sm transition ${view === "kanban" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400"}`}>
-              ▦ Kanban
+              {t("leads.viewKanban")}
             </button>
           </div>
           <button onClick={async () => {
@@ -237,17 +250,17 @@ export default function LeadsPage() {
               } catch { /* empty */ }
             }}
             className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition">
-            ⬇ CSV
+            {t("leads.exportCsv")}
           </button>
           <label className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition cursor-pointer">
-            ⬆ Import
+            {t("leads.import")}
             <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file || !auth?.token) return;
               try {
                 const text = await file.text();
                 const result = await importLeadsCsv(auth.token, text);
-                const msg = `Imported: ${result.imported}, Skipped: ${result.skipped}` + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
+                const msg = t("leads.importResult").replace("{imported}", String(result.imported)).replace("{skipped}", String(result.skipped)) + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
                 toast(msg, result.errors?.length ? "info" : "success");
                 getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
               } catch { /* empty */ }
@@ -260,34 +273,34 @@ export default function LeadsPage() {
       {/* Quick stats */}
       {leads.length > 0 && (
         <div className="flex gap-4 text-sm">
-          <span className="text-zinc-500">{summaryCounts.total} total</span>
-          <span className="text-rose-400">{summaryCounts.HOT} hot</span>
-          <span className="text-amber-400">{summaryCounts.WARM} warm</span>
-          <span className="text-sky-400">{summaryCounts.COLD} cold</span>
+          <span className="text-zinc-500">{t("leads.totalCount").replace("{total}", String(summaryCounts.total))}</span>
+          <span className="text-rose-400">{t("leads.hotCount").replace("{hot}", String(summaryCounts.HOT))}</span>
+          <span className="text-amber-400">{t("leads.warmCount").replace("{warm}", String(summaryCounts.WARM))}</span>
+          <span className="text-sky-400">{t("leads.coldCount").replace("{cold}", String(summaryCounts.COLD))}</span>
         </div>
       )}
 
       {/* Qualify form */}
       <form onSubmit={handleQualify} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3">
         <input type="text" value={testHandle} onChange={(e) => setTestHandle(e.target.value)}
-          className="w-40 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" placeholder="@handle" />
+          className="w-40 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" placeholder={t("leads.qualifyHandle")} />
         <input type="text" value={testMessage} onChange={(e) => setTestMessage(e.target.value)}
           className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
-          placeholder="Type a message to classify..." />
+          placeholder={t("leads.qualifyPlaceholder")} />
         <button type="submit" disabled={qualifying || !testMessage.trim()}
           className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
-          {qualifying ? "..." : "Qualify"}
+          {qualifying ? "..." : t("leads.qualify")}
         </button>
       </form>
 
       {testResult && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500 mb-2">Last Qualification Result</p>
+          <p className="text-xs text-zinc-500 mb-2">{t("leads.lastResult")}</p>
           <div className="flex items-center gap-3">
             <span className={`px-2 py-0.5 rounded text-xs font-medium border ${INTENT_STYLES[testResult.intent_score] ?? ""}`}>
               {testResult.intent_score}
             </span>
-            <span className="text-sm text-zinc-400">confidence: {testResult.confidence}</span>
+            <span className="text-sm text-zinc-400">{t("leads.confidence").replace("{confidence}", String(testResult.confidence))}</span>
             <span className="text-sm text-zinc-300">{testResult.summary}</span>
           </div>
         </div>
@@ -298,12 +311,12 @@ export default function LeadsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Handle</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Intent</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Message</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Geo</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Created</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableHandle")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableIntent")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableMessage")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableGeo")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableStatus")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableCreated")}</th>
               </tr>
             </thead>
             <tbody>
@@ -324,9 +337,9 @@ export default function LeadsPage() {
                 </td></tr>
               ) : leads.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                  <p className="text-zinc-300 font-medium mb-2">No leads yet</p>
-                  <p className="text-xs text-zinc-500 mb-1">Leads appear here when someone sends a DM to your connected Telegram account, or when comments are scraped from your posts.</p>
-                  <p className="text-xs text-zinc-600">You can also test with the qualify form above, or import leads from a CSV file.</p>
+                  <p className="text-zinc-300 font-medium mb-2">{t("leads.empty")}</p>
+                  <p className="text-xs text-zinc-500 mb-1">{t("leads.emptyDesc")}</p>
+                  <p className="text-xs text-zinc-600">{t("leads.emptyHint")}</p>
                 </td></tr>
               ) : (
                 leads.map((lead) => (
@@ -351,14 +364,14 @@ export default function LeadsPage() {
             <div className="p-4 text-center">
               <button onClick={loadMore} disabled={loadingMore}
                 className="px-6 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium hover:bg-zinc-700 transition disabled:opacity-50">
-                {loadingMore ? "Loading..." : `Load more (${leads.length} / ${total})`}
+                {loadingMore ? t("leads.loading") : t("leads.loadMore").replace("{loaded}", String(leads.length)).replace("{total}", String(total))}
               </button>
             </div>
           )}
         </div>
       ) : loading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">
-          {COLUMNS.map((col) => (
+          {columns.map((col) => (
             <div key={col.key} className={`rounded-xl border-t-2 ${col.color} bg-zinc-900/50 p-3 flex flex-col gap-2 min-h-[200px]`}>
               <div className="flex items-center justify-between mb-1">
                 <Skeleton className="h-4 w-20" />
@@ -376,7 +389,7 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-h-[500px]">
-          {COLUMNS.map((col) => {
+          {columns.map((col) => {
             const colLeads = groupedLeads(col.key);
             const isOver = dragOverCol === col.key;
             return (
@@ -417,7 +430,7 @@ export default function LeadsPage() {
                 ))}
                 {colLeads.length === 0 && (
                   <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs">
-                    Drop leads here
+                    {t("leads.dropHere")}
                   </div>
                 )}
               </div>
@@ -432,14 +445,14 @@ export default function LeadsPage() {
           <div className="w-full max-w-md bg-zinc-900 border-l border-zinc-800 h-full overflow-y-auto p-6 space-y-6 animate-slide-up"
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-zinc-100">Lead Detail</h2>
+              <h2 className="text-lg font-bold text-zinc-100">{t("leads.detail")}</h2>
               <div className="flex items-center gap-3">
-                <Link href={`/leads/${selectedLead.id}`} className="text-xs text-emerald-400 hover:text-emerald-300 underline">Full page ↗</Link>
+                <Link href={`/leads/${selectedLead.id}`} className="text-xs text-emerald-400 hover:text-emerald-300 underline">{t("leads.fullPage")}</Link>
                 <button onClick={() => setSelectedLead(null)} className="text-zinc-500 hover:text-zinc-300 text-xl">&times;</button>
               </div>
             </div>
 
-            {loadingDetail && <p className="text-xs text-zinc-500">Loading details...</p>}
+            {loadingDetail && <p className="text-xs text-zinc-500">{t("leads.loadingDetails")}</p>}
 
             {/* Handle + intent + source */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -455,30 +468,30 @@ export default function LeadsPage() {
             {/* Info grid */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-zinc-500 text-xs block mb-1">Full Name</span>
+                <span className="text-zinc-500 text-xs block mb-1">{t("leads.fullName")}</span>
                 <span className="text-zinc-200">{selectedLead.user_full_name || "—"}</span>
               </div>
               <div>
-                <span className="text-zinc-500 text-xs block mb-1">Platform</span>
+                <span className="text-zinc-500 text-xs block mb-1">{t("leads.platform")}</span>
                 <span className="text-zinc-200 capitalize">{selectedLead.platform || "—"}</span>
               </div>
               <div>
-                <span className="text-zinc-500 text-xs block mb-1">Geo</span>
+                <span className="text-zinc-500 text-xs block mb-1">{t("leads.geo")}</span>
                 <span className="text-zinc-200">{selectedLead.geo_tag || "—"}</span>
               </div>
               <div>
-                <span className="text-zinc-500 text-xs block mb-1">Created</span>
+                <span className="text-zinc-500 text-xs block mb-1">{t("leads.created")}</span>
                 <span className="text-zinc-200">{new Date(selectedLead.created_at).toLocaleString()}</span>
               </div>
               {selectedLead.target_name && (
                 <div>
-                  <span className="text-zinc-500 text-xs block mb-1">Target</span>
+                  <span className="text-zinc-500 text-xs block mb-1">{t("leads.target")}</span>
                   <span className="text-zinc-200">{selectedLead.target_name}</span>
                 </div>
               )}
               {selectedLead.post_id && (
                 <div>
-                  <span className="text-zinc-500 text-xs block mb-1">Post ID</span>
+                  <span className="text-zinc-500 text-xs block mb-1">{t("leads.postId")}</span>
                   <span className="text-zinc-200 font-mono text-xs">{selectedLead.post_id}</span>
                 </div>
               )}
@@ -486,14 +499,14 @@ export default function LeadsPage() {
 
             {/* Message */}
             <div>
-              <span className="text-zinc-500 text-xs block mb-1">Message</span>
-              <p className="text-sm text-zinc-300 bg-zinc-800 rounded-lg p-3 whitespace-pre-wrap">{selectedLead.message_text || "No message"}</p>
+              <span className="text-zinc-500 text-xs block mb-1">{t("leads.message")}</span>
+              <p className="text-sm text-zinc-300 bg-zinc-800 rounded-lg p-3 whitespace-pre-wrap">{selectedLead.message_text || t("leads.noMessage")}</p>
             </div>
 
             {/* Dialog URL */}
             {selectedLead.dialog_url && (
               <div>
-                <span className="text-zinc-500 text-xs block mb-1">Dialog</span>
+                <span className="text-zinc-500 text-xs block mb-1">{t("leads.dialog")}</span>
                 <a href={selectedLead.dialog_url} target="_blank" rel="noopener noreferrer"
                   className="text-sm text-emerald-400 hover:text-emerald-300 underline">{selectedLead.dialog_url}</a>
               </div>
@@ -501,7 +514,7 @@ export default function LeadsPage() {
 
             {/* Status change */}
             <div>
-              <span className="text-zinc-500 text-xs block mb-2">Status</span>
+              <span className="text-zinc-500 text-xs block mb-2">{t("leads.tableStatus")}</span>
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map((s) => (
                   <button key={s} disabled={detailSaving || selectedLead.status === s}
@@ -520,14 +533,14 @@ export default function LeadsPage() {
             {/* Audit timeline */}
             {selectedLead.events && selectedLead.events.length > 0 && (
               <div>
-                <span className="text-zinc-500 text-xs block mb-2">History</span>
+                <span className="text-zinc-500 text-xs block mb-2">{t("leads.history")}</span>
                 <div className="space-y-2">
                   {selectedLead.events.map((ev, i) => (
                     <div key={i} className="flex items-start gap-3 text-xs">
                       <span className="text-zinc-600 mt-0.5">●</span>
                       <div>
                         <span className="text-zinc-300">
-                          {ev.action === "status_change" ? "Status changed" : ev.action}
+                          {ev.action === "status_change" ? t("leads.statusChanged") : ev.action}
                           {ev.old_value?.status && ev.new_value?.status && (
                             <>: {STATUS_LABELS[ev.old_value.status] || ev.old_value.status} → {STATUS_LABELS[ev.new_value.status] || ev.new_value.status}</>
                           )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { getAnalytics, getLeaderboard } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -20,6 +21,7 @@ const COLORS = {
 
 export default function AnalyticsPage() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const [data, setData] = useState<any>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [days, setDays] = useState(30);
@@ -69,7 +71,7 @@ export default function AnalyticsPage() {
       </div>
     </div>
   );
-  if (!data) return <div className="p-8"><p className="text-zinc-500">No data</p></div>;
+  if (!data) return <div className="p-8"><p className="text-zinc-500">{t("analytics.noData")}</p></div>;
 
   const funnel = data.funnel || {};
   const geoData = (data.geo_breakdown || []).map((g: any) => ({
@@ -85,27 +87,27 @@ export default function AnalyticsPage() {
   }));
 
   const funnelData = [
-    { name: "Targets", value: funnel.discovered_targets || 0 },
-    { name: "Posts", value: funnel.published_posts || 0 },
-    { name: "Leads", value: funnel.leads_captured || 0 },
-    { name: "Hot", value: funnel.hot_leads || 0 },
+    { name: t("analytics.targets"), value: funnel.discovered_targets || 0 },
+    { name: t("analytics.posts"), value: funnel.published_posts || 0 },
+    { name: t("analytics.leads"), value: funnel.leads_captured || 0 },
+    { name: t("analytics.hot"), value: funnel.hot_leads || 0 },
   ];
 
   const intentPie = [
-    { name: "HOT", value: funnel.hot_leads || 0, color: COLORS.rose },
-    { name: "WARM", value: funnel.warm_leads || 0, color: COLORS.amber },
-    { name: "Other", value: Math.max(0, (funnel.leads_captured || 0) - (funnel.hot_leads || 0) - (funnel.warm_leads || 0)), color: COLORS.slate },
+    { name: t("analytics.hot"), value: funnel.hot_leads || 0, color: COLORS.rose },
+    { name: t("leads.intent.warm"), value: funnel.warm_leads || 0, color: COLORS.amber },
+    { name: t("analytics.noData"), value: Math.max(0, (funnel.leads_captured || 0) - (funnel.hot_leads || 0) - (funnel.warm_leads || 0)), color: COLORS.slate },
   ].filter((d) => d.value > 0);
 
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Analytics</h1>
+        <h1 className="text-2xl font-bold">{t("analytics.title")}</h1>
         <div className="flex gap-1">
           {[7, 30, 90].map((d) => (
             <button key={d} onClick={() => setDays(d)}
               className={`px-3 py-1.5 rounded-lg text-sm transition ${days === d ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
-              {d}d
+              {t(`analytics.${d}d`)}
             </button>
           ))}
         </div>
@@ -113,16 +115,16 @@ export default function AnalyticsPage() {
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard label="Targets" value={funnel.discovered_targets || 0} />
-        <MetricCard label="Posts Published" value={funnel.published_posts || 0} />
-        <MetricCard label="Leads Captured" value={funnel.leads_captured || 0} />
-        <MetricCard label="Hot Leads" value={funnel.hot_leads || 0} accent="rose" />
+        <MetricCard label={t("analytics.targets")} value={funnel.discovered_targets || 0} />
+        <MetricCard label={t("analytics.postsPublished")} value={funnel.published_posts || 0} />
+        <MetricCard label={t("analytics.leadsCaptured")} value={funnel.leads_captured || 0} />
+        <MetricCard label={t("analytics.hotLeads")} value={funnel.hot_leads || 0} accent="rose" />
       </div>
 
       {/* Time Series — posts + leads overlay */}
       {data.time_series && data.time_series.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Activity Over Time</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.activityOverTime")}</h2>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={data.time_series}>
               <defs>
@@ -140,9 +142,9 @@ export default function AnalyticsPage() {
               <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
               <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
               <Legend />
-              <Area type="monotone" dataKey="leads" name="Leads" stroke={COLORS.sky} fill="url(#leadGrad)" strokeWidth={2} />
-              <Area type="monotone" dataKey="hot_leads" name="HOT" stroke={COLORS.rose} fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
-              <Area type="monotone" dataKey="posts" name="Posts" stroke={COLORS.emerald} fill="url(#postGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="leads" name={t("analytics.leads")} stroke={COLORS.sky} fill="url(#leadGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="hot_leads" name={t("analytics.hot")} stroke={COLORS.rose} fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
+              <Area type="monotone" dataKey="posts" name={t("analytics.posts")} stroke={COLORS.emerald} fill="url(#postGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -151,7 +153,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Conversion Funnel */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Conversion Funnel</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.conversionFunnel")}</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={funnelData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -169,7 +171,7 @@ export default function AnalyticsPage() {
 
         {/* Intent Distribution */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Intent Distribution</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.intentDistribution")}</h2>
           {intentPie.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -182,13 +184,13 @@ export default function AnalyticsPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-zinc-500 text-sm text-center py-12">No lead data yet</p>
+            <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noLeadData")}</p>
           )}
         </div>
 
         {/* Source Breakdown */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Leads by Source</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.leadsBySource")}</h2>
           {sourceData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={sourceData}>
@@ -197,18 +199,18 @@ export default function AnalyticsPage() {
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
                 <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
                 <Legend />
-                <Bar dataKey="leads" fill={COLORS.sky} name="Total Leads" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="hot" fill={COLORS.rose} name="Hot Leads" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="leads" fill={COLORS.sky} name={t("analytics.totalLeads")} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="hot" fill={COLORS.rose} name={t("analytics.hotLeadsLabel")} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-zinc-500 text-sm text-center py-12">No source data yet</p>
+            <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noSourceData")}</p>
           )}
         </div>
 
         {/* Geo Breakdown */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 lg:col-span-2">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">Geo Breakdown</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.geoBreakdown")}</h2>
           {geoData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={geoData} layout="vertical">
@@ -217,27 +219,27 @@ export default function AnalyticsPage() {
                 <YAxis type="category" dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 12 }} width={100} />
                 <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
                 <Legend />
-                <Bar dataKey="leads" fill={COLORS.sky} name="Total Leads" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="hot" fill={COLORS.rose} name="Hot Leads" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="leads" fill={COLORS.sky} name={t("analytics.totalLeads")} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="hot" fill={COLORS.rose} name={t("analytics.hotLeadsLabel")} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-zinc-500 text-sm text-center py-12">No geo data yet</p>
+            <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noGeoData")}</p>
           )}
         </div>
       </div>
 
       {/* Cost summary */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-        <h2 className="text-sm font-medium text-zinc-400 mb-4">Infrastructure Costs</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.infraCosts")}</h2>
         <div className="flex gap-8">
           <div>
             <p className="text-2xl font-semibold text-zinc-100">{(data.total_tokens || 0).toLocaleString()}</p>
-            <p className="text-zinc-500 text-xs">LLM Tokens Used</p>
+            <p className="text-zinc-500 text-xs">{t("analytics.llmTokensUsed")}</p>
           </div>
           <div>
             <p className="text-2xl font-semibold text-zinc-100">${(data.total_cost_usd || 0).toFixed(4)}</p>
-            <p className="text-zinc-500 text-xs">Total Cost (USD)</p>
+            <p className="text-zinc-500 text-xs">{t("analytics.totalCostUsd")}</p>
           </div>
         </div>
       </div>
@@ -245,19 +247,19 @@ export default function AnalyticsPage() {
       {/* Campaign Leaderboard */}
       {leaderboard.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">🏆 Campaign Leaderboard</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.leaderboard")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
                   <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">#</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Campaign</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Posts</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Leads</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">🔥 HOT</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">🟡 WARM</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Conversion</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">Schedule</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.campaign")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colPosts")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colLeads")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colHot")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colWarm")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.conversion")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.schedule")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -280,7 +282,7 @@ export default function AnalyticsPage() {
                         {c.conversion_rate}%
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-zinc-500 text-xs font-mono">{c.schedule_cron || "manual"}</td>
+                    <td className="px-3 py-2.5 text-zinc-500 text-xs font-mono">{c.schedule_cron || t("analytics.manual")}</td>
                   </tr>
                 ))}
               </tbody>
