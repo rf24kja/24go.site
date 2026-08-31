@@ -10,6 +10,7 @@ Uses telegram_client.py factory for session management.
 import asyncio
 import logging
 import time
+import uuid as uuid_mod
 
 from celery import shared_task
 from celery.signals import worker_shutting_down
@@ -31,6 +32,13 @@ def start_lead_listener(self, tenant_id: str, account_id: str):
     Uses telegram_client.py factory — loads encrypted session from DB.
     Each incoming DM triggers the lead qualification pipeline.
     """
+    try:
+        uuid_mod.UUID(account_id)
+        uuid_mod.UUID(tenant_id)
+    except ValueError:
+        log.warning(f"Invalid id format: tenant={tenant_id} account={account_id}, skipping listener")
+        return {"status": "skipped", "reason": "invalid_uuid"}
+
     log.info(f"start_lead_listener: tenant={tenant_id} account={account_id}")
 
     loop = asyncio.new_event_loop()

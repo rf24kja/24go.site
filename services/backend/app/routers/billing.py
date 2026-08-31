@@ -200,7 +200,7 @@ async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, ema
                 "metadata[plan_tier]": plan,
                 "line_items[0][price_data][currency]": "usd",
                 "line_items[0][price_data][unit_amount]": price_usd,
-                "line_items[0][price_data][product_data][name]": f"GeneratorAD {plan.title()} Plan",
+                "line_items[0][price_data][product_data][name]": f"24GO {plan.title()} Plan",
                 "line_items[0][price_data][recurring][interval]": "month",
                 "line_items[0][quantity]": "1",
             },
@@ -288,12 +288,34 @@ async def yookassa_webhook(request: Request):
     YooKassa doesn't use HMAC — they send a specific IP whitelist.
     We verify: 1) request origin, 2) metadata.tenant_id exists, 3) idempotency.
     """
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return {"error": "Invalid JSON"}, 400
+
+    if not body or "object" not in body:
+        return {"error": "Invalid payload"}, 400
+
+    obj = body.get("object", {})
+    if not obj.get("id") or not obj.get("status"):
+        return {"error": "Missing required fields"}, 400
+
+    valid_statuses = {"succeeded", "cancelled", "waiting_for_capture", "pending", "canceled"}
+    if obj["status"] not in valid_statuses:
+        return {"status": "ignored"}
+
+    amount = obj.get("amount", {})
+    try:
+        value = float(amount.get("value", 0))
+        if value <= 0:
+            return {"error": "Invalid amount"}, 400
+    except (TypeError, ValueError):
+        return {"error": "Invalid amount format"}, 400
+
     event_type = body.get("event", "")
     log.info(f"YooKassa webhook: {event_type}")
 
     # Validate required fields
-    obj = body.get("object", {})
     tenant_id = obj.get("metadata", {}).get("tenant_id")
     if not tenant_id:
         log.warning("YooKassa webhook missing tenant_id — skipping")

@@ -15,6 +15,7 @@ Uses telegram_client.py factory for session management.
 import asyncio
 import logging
 import random
+import uuid as uuid_mod
 from datetime import datetime, timezone, timedelta
 
 import asyncpg
@@ -51,6 +52,13 @@ def run_warmup_cycle(self, tenant_id: str, account_id: str):
 
     Reads stage from DB, performs real Telethon actions.
     """
+    try:
+        uuid_mod.UUID(account_id)
+        uuid_mod.UUID(tenant_id)
+    except ValueError:
+        log.warning(f"Invalid id format: tenant={tenant_id} account={account_id}, skipping")
+        return {"status": "skipped", "reason": "invalid_uuid"}
+
     loop = asyncio.new_event_loop()
     try:
         result = loop.run_until_complete(
@@ -223,6 +231,12 @@ async def _get_warming_accounts() -> list[tuple[str, str]]:
 @celery.task(name="app.tasks.warmup.handle_flood_wait", queue="warmup")
 def handle_flood_wait(tenant_id: str, account_id: str, wait_seconds: int = 14400):
     """Handle FLOOD_WAIT errors: set cooldown in DB."""
+    try:
+        uuid_mod.UUID(account_id)
+    except ValueError:
+        log.warning(f"Invalid account_id format: {account_id}, skipping cooldown")
+        return {"status": "skipped", "reason": "invalid_uuid"}
+
     log.warning(f"FLOOD_WAIT on account {account_id}, cooldown {wait_seconds}s")
 
     loop = asyncio.new_event_loop()

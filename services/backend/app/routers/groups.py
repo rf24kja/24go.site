@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.audit import log_event
 from app.database import get_db
-from app.models import MonitoredGroup, AccountPool, User
+from app.models import MonitoredGroup, AccountPool, User, Target
+from app.quota import PLAN_LIMITS, get_subscription_plan
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/groups", tags=["groups"])
@@ -75,6 +76,20 @@ async def add_group(
     current_user: User = Depends(get_current_user),
 ):
     """Add a public group for monitoring."""
+    # Check target limit
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    from sqlalchemy import func as _func
+    count = (await db.execute(
+        _func.count()).select_from(
+        select(MonitoredGroup).where(
+            MonitoredGroup.tenant_id == current_user.tenant_id,
+            MonitoredGroup.is_active == True,
+        ).subquery()
+    )).scalar() or 0
+    if count >= limits["max_targets"]:
+        raise HTTPException(403, f"Target limit reached ({limits['max_targets']}) for {plan} plan")
+
     # Verify account exists and belongs to this tenant
     acct_result = await db.execute(
         select(AccountPool).where(
@@ -300,6 +315,10 @@ async def discover_groups(
     Returns recommended groups with metadata.
     Filters by tenant settings (min_members_count, prefer_open_comments).
     """
+    # Check target limit
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+
     from app.tenant_settings import get_section
     from app.config import settings as app_settings
     db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")

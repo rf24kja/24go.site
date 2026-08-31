@@ -11,6 +11,7 @@ import asyncio
 import logging
 import random
 import re
+import uuid as uuid_mod
 
 from celery import shared_task
 
@@ -62,6 +63,13 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
 
     target_channel: Telegram channel/group username or ID (e.g. "@phuket_rentals")
     """
+    try:
+        uuid_mod.UUID(account_id)
+        uuid_mod.UUID(tenant_id)
+    except ValueError:
+        log.warning(f"Invalid id format: tenant={tenant_id} account={account_id}, skipping post")
+        return {"status": "skipped", "reason": "invalid_uuid"}
+
     with acquire_account_lock(tenant_id, account_id) as locked:
         if not locked:
             log.warning(f"Account {account_id} locked by another worker, retrying")

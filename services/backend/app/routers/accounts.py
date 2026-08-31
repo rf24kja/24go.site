@@ -12,6 +12,7 @@ from app.audit import log_event
 from app.crypto import encrypt, decrypt
 from app.database import get_db
 from app.models import AccountPool, User
+from app.quota import PLAN_LIMITS, get_subscription_plan
 from app.security import get_current_user
 from app.schemas import AccountCreate, AccountResponse
 
@@ -56,6 +57,17 @@ async def bulk_create_accounts(
     """Bulk create accounts. Max 50 per request."""
     if len(body.accounts) > 50:
         raise HTTPException(400, "Max 50 accounts per request")
+
+    # Check account limit
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    from sqlalchemy import func as _func
+    count = (await db.execute(
+        _func.count()).select_from(
+        select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
+    )).scalar() or 0
+    if count >= limits["max_accounts"]:
+        raise HTTPException(403, f"Account limit reached ({limits['max_accounts']}) for {plan} plan")
 
     created = 0
     errors: list[str] = []
@@ -202,6 +214,17 @@ async def create_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Check account limit
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    from sqlalchemy import func as _func
+    count = (await db.execute(
+        _func.count()).select_from(
+        select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
+    )).scalar() or 0
+    if count >= limits["max_accounts"]:
+        raise HTTPException(403, f"Account limit reached ({limits['max_accounts']}) for {plan} plan")
+
     account = AccountPool(
         tenant_id=current_user.tenant_id,
         platform=body.platform,
@@ -213,12 +236,17 @@ async def create_account(
     await db.commit()
     await db.refresh(account)
     account.session_data = None  # Never expose session in API
-    await log_event(
-        url=settings.DATABASE_URL.replace("+asyncpg", ""),
-        tenant_id=current_user.tenant_id, action="created", entity_type="account",
-        entity_id=account.id, new_value={"account_identifier": body.account_identifier, "platform": body.platform},
-        user_id=current_user.id, ip_address=request.client.host if request else None,
-    )
+    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(conn_url)
+    try:
+        await log_event(
+            tenant_id=current_user.tenant_id, action="created", entity_type="account",
+            entity_id=account.id, new_value={"account_identifier": body.account_identifier, "platform": body.platform},
+            user_id=current_user.id, ip_address=request.client.host if request else None,
+            conn=conn,
+        )
+    finally:
+        await conn.close()
     return account
 
 
@@ -298,13 +326,18 @@ async def connect_telegram(
         }))
 
         log.info(f"Code request sent to {_mask_phone(body.phone)} for account {account_id}")
-        await log_event(
-            url=settings.DATABASE_URL.replace("+asyncpg", ""),
-            tenant_id=current_user.tenant_id, action="connected", entity_type="account",
-            entity_id=str(account_id),
-            new_value={"phone": body.phone},
-            user_id=current_user.id, ip_address=request.client.host if request else None,
-        )
+        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(conn_url)
+        try:
+            await log_event(
+                tenant_id=current_user.tenant_id, action="connected", entity_type="account",
+                entity_id=str(account_id),
+                new_value={"phone": body.phone},
+                user_id=current_user.id, ip_address=request.client.host if request else None,
+                conn=conn,
+            )
+        finally:
+            await conn.close()
         return {"status": "code_sent", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"connect_telegram failed: {e}")
@@ -451,12 +484,17 @@ async def confirm_telegram(
             log.warning(f"Failed to auto-dispatch tasks: {dispatch_err}")
 
         log.info(f"Telegram authorized for account {account_id}")
-        await log_event(
-            url=settings.DATABASE_URL.replace("+asyncpg", ""),
-            tenant_id=current_user.tenant_id, action="confirmed", entity_type="account",
-            entity_id=str(account_id), user_id=current_user.id,
-            ip_address=request.client.host if request else None,
-        )
+        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(conn_url)
+        try:
+            await log_event(
+                tenant_id=current_user.tenant_id, action="confirmed", entity_type="account",
+                entity_id=str(account_id), user_id=current_user.id,
+                ip_address=request.client.host if request else None,
+                conn=conn,
+            )
+        finally:
+            await conn.close()
         return {"status": "connected", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"confirm_telegram failed: {e}")
@@ -572,12 +610,17 @@ async def confirm_password(
             log.warning(f"Failed to auto-dispatch tasks: {dispatch_err}")
 
         log.info(f"Telegram 2FA authorized for account {account_id}")
-        await log_event(
-            url=settings.DATABASE_URL.replace("+asyncpg", ""),
-            tenant_id=current_user.tenant_id, action="confirmed_2fa", entity_type="account",
-            entity_id=str(account_id), user_id=current_user.id,
-            ip_address=request.client.host if request else None,
-        )
+        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(conn_url)
+        try:
+            await log_event(
+                tenant_id=current_user.tenant_id, action="confirmed_2fa", entity_type="account",
+                entity_id=str(account_id), user_id=current_user.id,
+                ip_address=request.client.host if request else None,
+                conn=conn,
+            )
+        finally:
+            await conn.close()
         return {"status": "connected", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"confirm_password failed: {e}")
@@ -740,11 +783,16 @@ async def connect_vk(
     await db.commit()
 
     log.info(f"VK connected for account {account_id}, group={body.group_id}")
-    await log_event(
-        url=settings.DATABASE_URL.replace("+asyncpg", ""),
-        tenant_id=current_user.tenant_id, action="connected_vk", entity_type="account",
-        entity_id=str(account_id),
-        new_value={"group_id": body.group_id},
-        user_id=current_user.id, ip_address=request.client.host if request else None,
-    )
+    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(conn_url)
+    try:
+        await log_event(
+            tenant_id=current_user.tenant_id, action="connected_vk", entity_type="account",
+            entity_id=str(account_id),
+            new_value={"group_id": body.group_id},
+            user_id=current_user.id, ip_address=request.client.host if request else None,
+            conn=conn,
+        )
+    finally:
+        await conn.close()
     return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte"}

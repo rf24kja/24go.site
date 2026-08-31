@@ -42,18 +42,25 @@ async def init_audit_table(url: str):
 
 
 async def log_event(
-    url: str,
-    tenant_id: str | uuid.UUID,
-    action: str,
-    entity_type: str,
+    url: str | None = None,
+    tenant_id: str | uuid.UUID = None,
+    action: str = "",
+    entity_type: str = "",
     entity_id: str | uuid.UUID | None = None,
     old_value: dict | None = None,
     new_value: dict | None = None,
     user_id: str | uuid.UUID | None = None,
     ip_address: str | None = None,
+    conn=None,
 ):
-    """Write an audit log entry."""
-    conn = await asyncpg.connect(url)
+    """Write an audit log entry. Pass conn to reuse an existing connection."""
+    close_conn = False
+    if conn is None:
+        if url is None:
+            from app.config import settings
+            url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(url)
+        close_conn = True
     try:
         await conn.execute(
             """INSERT INTO audit_log (tenant_id, user_id, action, entity_type, entity_id, old_value, new_value, ip_address)
@@ -70,7 +77,8 @@ async def log_event(
     except Exception as e:
         log.error(f"Audit log write failed: {e}")
     finally:
-        await conn.close()
+        if close_conn:
+            await conn.close()
 
 
 async def get_audit_log(

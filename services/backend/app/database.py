@@ -1,10 +1,14 @@
 """Database engine and session factory with RLS support."""
+import re
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from fastapi import Request
 
 from app.config import settings
+
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_size=20, max_overflow=10)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -25,12 +29,11 @@ async def get_db(request: Request = None):
         if request is not None:
             tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
-            # Ensure active transaction (SET LOCAL requires one)
+            tid = str(tenant_id).strip()
+            if not _UUID_RE.match(tid):
+                raise ValueError(f"Invalid tenant_id format: {tid}")
             await session.execute(text("BEGIN"))
-            # ponytail: SET LOCAL doesn't support parameterized queries.
-            # UUID format is safe — only hex digits and hyphens.
-            safe_id = str(tenant_id).replace("'", "''")
             await session.execute(
-                text(f"SET LOCAL app.current_tenant = '{safe_id}'"),
+                text("SET LOCAL app.current_tenant = :tid"), {"tid": tid}
             )
         yield session

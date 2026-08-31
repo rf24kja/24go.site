@@ -68,32 +68,26 @@ async def get_lead(
     if not lead:
         raise HTTPException(404, "Lead not found")
 
-    # Fetch audit trail for this lead
-    import asyncpg
-    from app.config import settings
-    db_url = settings.DATABASE_URL.replace("+asyncpg", "")
-
+    # Fetch audit trail for this lead via the same session
     events = []
     try:
-        conn = await asyncpg.connect(db_url)
-        try:
-            rows = await conn.fetch(
-                "SELECT action, old_value, new_value, user_id, created_at "
-                "FROM audit_log WHERE entity_type = 'lead' AND entity_id = $1 "
-                "ORDER BY created_at DESC LIMIT 50",
-                lead.id,
-            )
-            events = [
-                {
-                    "action": r["action"],
-                    "old_value": r["old_value"],
-                    "new_value": r["new_value"],
-                    "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-                }
-                for r in rows
-            ]
-        finally:
-            await conn.close()
+        from sqlalchemy import text
+        audit_q = text(
+            "SELECT action, old_value, new_value, created_at "
+            "FROM audit_log WHERE entity_type = 'lead' AND entity_id = :eid "
+            "ORDER BY created_at DESC LIMIT 50"
+        )
+        audit_result = await db.execute(audit_q, {"eid": lead.id})
+        rows = audit_result.fetchall()
+        events = [
+            {
+                "action": r["action"],
+                "old_value": r["old_value"],
+                "new_value": r["new_value"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+            for r in rows
+        ]
     except Exception:
         pass  # Audit log table may not exist yet
 
@@ -209,6 +203,7 @@ async def update_lead_status(
     from fastapi import HTTPException
     from app.config import settings
     from app.audit import log_event
+    import asyncpg
     q = select(Lead).where(
         Lead.id == uuid.UUID(lead_id),
         Lead.tenant_id == current_user.tenant_id,
@@ -221,20 +216,25 @@ async def update_lead_status(
     lead.status = body.status
     await db.commit()
     await db.refresh(lead)
-    # Audit log
+    # Audit log — reuse a single connection for the audit write
     if old_status != body.status:
         ip = request.client.host if request else None
-        await log_event(
-            url=settings.DATABASE_URL.replace("+asyncpg", ""),
-            tenant_id=current_user.tenant_id,
-            action="status_change",
-            entity_type="lead",
-            entity_id=lead.id,
-            old_value={"status": old_status},
-            new_value={"status": body.status},
-            user_id=current_user.id,
-            ip_address=ip,
-        )
+        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(conn_url)
+        try:
+            await log_event(
+                tenant_id=current_user.tenant_id,
+                action="status_change",
+                entity_type="lead",
+                entity_id=lead.id,
+                old_value={"status": old_status},
+                new_value={"status": body.status},
+                user_id=current_user.id,
+                ip_address=ip,
+                conn=conn,
+            )
+        finally:
+            await conn.close()
     return lead
 
 

@@ -6,7 +6,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 import redis
@@ -87,11 +87,23 @@ async def check_quota(
     try:
         row = await conn.fetchrow(
             "SELECT plan, status, monthly_posts_limit, monthly_posts_used, "
-            "token_credits_balance FROM subscriptions WHERE tenant_id = $1",
+            "token_credits_balance, current_period_end FROM subscriptions WHERE tenant_id = $1",
             uuid.UUID(tenant_id),
         )
         if not row:
             return {"allowed": False, "reason": "no_subscription"}
+        if row["status"] == "active" and row["current_period_end"]:
+            period_end = row["current_period_end"]
+            if isinstance(period_end, str):
+                period_end = datetime.fromisoformat(period_end.replace("Z", "+00:00"))
+            if period_end.tzinfo is None:
+                period_end = period_end.replace(tzinfo=timezone.utc)
+            if period_end < datetime.now(timezone.utc):
+                await conn.execute(
+                    "UPDATE subscriptions SET status='expired', updated_at=NOW() WHERE id=$1",
+                    row["id"],
+                )
+                return {"allowed": False, "reason": "expired", "current": 0, "limit": 0}
         if row["status"] != "active":
             return {"allowed": False, "reason": f"subscription_{row['status']}"}
 
@@ -194,3 +206,19 @@ async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
 def get_plan_limits(plan: str) -> dict:
     """Return resource limits for a given plan tier."""
     return PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+
+
+async def get_subscription_plan(tenant_id: str, db_url: str | None = None) -> str:
+    """Return the current plan tier for a tenant."""
+    url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(url)
+    try:
+        row = await conn.fetchval(
+            "SELECT plan FROM subscriptions WHERE tenant_id = $1",
+            uuid.UUID(tenant_id),
+        )
+        return row if row else "trial"
+    except Exception:
+        return "trial"
+    finally:
+        await conn.close()
