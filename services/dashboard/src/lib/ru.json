@@ -727,5 +727,16 @@
   "blogAdmin.saveFailed": "Не удалось сохранить",
   "blogAdmin.deleteConfirm": "Удалить этот пост?",
   "blogAdmin.postDeleted": "Пост удалён",
-  "blogAdmin.deleteFailed": "Не удалось удалить"
+  "blogAdmin.deleteFailed": "Не удалось удалить",
+  "campaigns.deleteConfirm": "Удалить эту кампанию?",
+  "groups.members": "участников",
+  "groups.never": "никогда",
+  "settings.section.ai": "ИИ и классификация",
+  "settings.section.warmup": "Прогрев аккаунтов",
+  "settings.section.posting": "Публикации и UTM",
+  "settings.section.notifications": "Уведомления",
+  "settings.section.groups": "Сканирование групп",
+  "settings.section.account": "Аккаунт и оплата",
+  "targets.cancel": "Отмена",
+  "targets.never": "никогда"
 }
