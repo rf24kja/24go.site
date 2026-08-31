@@ -18,8 +18,16 @@ type BlogPost = {
 
 type Tab = "ru" | "en";
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 const emptyForm = {
   title_ru: "", title_en: "",
+  slug: "",
   excerpt_ru: "", excerpt_en: "",
   content_ru: "", content_en: "",
   tags: "",
@@ -62,6 +70,7 @@ export default function BlogAdminPage() {
     setForm({
       title_ru: p.title_ru || "",
       title_en: p.title_en || "",
+      slug: p.slug || "",
       excerpt_ru: "", excerpt_en: "",
       content_ru: "", content_en: "",
       tags: "",
@@ -79,6 +88,7 @@ export default function BlogAdminPage() {
     const data: any = {
       title_ru: form.title_ru,
       title_en: form.title_en,
+      slug: form.slug || slugify(form.title_en),
       excerpt_ru: form.excerpt_ru,
       excerpt_en: form.excerpt_en,
       content_ru: form.content_ru,
@@ -186,7 +196,14 @@ export default function BlogAdminPage() {
               <form onSubmit={handleSubmit} className="space-y-3">
                 {tab === "en" ? (
                   <>
-                    <input type="text" placeholder={t("blogAdmin.titleEn")} required value={form.title_en} onChange={(e) => set("title_en", e.target.value)}
+                    <input type="text" placeholder={t("blogAdmin.titleEn")} required value={form.title_en} onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        title_en: val,
+                        slug: f.slug === slugify(f.title_en) || f.slug === "" ? slugify(val) : f.slug,
+                      }));
+                    }}
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                     <input type="text" placeholder={t("blogAdmin.excerptEn")} value={form.excerpt_en} onChange={(e) => set("excerpt_en", e.target.value)}
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
@@ -210,6 +227,9 @@ export default function BlogAdminPage() {
 
                 <input type="text" placeholder={t("blogAdmin.tagsPlaceholder")} value={form.tags} onChange={(e) => set("tags", e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+
+                <input type="text" placeholder={t("blogAdmin.slugPlaceholder") || "Slug"} value={form.slug} onChange={(e) => set("slug", e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
 
                 <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
                   <input type="checkbox" checked={form.published} onChange={(e) => set("published", e.target.checked)}

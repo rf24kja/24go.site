@@ -157,13 +157,16 @@ async def record_usage(
             json.dumps({"prompt": prompt_tokens, "completion": completion_tokens}),
         )
 
-        # Deduct token credits
+        # Deduct token credits (atomic: prevents negative balance race)
         row = await conn.fetchrow(
             """UPDATE subscriptions SET token_credits_balance = token_credits_balance - $1
-               WHERE tenant_id = $2 RETURNING token_credits_balance""",
+               WHERE tenant_id = $2 AND token_credits_balance >= $1
+               RETURNING token_credits_balance""",
             total_tokens, tenant_uuid,
         )
-        new_balance = row["token_credits_balance"] if row else 0
+        if not row:
+            raise ValueError("insufficient_token_credits")
+        new_balance = row["token_credits_balance"]
 
         # Invalidate Redis cache
         try:

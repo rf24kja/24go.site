@@ -1,4 +1,5 @@
 """Blog API — admin CRUD + public read."""
+import json
 import re
 from datetime import datetime
 from uuid import UUID
@@ -166,7 +167,7 @@ async def public_list_posts(
     """Public blog listing — returns published posts only."""
     q = select(BlogPost).where(BlogPost.published == True)
     if tag:
-        q = q.where(BlogPost.tags.op("@>")(f'["{tag}"]'))
+        q = q.where(BlogPost.tags.op("@>")(json.dumps([tag])))
 
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0

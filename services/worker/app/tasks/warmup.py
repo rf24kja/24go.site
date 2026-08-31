@@ -207,8 +207,12 @@ def trigger_daily_warmup():
     try:
         accounts = loop.run_until_complete(_get_warming_accounts())
         for tenant_id, account_id in accounts:
-            run_warmup_cycle.delay(tenant_id, account_id)
-            log.info(f"Dispatched warmup for account {account_id}")
+            delay = random.randint(0, 300)
+            run_warmup_cycle.apply_async(
+                args=[tenant_id, account_id],
+                countdown=delay,
+            )
+            log.info(f"Dispatched warmup for account {account_id} with {delay}s delay")
     finally:
         loop.close()
 

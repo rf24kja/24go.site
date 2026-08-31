@@ -14,21 +14,22 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType>({ toast: () => {} });
 
+let _toastId = 0;
+
 export function useToast() {
   return useContext(ToastContext);
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const nextId = useCallback(() => Date.now(), []);
 
   const toast = useCallback((message: string, type: Toast["type"] = "info") => {
-    const id = nextId();
+    const id = ++_toastId;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
-  }, [nextId]);
+  }, []);
 
   return (
     <ToastContext.Provider value={{ toast }}>
