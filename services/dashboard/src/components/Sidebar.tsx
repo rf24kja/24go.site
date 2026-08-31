@@ -36,6 +36,7 @@ export function Sidebar() {
     { href: "/users", label: t("nav.team"), icon: UsersGroup },
     { href: "/audit", label: t("nav.audit"), icon: FileText },
     { href: "/health", label: t("nav.health"), icon: Heartbeat },
+    { href: "/help", label: t("nav.help"), icon: FileText },
     { href: "/settings", label: t("nav.settings"), icon: Cog },
   ];
 
