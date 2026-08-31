@@ -112,6 +112,8 @@ class CampaignCreate(BaseModel):
     schedule_cron: str | None = None  # e.g. "0 9,15 * * *"
     posts_per_day: int = 1
     timezone: str = "UTC"
+    ab_enabled: bool = False
+    ab_variants: list[dict] = []
 
 
 class CampaignResponse(BaseModel):
@@ -125,6 +127,8 @@ class CampaignResponse(BaseModel):
     posts_per_day: int = 1
     timezone: str = "UTC"
     last_posted_at: datetime | None = None
+    ab_enabled: bool = False
+    ab_variants: list = []
     created_at: datetime | None = None
 
     class Config:

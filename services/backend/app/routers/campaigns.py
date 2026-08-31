@@ -108,6 +108,8 @@ class CampaignUpdateRequest(BaseModel):
     is_active: bool | None = None
     schedule_cron: str | None = None
     posts_per_day: int | None = None
+    ab_enabled: bool | None = None
+    ab_variants: list[dict] | None = None
 
 
 @router.patch("/{campaign_id}", response_model=CampaignResponse)
@@ -134,7 +136,8 @@ async def update_campaign(
 
     # Handle list fields separately (SQLAlchemy column assignment)
     for key, val in update_data.items():
-        if key in ("target_geos", "target_niches", "is_active", "schedule_cron", "posts_per_day"):
+        if key in ("target_geos", "target_niches", "is_active", "schedule_cron", "posts_per_day",
+                    "ab_enabled", "ab_variants"):
             setattr(campaign, key, val)
         elif key in ("name", "base_text"):
             setattr(campaign, key, val)
@@ -207,6 +210,10 @@ async def run_campaign_now(
             f"https://t.me/{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}",
             f"@{t.target_id_code}",
         ],
+        kwargs={
+            "ab_enabled": campaign.ab_enabled or False,
+            "ab_variants": campaign.ab_variants or [],
+        },
         queue="poster",
     )
 
@@ -255,3 +262,25 @@ async def cron_preview(
         runs.append(next_run.isoformat())
 
     return {"runs": runs, "timezone": body.timezone, "cron": body.cron}
+
+
+@router.get("/{campaign_id}/ab-stats")
+async def get_ab_stats(
+    campaign_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get A/B test statistics for a campaign."""
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id,
+            Campaign.tenant_id == current_user.tenant_id,
+        )
+    )
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+    return {
+        "ab_enabled": campaign.ab_enabled,
+        "variants": campaign.ab_variants or [],
+    }

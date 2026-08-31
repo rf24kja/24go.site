@@ -172,6 +172,8 @@ class Campaign(Base):
     posts_per_day = Column(Integer, default=1)
     timezone = Column(String(50), default="UTC")
     last_posted_at = Column(DateTime(timezone=True), nullable=True)
+    ab_enabled = Column(Boolean, default=False)
+    ab_variants = Column(JSONB, default=list)  # [{name, text, weight, posts, leads}]
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="campaigns")

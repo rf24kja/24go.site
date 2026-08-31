@@ -1,6 +1,8 @@
-"""Tenant settings API: GET all, GET section, PUT section, POST reset."""
+"""Tenant settings API: GET all, GET section, PUT section, POST reset, webhook test."""
 import logging
+from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,3 +74,29 @@ async def reset_settings_section(
 
     merged = await reset_section(DATABASE_URL, str(current_user.tenant_id), section)
     return {"section": section, "settings": merged.get(section, {}), "status": "reset_to_defaults"}
+
+
+# ── Webhook test ──────────────────────────────────────────────────────
+
+class TestWebhookRequest(BaseModel):
+    url: str
+
+
+@router.post("/webhooks/test")
+async def test_webhook(
+    body: TestWebhookRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Send a test webhook to the given URL."""
+    test_payload = {
+        "event": "webhook.test",
+        "tenant_id": str(current_user.tenant_id),
+        "data": {"message": "This is a test webhook from 24GO"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(body.url, json=test_payload)
+            return {"status_code": resp.status_code, "success": 200 <= resp.status_code < 300}
+    except Exception as e:
+        return {"status_code": 0, "success": False, "error": str(e)}

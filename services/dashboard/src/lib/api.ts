@@ -180,6 +180,10 @@ export async function getCampaignStats(token: string, campaignId: string) {
   return api<any>(`/api/v1/campaigns/${campaignId}/stats`, { token });
 }
 
+export async function getCampaignAbStats(token: string, campaignId: string) {
+  return api<any>(`/api/v1/campaigns/${campaignId}/ab-stats`, { token });
+}
+
 export async function getCampaignLogs(token: string, campaignId: string, params?: { limit?: number; offset?: number }) {
   const qs = new URLSearchParams(params as any).toString();
   return api<any>(`/api/v1/campaigns/${campaignId}/logs${qs ? `?${qs}` : ""}`, { token });
@@ -447,6 +451,10 @@ export async function updateSettingsSection(token: string, section: string, sett
 }
 export async function resetSettingsSection(token: string, section: string) {
   return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/reset/${section}`, { method: "POST", token });
+}
+
+export async function testWebhook(token: string, url: string) {
+  return api<{ status_code: number; success: boolean; error?: string }>("/api/v1/settings/webhooks/test", { method: "POST", body: JSON.stringify({ url }), token });
 }
 
 // ── Blog ─────────────────────────────────────────────────────────────

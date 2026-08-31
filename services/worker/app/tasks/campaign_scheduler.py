@@ -38,7 +38,8 @@ async def _run():
         # Fetch all active campaigns with scheduling fields
         campaigns = await conn.fetch(
             "SELECT id, tenant_id, base_text, target_geos, target_niches, "
-            "schedule_cron, posts_per_day, timezone, last_posted_at "
+            "schedule_cron, posts_per_day, timezone, last_posted_at, "
+            "ab_enabled, ab_variants "
             "FROM campaigns WHERE is_active = true"
         )
         if not campaigns:
@@ -138,6 +139,10 @@ async def _run():
                     utm_url,
                     f"@{target['target_id_code']}",  # target_channel for Telethon
                 ],
+                kwargs={
+                    "ab_enabled": c.get("ab_enabled", False),
+                    "ab_variants": c.get("ab_variants") or [],
+                },
                 queue="poster",
             )
 

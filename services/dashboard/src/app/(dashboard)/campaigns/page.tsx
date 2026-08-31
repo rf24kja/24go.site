@@ -19,6 +19,8 @@ type Campaign = {
   posts_per_day: number | null;
   timezone: string;
   last_posted_at: string | null;
+  ab_enabled: boolean;
+  ab_variants: { name: string; text: string; weight: number; posts: number; leads: number }[];
   created_at: string;
 };
 
@@ -42,7 +44,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC" });
+  const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] as { name: string; text: string; weight: number; posts: number; leads: number }[] });
   const [saving, setSaving] = useState(false);
   const [statsCampaign, setStatsCampaign] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -71,7 +73,7 @@ export default function CampaignsPage() {
   const openCreate = () => {
     setModalMode("create");
     setEditingId(null);
-    setForm({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC" });
+    setForm({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] });
   };
 
   const openEdit = (c: Campaign) => {
@@ -85,6 +87,8 @@ export default function CampaignsPage() {
       schedule: c.schedule_cron || "",
       posts_per_day: String(c.posts_per_day || 5),
       timezone: c.timezone || "UTC",
+      ab_enabled: c.ab_enabled || false,
+      ab_variants: c.ab_variants || [],
     });
   };
 
@@ -115,6 +119,8 @@ export default function CampaignsPage() {
         schedule_cron: form.schedule || null,
         posts_per_day: parseInt(form.posts_per_day) || 5,
         timezone: form.timezone,
+        ab_enabled: form.ab_enabled,
+        ab_variants: form.ab_enabled ? form.ab_variants : [],
       };
       if (modalMode === "edit" && editingId) {
         await updateCampaign(auth.token, editingId, data);
@@ -181,7 +187,12 @@ export default function CampaignsPage() {
           {campaigns.map((c) => (
             <div key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
               <div className="flex items-start justify-between">
-                <h2 className="text-zinc-100 font-medium truncate">{c.name}</h2>
+                <div className="flex items-center gap-2 min-w-0">
+                  <h2 className="text-zinc-100 font-medium truncate">{c.name}</h2>
+                  {c.ab_enabled && (
+                    <span className="px-1.5 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-[10px] font-medium shrink-0">A/B</span>
+                  )}
+                </div>
                 <button onClick={() => toggleActive(c)}
                   className={`px-2 py-0.5 rounded text-xs font-medium border transition ${c.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/20"}`}>
                   {c.is_active ? t("campaigns.active") : t("campaigns.paused")}
@@ -287,6 +298,85 @@ export default function CampaignsPage() {
                   </div>
                 </div>
               )}
+
+              {/* A/B Testing */}
+              <div className="border border-zinc-700 rounded-lg p-3 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.ab_enabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setForm({
+                        ...form,
+                        ab_enabled: enabled,
+                        ab_variants: enabled && form.ab_variants.length === 0
+                          ? [
+                              { name: "Variant A", text: form.base_text, weight: 50, posts: 0, leads: 0 },
+                              { name: "Variant B", text: "", weight: 50, posts: 0, leads: 0 },
+                            ]
+                          : form.ab_variants,
+                      });
+                    }}
+                    className="rounded border-zinc-600 bg-zinc-800" />
+                  <span className="text-sm text-zinc-300 font-medium">{t("campaigns.abTest")}</span>
+                </label>
+                <p className="text-[11px] text-zinc-500">{t("campaigns.abTestDesc")}</p>
+
+                {form.ab_enabled && (
+                  <div className="space-y-3">
+                    {form.ab_variants.map((v, i) => (
+                      <div key={i} className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <input type="text" value={v.name} placeholder={`${t("campaigns.variantName")} ${String.fromCharCode(65 + i)}`}
+                            onChange={(e) => {
+                              const variants = [...form.ab_variants];
+                              variants[i] = { ...variants[i], name: e.target.value };
+                              setForm({ ...form, ab_variants: variants });
+                            }}
+                            className="bg-transparent text-sm text-zinc-200 font-medium border-b border-zinc-700 focus:border-zinc-500 outline-none w-32" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-zinc-500">{t("campaigns.variantWeight")}:</span>
+                            <input type="number" min="1" max="100" value={v.weight}
+                              onChange={(e) => {
+                                const variants = [...form.ab_variants];
+                                variants[i] = { ...variants[i], weight: parseInt(e.target.value) || 50 };
+                                setForm({ ...form, ab_variants: variants });
+                              }}
+                              className="w-14 px-1 py-0.5 bg-zinc-700 border border-zinc-600 rounded text-xs text-zinc-200 text-center" />
+                            {form.ab_variants.length > 2 && (
+                              <button type="button" onClick={() => setForm({ ...form, ab_variants: form.ab_variants.filter((_, j) => j !== i) })}
+                                className="text-rose-400 hover:text-rose-300 text-xs">{t("campaigns.removeVariant")}</button>
+                            )}
+                          </div>
+                        </div>
+                        <textarea rows={2} value={v.text} placeholder={`${t("campaigns.variantName")} ${String.fromCharCode(65 + i)} — ${t("campaigns.textPlaceholder")}`}
+                          onChange={(e) => {
+                            const variants = [...form.ab_variants];
+                            variants[i] = { ...variants[i], text: e.target.value };
+                            setForm({ ...form, ab_variants: variants });
+                          }}
+                          className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-200 resize-none" />
+                        {/* Show stats if editing existing campaign */}
+                        {modalMode === "edit" && (v.posts > 0 || v.leads > 0) && (
+                          <div className="flex gap-3 text-[10px] text-zinc-500">
+                            <span>{t("campaigns.variantPosts")}: {v.posts}</span>
+                            <span>{t("campaigns.variantLeads")}: {v.leads}</span>
+                            <span>{t("campaigns.variantConversion")}: {v.posts > 0 ? ((v.leads / v.posts) * 100).toFixed(1) : "0"}%</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {form.ab_variants.length < 4 && (
+                      <button type="button" onClick={() => setForm({
+                        ...form,
+                        ab_variants: [...form.ab_variants, { name: `Variant ${String.fromCharCode(65 + form.ab_variants.length)}`, text: "", weight: 50, posts: 0, leads: 0 }],
+                      })}
+                        className="w-full py-1.5 border border-dashed border-zinc-700 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition">
+                        + {t("campaigns.addVariant")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalMode(null)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
@@ -396,6 +486,36 @@ export default function CampaignsPage() {
                             <span className="text-[10px] text-zinc-500">{d.count}</span>
                             <div className="w-full bg-emerald-500/30 rounded-sm" style={{ height: `${height}%` }} />
                             <span className="text-[10px] text-zinc-600">{d.date.slice(5)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* A/B Test Variants */}
+                {statsCampaign.ab_enabled && statsCampaign.ab_variants && statsCampaign.ab_variants.length > 0 && (
+                  <div>
+                    <h3 className="text-xs text-zinc-500 mb-2">{t("campaigns.abTest")}</h3>
+                    <div className="space-y-2">
+                      {statsCampaign.ab_variants.map((v: any, i: number) => {
+                        const maxPosts = Math.max(...statsCampaign.ab_variants.map((x: any) => x.posts || 0), 1);
+                        const width = Math.max(4, ((v.posts || 0) / maxPosts) * 100);
+                        const conv = v.posts > 0 ? ((v.leads / v.posts) * 100).toFixed(1) : "0";
+                        return (
+                          <div key={i} className="bg-zinc-800 rounded-lg p-2 space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-zinc-300 font-medium">{v.name}</span>
+                              <span className="text-zinc-500">w:{v.weight}</span>
+                            </div>
+                            <div className="w-full bg-zinc-700 rounded-full h-1.5">
+                              <div className="bg-violet-500/50 h-1.5 rounded-full" style={{ width: `${width}%` }} />
+                            </div>
+                            <div className="flex gap-3 text-[10px] text-zinc-500">
+                              <span>{t("campaigns.variantPosts")}: {v.posts || 0}</span>
+                              <span>{t("campaigns.variantLeads")}: {v.leads || 0}</span>
+                              <span>{t("campaigns.variantConversion")}: {conv}%</span>
+                            </div>
                           </div>
                         );
                       })}

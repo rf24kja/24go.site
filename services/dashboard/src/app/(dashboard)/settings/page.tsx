@@ -6,22 +6,24 @@ import {
   getTenantSettings, updateSettingsSection, resetSettingsSection,
   getSubscription, getUsage, updateTenant, changePassword,
   getSystemInfo, seedDemoData, backupLeads,
-  getNotificationStatus, testSmtp,
+  getNotificationStatus, testSmtp, testWebhook,
 } from "@/lib/api";
 import {
-  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog,
+  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap,
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
 
-type Section = "llm" | "warmup" | "posting" | "notifications" | "groups" | "account";
+type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "account";
 
 const getSections = (t: (k: string) => string): { key: Section; label: string; Icon: React.FC<IconProps> }[] => [
   { key: "llm", label: t("settings.section.ai"), Icon: BrainCircuit },
   { key: "warmup", label: t("settings.section.warmup"), Icon: Flame },
   { key: "posting", label: t("settings.section.posting"), Icon: Send },
   { key: "notifications", label: t("settings.section.notifications"), Icon: Bell },
+  { key: "auto_reply", label: t("settings.autoReply"), Icon: Send },
   { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
+  { key: "webhooks", label: t("settings.section.webhooks"), Icon: Zap },
   { key: "account", label: t("settings.section.account"), Icon: Cog },
 ];
 
@@ -106,7 +108,9 @@ export default function SettingsPage() {
             {activeSection === "warmup" && <WarmupSection settings={settings.warmup || {}} defaults={defaults.warmup || {}} onSave={(v: Record<string, any>) => handleSaveSection("warmup", v)} onReset={() => handleResetSection("warmup")} saving={saving} />}
             {activeSection === "posting" && <PostingSection settings={settings.posting || {}} defaults={defaults.posting || {}} onSave={(v: Record<string, any>) => handleSaveSection("posting", v)} onReset={() => handleResetSection("posting")} saving={saving} />}
             {activeSection === "notifications" && <NotificationsSection settings={settings.notifications || {}} defaults={defaults.notifications || {}} onSave={(v: Record<string, any>) => handleSaveSection("notifications", v)} onReset={() => handleResetSection("notifications")} saving={saving} />}
+            {activeSection === "auto_reply" && <AutoReplySection settings={settings.auto_reply || {}} defaults={defaults.auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("auto_reply", v)} onReset={() => handleResetSection("auto_reply")} saving={saving} />}
             {activeSection === "groups" && <GroupsSection settings={settings.groups || {}} defaults={defaults.groups || {}} onSave={(v: Record<string, any>) => handleSaveSection("groups", v)} onReset={() => handleResetSection("groups")} saving={saving} />}
+            {activeSection === "webhooks" && <WebhooksSection settings={settings.webhooks || {}} defaults={defaults.webhooks || {}} onSave={(v: Record<string, any>) => handleSaveSection("webhooks", v)} onReset={() => handleResetSection("webhooks")} saving={saving} />}
             {activeSection === "account" && <AccountSection />}
           </>
         )}
@@ -438,6 +442,46 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
   );
 }
 
+// ── Section: Auto-Reply ──────────────────────────────────────────
+function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) {
+  const [cfg, setCfg] = useState(settings);
+  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader Icon={Send} title={t("settings.autoReply")} desc={t("settings.autoReplyDesc")} />
+
+      <Card title={t("settings.autoReplyConfig")}>
+        <div className="space-y-4">
+          <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.autoReplyEnabled")} />
+          <Field label={t("settings.autoReplyMinIntent")} hint={t("settings.autoReplyMinIntentHint")}>
+            <Select value={cfg.min_intent || "HOT"} onChange={(v) => set("min_intent", v)}
+              options={[
+                { value: "HOT", label: "HOT" },
+                { value: "WARM", label: "WARM" },
+              ]} />
+          </Field>
+          <Field label={t("settings.autoReplyMessage")} hint={t("settings.autoReplyMessageHint")}>
+            <textarea value={cfg.reply_message || ""} onChange={(e) => set("reply_message", e.target.value)} rows={3}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label={t("settings.autoReplyDelay")} hint={t("settings.autoReplyDelayHint")}>
+              <NumberInput value={cfg.reply_delay_seconds || 5} onChange={(v) => set("reply_delay_seconds", v)} min={0} max={60} />
+            </Field>
+            <Field label={t("settings.autoReplyMaxPerHour")} hint={t("settings.autoReplyMaxPerHourHint")}>
+              <NumberInput value={cfg.max_replies_per_hour || 10} onChange={(v) => set("max_replies_per_hour", v)} min={1} max={100} />
+            </Field>
+          </div>
+        </div>
+      </Card>
+
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
+    </div>
+  );
+}
+
 // ── Section: Groups ──────────────────────────────────────────────
 function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
@@ -471,6 +515,95 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
             </Field>
           </div>
           <Toggle value={cfg.prefer_open_comments !== false} onChange={(v) => set("prefer_open_comments", v)} label={t("settings.preferOpenComments")} />
+        </div>
+      </Card>
+
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
+    </div>
+  );
+}
+
+// ── Section: Webhooks & Integrations ─────────────────────────────
+function WebhooksSection({ settings, defaults, onSave, onReset, saving }: any) {
+  const [cfg, setCfg] = useState(settings);
+  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
+  const { auth } = useAuth();
+  const [testingIdx, setTestingIdx] = useState<number | null>(null);
+  const [testResult, setTestResult] = useState<{ idx: number; ok: boolean } | null>(null);
+
+  const addUrl = () => {
+    const urls = [...(cfg.urls || []), { url: "", events: ["lead.new"], secret: "" }];
+    set("urls", urls);
+  };
+
+  const removeUrl = (idx: number) => {
+    set("urls", cfg.urls.filter((_: any, i: number) => i !== idx));
+  };
+
+  const updateUrl = (idx: number, field: string, value: any) => {
+    const urls = [...cfg.urls];
+    urls[idx] = { ...urls[idx], [field]: value };
+    set("urls", urls);
+  };
+
+  const handleTest = async (idx: number) => {
+    const url = cfg.urls?.[idx]?.url;
+    if (!url || !auth?.token) return;
+    setTestingIdx(idx);
+    setTestResult(null);
+    try {
+      const res = await testWebhook(auth.token, url);
+      setTestResult({ idx, ok: res.success });
+    } catch {
+      setTestResult({ idx, ok: false });
+    }
+    setTestingIdx(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader Icon={Zap} title={t("settings.webhooks")} desc={t("settings.webhooksDesc")} />
+
+      <Card title={t("settings.webhooksEnabled")}>
+        <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.webhooksEnabled")} />
+      </Card>
+
+      <Card title={t("settings.webhookUrls")}>
+        <div className="space-y-4">
+          {(cfg.urls || []).map((entry: any, idx: number) => (
+            <div key={idx} className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 space-y-3">
+                  <Field label={t("settings.webhookUrl")}>
+                    <Input value={entry.url || ""} onChange={(v) => updateUrl(idx, "url", v)} placeholder="https://n8n.example.com/webhook/..." />
+                  </Field>
+                  <Field label={t("settings.webhookSecret")}>
+                    <Input value={entry.secret || ""} onChange={(v) => updateUrl(idx, "secret", v)} placeholder="optional_hmac_secret" type="password" />
+                  </Field>
+                </div>
+                <div className="flex flex-col gap-2 pt-5">
+                  <button onClick={() => handleTest(idx)} disabled={testingIdx === idx || !entry.url}
+                    className="px-3 py-1.5 bg-zinc-700 text-zinc-200 rounded-lg text-xs hover:bg-zinc-600 disabled:opacity-50 whitespace-nowrap">
+                    {testingIdx === idx ? t("settings.webhookTesting") : t("settings.webhookTest")}
+                  </button>
+                  <button onClick={() => removeUrl(idx)}
+                    className="px-3 py-1.5 text-zinc-500 text-xs hover:text-rose-400 transition">
+                    ×
+                  </button>
+                </div>
+              </div>
+              {testResult?.idx === idx && (
+                <div className={`text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-400"}`}>
+                  {testResult.ok ? t("settings.webhookSuccess") : t("settings.webhookFailed")}
+                </div>
+              )}
+            </div>
+          ))}
+          <button onClick={addUrl}
+            className="px-4 py-2 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition w-full">
+            + {t("settings.webhookAdd")}
+          </button>
         </div>
       </Card>
 

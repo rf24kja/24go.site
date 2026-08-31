@@ -74,6 +74,13 @@ DEFAULTS = {
         "min_members_count": 100,
         "prefer_open_comments": True,
     },
+    "auto_reply": {
+        "enabled": False,
+        "min_intent": "HOT",
+        "reply_message": "Thank you for your interest! Our manager will contact you shortly. 🙏",
+        "reply_delay_seconds": 5,
+        "max_replies_per_hour": 10,
+    },
 }
 
 

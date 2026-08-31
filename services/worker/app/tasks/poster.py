@@ -23,6 +23,22 @@ from app.telegram_client import disconnect_client
 log = logging.getLogger(__name__)
 
 
+def select_ab_variant(variants: list) -> dict | None:
+    """Select a variant based on weights. Returns None if no variants."""
+    if not variants:
+        return None
+    total = sum(v.get("weight", 50) for v in variants)
+    if total == 0:
+        return random.choice(variants)
+    r = random.randint(1, total)
+    cumulative = 0
+    for v in variants:
+        cumulative += v.get("weight", 50)
+        if r <= cumulative:
+            return v
+    return variants[-1]
+
+
 def render_spintax(text_template: str) -> str:
     """Render spintax template: {option1|option2|option3} → random pick."""
     pattern = r"\{([^{}]*)\}"
@@ -54,7 +70,8 @@ def build_utm_url(base_url: str, campaign_id: str, target_id: str, account_id: s
 
 @celery.task(name="app.tasks.poster.publish_post", bind=True, queue="poster", max_retries=2)
 def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account_id: str,
-                 base_text: str, base_url: str, target_channel: str = ""):
+                 base_text: str, base_url: str, target_channel: str = "",
+                 ab_enabled: bool = False, ab_variants: list | None = None):
     """Post spintax-rendered content to a Telegram target via Telethon.
 
     Acquires per-account lock before execution.
@@ -69,6 +86,12 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
     except ValueError:
         log.warning(f"Invalid id format: tenant={tenant_id} account={account_id}, skipping post")
         return {"status": "skipped", "reason": "invalid_uuid"}
+
+    selected_variant = None
+    if ab_enabled and ab_variants:
+        selected_variant = select_ab_variant(ab_variants)
+        if selected_variant:
+            base_text = selected_variant.get("text", base_text)
 
     with acquire_account_lock(tenant_id, account_id) as locked:
         if not locked:
@@ -123,6 +146,18 @@ return 1
             # Save to posting_logs with message_id for comment scraper
             _save_posting_log(tenant_id, campaign_id, target_id, account_id,
                               full_text, utm_url, result.get("message_id"))
+
+            # Update A/B variant post count
+            if selected_variant and ab_variants:
+                for v in ab_variants:
+                    if v.get("name") == selected_variant.get("name"):
+                        v["posts"] = v.get("posts", 0) + 1
+                        break
+                try:
+                    import json as _json
+                    _update_variant_stats(tenant_id, campaign_id, ab_variants)
+                except Exception as e:
+                    log.warning(f"Failed to update A/B variant stats: {e}")
 
             # Schedule comment scraping (2min, 10min, 24h)
             if target_channel and result.get("message_id"):
@@ -187,6 +222,34 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
     import uuid
     import asyncpg
     import os
+
+
+def _update_variant_stats(tenant_id: str, campaign_id: str, variants: list):
+    """Update A/B variant post counts in campaigns table."""
+    import asyncpg
+    import os
+    import json
+
+    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
+    db_url = db_url.replace("+asyncpg", "")
+
+    async def _update():
+        conn = await asyncpg.connect(db_url)
+        try:
+            await conn.execute(
+                "UPDATE campaigns SET ab_variants = $1 WHERE id = $2 AND tenant_id = $3",
+                json.dumps(variants),
+                uuid.UUID(campaign_id),
+                uuid.UUID(tenant_id),
+            )
+        finally:
+            await conn.close()
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_update())
+    finally:
+        loop.close()
 
     db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
     db_url = db_url.replace("+asyncpg", "")
