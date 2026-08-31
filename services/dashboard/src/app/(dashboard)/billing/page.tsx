@@ -9,19 +9,19 @@ import { Skeleton } from "@/components/Skeleton";
 const PLANS = [
   {
     name: "Starter",
-    price: "$149",
+    price: "$75",
     period: "/mo",
     features: ["1,500 posts/mo", "1M tokens", "5 accounts", "Email support"],
   },
   {
     name: "Pro",
-    price: "$399",
+    price: "$199",
     period: "/mo",
     features: ["7,500 posts/mo", "5M tokens", "20 accounts", "Priority support", "API access"],
   },
   {
     name: "Enterprise",
-    price: "$999",
+    price: "$499",
     period: "/mo",
     features: ["Unlimited posts", "Unlimited tokens", "Unlimited accounts", "Dedicated support", "Custom integrations", "SLA"],
   },

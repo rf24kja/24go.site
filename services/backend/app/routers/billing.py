@@ -176,7 +176,7 @@ async def create_checkout(
 
 def _plan_price(plan: str) -> int:
     """Return monthly price in USD cents."""
-    return {"starter": 14900, "pro": 39900, "enterprise": 99900}.get(plan, 14900)
+    return {"starter": 7500, "pro": 19900, "enterprise": 49900}.get(plan, 7500)
 
 
 async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, email: str) -> str:
