@@ -373,7 +373,7 @@ export default function GroupsPage() {
               groups.map((g) => (
                 <tr key={g.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
                   <td className="px-4 py-3">
-                    <span className="text-xs">{g.platform === "telegram" ? "✈️ Telegram" : "🔵 VKontakte"}</span>
+                    <span className="text-xs">{g.platform === "telegram" ? t("groups.platformTelegram") : t("groups.platformVkontakte")}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div>

@@ -201,7 +201,7 @@ export default function CampaignsPage() {
                 <span>📅</span>
                 <span>{c.schedule_cron ? scheduleOptions.find((o) => o.value === c.schedule_cron)?.label || c.schedule_cron : t("campaigns.manual")}</span>
                 <span className="text-zinc-600">·</span>
-                <span>{c.posts_per_day || 5}/day</span>
+                <span>{c.posts_per_day || 5}{t("campaigns.perDaySuffix")}</span>
                 <span className="text-zinc-600">·</span>
                 <span>🕐 {c.timezone || "UTC"}</span>
               </div>
@@ -329,7 +329,7 @@ export default function CampaignsPage() {
                   </div>
                   <div className="bg-zinc-800 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-rose-400">{statsCampaign.hot_leads || 0}</p>
-                    <p className="text-xs text-zinc-500">HOT</p>
+                    <p className="text-xs text-zinc-500">{t("campaigns.hotStats")}</p>
                   </div>
                 </div>
 

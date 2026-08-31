@@ -63,10 +63,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
     if not group_token:
         return {"status": "error", "error": "no_vk_token", "leads_created": 0}
 
-    posting_cfg = get_tenant_settings_from_db(
-        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
-        tenant_id
-    ).get("posting", {})
+    posting_cfg = (await get_tenant_settings_from_db(tenant_id)).get("posting", {})
     max_comments = posting_cfg.get("max_comment_replies_per_post", 10)
 
     vk_session = await get_vk_group_session(account_id, group_token)

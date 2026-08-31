@@ -96,6 +96,13 @@
   "leads.intent.warm": "WARM",
   "leads.intent.cold": "COLD",
   "leads.intent.spam": "SPAM",
+  "leads.backToList": "← Back to Leads",
+  "leads.notFound": "Lead not found",
+  "leads.openDialog": "Open Dialog ↗",
+  "leads.leadCreated": "Lead created",
+  "leads.campaignRun": "Campaign run",
+  "leads.noEvents": "No events recorded yet",
+  "leads.statusUpdateFailed": "Failed to update status",
 
   "accounts.title": "Accounts",
   "accounts.bulkImport": "Bulk Import",
@@ -245,6 +252,8 @@
   "campaigns.runSuccess": "Posted to {target} via {account}",
   "campaigns.runFailed": "Failed to run",
   "campaigns.deleteConfirm": "Delete this campaign?",
+  "campaigns.hotStats": "HOT",
+  "campaigns.perDaySuffix": "/day",
 
   "targets.title": "Target Discovery",
   "targets.howItWorks": "How targets work",
@@ -356,6 +365,8 @@
   "groups.removeFailed": "Failed to remove group",
   "groups.members": "members",
   "groups.never": "never",
+  "groups.platformTelegram": "✈️ Telegram",
+  "groups.platformVkontakte": "🔵 VKontakte",
 
   "settings.title": "Settings",
   "settings.section.ai": "AI & Classification",
@@ -481,6 +492,8 @@
   "settings.passwordsMismatch": "Passwords don't match",
   "settings.minChars": "Min 8 characters",
   "settings.saveFailed": "Failed to save",
+  "settings.addItem": "Add item...",
+  "settings.add": "Add",
   "settings.loadDemoConfirm": "Load demo data?",
   "settings.resetConfirm": "Reset {section} to defaults?",
 
@@ -509,6 +522,7 @@
   "scoring.creating": "Creating...",
   "scoring.create": "Create",
   "scoring.deleteConfirm": "Delete this rule?",
+  "scoring.cancel": "Cancel",
 
   "analytics.title": "Analytics",
   "analytics.7d": "7d",
@@ -544,6 +558,10 @@
   "analytics.schedule": "Schedule",
   "analytics.manual": "manual",
   "analytics.noData": "No data",
+  "analytics.sourceDm": "💬 DM",
+  "analytics.sourceComment": "💭 Comment",
+  "analytics.sourceGroup": "👥 Group",
+  "analytics.sourceManual": "✏️ Manual",
 
   "audit.title": "Audit Log",
   "audit.filterAll": "all",
@@ -558,6 +576,10 @@
   "audit.colDetails": "Details",
   "audit.colIp": "IP",
   "audit.empty": "No audit entries yet.",
+  "audit.action.status_change": "Status change",
+  "audit.action.created": "Created",
+  "audit.action.deleted": "Deleted",
+  "audit.action.updated": "Updated",
 
   "users.title": "Team Members",
   "users.emailPlaceholder": "colleague@company.com",
@@ -600,6 +622,7 @@
   "health.status.healthy": "healthy",
   "health.status.error": "error",
   "health.status.unknown": "unknown",
+  "health.containerLabel": "Container:",
 
   "sidebar.analytics": "Analytics",
   "sidebar.leads": "Leads",
@@ -738,5 +761,7 @@
   "blogAdmin.saveFailed": "Failed to save",
   "blogAdmin.deleteConfirm": "Delete this post?",
   "blogAdmin.postDeleted": "Post deleted",
-  "blogAdmin.deleteFailed": "Failed to delete"
+  "blogAdmin.deleteFailed": "Failed to delete",
+  "common.langEn": "EN",
+  "common.langRu": "RU"
 }

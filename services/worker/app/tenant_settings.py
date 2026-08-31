@@ -1,8 +1,9 @@
-"""Worker-side sync tenant settings loader.
+"""Tenant settings loader — async + sync versions.
 
-Celery tasks run synchronously, so we need a sync version of get_settings.
-Uses the same DEFAULTS as the backend for consistency.
+Use get_tenant_settings_from_db() with await from async contexts.
+Use get_tenant_settings_sync() from sync Celery tasks.
 """
+import asyncio
 import json
 import logging
 import uuid
@@ -11,7 +12,6 @@ import asyncpg
 
 log = logging.getLogger(__name__)
 
-# Same defaults as app.tenant_settings
 DEFAULTS = {
     "llm": {
         "provider": "auto",
@@ -78,66 +78,61 @@ DEFAULTS = {
 
 
 def _ensure_dict(val):
-    """If val is a JSON string, parse it. Otherwise return as-is."""
+    """Ensure val is a dict, handling strings and other types."""
+    if isinstance(val, dict):
+        return val
     if isinstance(val, str):
         try:
             parsed = json.loads(val)
-            return parsed if isinstance(parsed, dict) else {}
+            if isinstance(parsed, dict):
+                return parsed
         except (json.JSONDecodeError, TypeError):
-            return {}
-    return val if isinstance(val, dict) else {}
+            pass
+    return {}
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
-    override = _ensure_dict(override)
     result = base.copy()
-    for k, v in override.items():
-        if isinstance(v, dict) and isinstance(result.get(k), dict):
-            result[k] = _deep_merge(result[k], v)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
         else:
-            result[k] = v
+            result[key] = value
     return result
 
 
-def get_tenant_settings_sync(url: str, tenant_id: str) -> dict:
-    """Synchronous version for Celery tasks."""
-    try:
-        import asyncio
-        conn = asyncio.get_event_loop().run_until_complete(
-            _fetch_settings(url, tenant_id)
-        )
-        return conn
-    except Exception as e:
-        log.warning(f"Failed to load tenant settings: {e}, using defaults")
-        return DEFAULTS.copy()
-
-
-async def _fetch_settings(url: str, tenant_id: str) -> dict:
+async def get_tenant_settings_from_db(tenant_id: str) -> dict:
+    """Async version — use when already in async context."""
+    from app.config import DATABASE_URL
+    url = DATABASE_URL.replace("+asyncpg", "")
     conn = await asyncpg.connect(url)
     try:
         row = await conn.fetchrow(
             "SELECT settings FROM tenant_settings WHERE tenant_id = $1",
             uuid.UUID(tenant_id),
         )
+        if row and row["settings"]:
+            raw = row["settings"]
+            if isinstance(raw, str):
+                raw = json.loads(raw)
+            return _deep_merge(DEFAULTS, raw)
+        return DEFAULTS.copy()
+    except Exception as e:
+        log.warning(f"Failed to load tenant settings for {tenant_id}: {e}")
+        return DEFAULTS.copy()
     finally:
         await conn.close()
 
-    if row and row["settings"]:
-        return _deep_merge(DEFAULTS, row["settings"])
-    return DEFAULTS.copy()
 
-
-def get_tenant_settings_from_db(url: str, tenant_id: str) -> dict:
-    """Sync version using a fresh event loop (safe for Celery workers)."""
+def get_tenant_settings_sync(tenant_id: str) -> dict:
+    """Sync version — use from sync Celery tasks."""
+    import concurrent.futures
     try:
-        plain_url = url.replace("+asyncpg", "")
-        import asyncio
-        loop = asyncio.new_event_loop()
-        try:
-            settings = loop.run_until_complete(_fetch_settings(plain_url, tenant_id))
-        finally:
-            loop.close()
-        return settings
-    except Exception as e:
-        log.warning(f"Failed to load tenant settings: {e}, using defaults")
-        return DEFAULTS.copy()
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(asyncio.run, get_tenant_settings_from_db(tenant_id)).result()
+        else:
+            return loop.run_until_complete(get_tenant_settings_from_db(tenant_id))
+    except RuntimeError:
+        return asyncio.run(get_tenant_settings_from_db(tenant_id))

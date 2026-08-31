@@ -124,7 +124,7 @@ export default function HealthPage() {
           </div>
           <div>
             <span className="text-zinc-500">{t("health.bot")}</span>
-            <span className="text-zinc-300 ml-2">Container: generatorad-bot</span>
+            <span className="text-zinc-300 ml-2">{t("health.containerLabel")} generatorad-bot</span>
           </div>
         </div>
       </div>

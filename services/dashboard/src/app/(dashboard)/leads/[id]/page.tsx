@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getLead, updateLeadStatus } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { useI18n } from "@/lib/i18n";
 
 const INTENT_STYLES: Record<string, string> = {
   HOT: "bg-rose-500/10 text-rose-400 border border-rose-500/20",
@@ -15,25 +16,30 @@ const INTENT_STYLES: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;
-const STATUS_LABELS: Record<string, string> = {
-  new: "New", in_progress: "In Progress", converted: "Converted", rejected: "Rejected",
-};
 const SOURCE_ICONS: Record<string, string> = { dm: "💬", comment: "💭", group: "👥", manual: "✏️", import: "📥", webhook: "🔗" };
 
 export default function LeadDetailPage() {
   const { id } = useParams();
   const { auth } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const STATUS_LABELS: Record<string, string> = {
+    new: t("leads.status.new"),
+    in_progress: t("leads.status.inProgress"),
+    converted: t("leads.status.converted"),
+    rejected: t("leads.status.rejected"),
+  };
 
   useEffect(() => {
     if (!auth?.token || !id) return;
     setLoading(true);
     getLead(auth.token, id as string)
       .then(setLead)
-      .catch(() => toast("Lead not found", "error"))
+      .catch(() => toast(t("leads.notFound"), "error"))
       .finally(() => setLoading(false));
   }, [auth?.token, id]);
 
@@ -43,9 +49,9 @@ export default function LeadDetailPage() {
     try {
       await updateLeadStatus(auth.token, lead.id, newStatus);
       setLead((prev: any) => ({ ...prev, status: newStatus }));
-      toast(`Status changed to ${STATUS_LABELS[newStatus]}`, "success");
+      toast(`${t("leads.statusChanged")} — ${STATUS_LABELS[newStatus]}`, "success");
     } catch {
-      toast("Failed to update status", "error");
+      toast(t("leads.statusUpdateFailed"), "error");
     } finally {
       setSaving(false);
     }
@@ -54,9 +60,9 @@ export default function LeadDetailPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Link href="/leads" className="text-sm text-zinc-400 hover:text-zinc-200">← Back to Leads</Link>
+        <Link href="/leads" className="text-sm text-zinc-400 hover:text-zinc-200">{t("leads.backToList")}</Link>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-          <p className="text-zinc-500">Loading lead details...</p>
+          <p className="text-zinc-500">{t("leads.loadingDetails")}</p>
         </div>
       </div>
     );
@@ -65,9 +71,9 @@ export default function LeadDetailPage() {
   if (!lead) {
     return (
       <div className="space-y-6">
-        <Link href="/leads" className="text-sm text-zinc-400 hover:text-zinc-200">← Back to Leads</Link>
+        <Link href="/leads" className="text-sm text-zinc-400 hover:text-zinc-200">{t("leads.backToList")}</Link>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
-          <p className="text-zinc-400">Lead not found</p>
+          <p className="text-zinc-400">{t("leads.notFound")}</p>
         </div>
       </div>
     );
@@ -77,7 +83,7 @@ export default function LeadDetailPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <Link href="/leads" className="text-zinc-400 hover:text-zinc-200">Leads</Link>
+        <Link href="/leads" className="text-zinc-400 hover:text-zinc-200">{t("leads.title")}</Link>
         <span className="text-zinc-600">/</span>
         <span className="text-zinc-200">{lead.user_handle}</span>
       </div>
@@ -96,32 +102,32 @@ export default function LeadDetailPage() {
         {lead.dialog_url && (
           <a href={lead.dialog_url} target="_blank" rel="noopener noreferrer"
             className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs hover:bg-emerald-500/20 transition">
-            Open Dialog ↗
+            {t("leads.openDialog")}
           </a>
         )}
       </div>
 
       {/* Info cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <InfoCard label="Full Name" value={lead.user_full_name || "—"} />
-        <InfoCard label="Platform" value={(lead.platform || "—").charAt(0).toUpperCase() + (lead.platform || "").slice(1)} />
-        <InfoCard label="Geo" value={lead.geo_tag || "—"} />
-        <InfoCard label="Created" value={new Date(lead.created_at).toLocaleString()} />
-        {lead.target_name && <InfoCard label="Target" value={lead.target_name} />}
-        {lead.post_id && <InfoCard label="Post ID" value={lead.post_id} mono />}
+        <InfoCard label={t("leads.fullName")} value={lead.user_full_name || "—"} />
+        <InfoCard label={t("leads.platform")} value={(lead.platform || "—").charAt(0).toUpperCase() + (lead.platform || "").slice(1)} />
+        <InfoCard label={t("leads.geo")} value={lead.geo_tag || "—"} />
+        <InfoCard label={t("leads.created")} value={new Date(lead.created_at).toLocaleString()} />
+        {lead.target_name && <InfoCard label={t("leads.target")} value={lead.target_name} />}
+        {lead.post_id && <InfoCard label={t("leads.postId")} value={lead.post_id} mono />}
       </div>
 
       {/* Message */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-        <h2 className="text-sm font-medium text-zinc-400 mb-3">Message</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("leads.message")}</h2>
         <p className="text-sm text-zinc-300 bg-zinc-800 rounded-lg p-4 whitespace-pre-wrap leading-relaxed">
-          {lead.message_text || "No message content"}
+          {lead.message_text || t("leads.noMessage")}
         </p>
       </div>
 
       {/* Status Change */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-        <h2 className="text-sm font-medium text-zinc-400 mb-3">Status</h2>
+        <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("leads.tableStatus")}</h2>
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map((s) => (
             <button key={s} disabled={saving || lead.status === s}
@@ -140,7 +146,7 @@ export default function LeadDetailPage() {
       {/* Audit Timeline */}
       {lead.events && lead.events.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">History</h2>
+          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("leads.history")}</h2>
           <div className="relative">
             <div className="absolute left-3 top-0 bottom-0 w-px bg-zinc-800" />
             <div className="space-y-4">
@@ -156,9 +162,9 @@ export default function LeadDetailPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-zinc-300">
-                        {ev.action === "status_change" ? "Status changed" :
-                         ev.action === "created" ? "Lead created" :
-                         ev.action === "manual_run" ? "Campaign run" :
+                        {ev.action === "status_change" ? t("leads.statusChanged") :
+                         ev.action === "created" ? t("leads.leadCreated") :
+                         ev.action === "manual_run" ? t("leads.campaignRun") :
                          ev.action}
                       </span>
                     </div>
@@ -182,8 +188,8 @@ export default function LeadDetailPage() {
 
       {lead.events && lead.events.length === 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-3">History</h2>
-          <p className="text-xs text-zinc-600">No events recorded yet</p>
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("leads.history")}</h2>
+          <p className="text-xs text-zinc-600">{t("leads.noEvents")}</p>
         </div>
       )}
     </div>

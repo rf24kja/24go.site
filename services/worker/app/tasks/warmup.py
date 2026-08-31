@@ -67,7 +67,7 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     from app.tenant_settings import get_tenant_settings_from_db
 
     # Load tenant settings
-    warmup_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id).get("warmup", {})
+    warmup_cfg = (await get_tenant_settings_from_db(tenant_id)).get("warmup", {})
     channels = warmup_cfg.get("channels", WARMUP_CHANNELS)
     reactions = warmup_cfg.get("reactions", WARMUP_REACTIONS)
     stage1_days = warmup_cfg.get("stage1_days", 3)

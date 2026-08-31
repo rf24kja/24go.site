@@ -91,7 +91,7 @@ export default function AuditPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium border ${ACTION_STYLES[e.action] ?? "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20"}`}>
-                      {e.action.replace("_", " ")}
+                      {t(`audit.action.${e.action}`) || e.action.replace("_", " ")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-zinc-300 capitalize">{e.entity_type}</td>

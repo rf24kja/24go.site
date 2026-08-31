@@ -64,10 +64,7 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
     from app.tenant_settings import get_tenant_settings_from_db
     import os
 
-    posting_cfg = get_tenant_settings_from_db(
-        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
-        tenant_id
-    ).get("posting", {})
+    posting_cfg = (await get_tenant_settings_from_db(tenant_id)).get("posting", {})
     max_comments = posting_cfg.get("max_comment_replies_per_post", 10)
 
     client = await get_client(account_id)
@@ -148,13 +145,10 @@ def auto_scrape_after_post(self, tenant_id: str, account_id: str,
     Called by poster after successful publish.
     First scrape uses comment_scrape_delay_sec from tenant settings.
     """
-    from app.tenant_settings import get_tenant_settings_from_db
+    from app.tenant_settings import get_tenant_settings_sync
     import os
 
-    posting_cfg = get_tenant_settings_from_db(
-        os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
-        tenant_id
-    ).get("posting", {})
+    posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
     scrape_delay = posting_cfg.get("comment_scrape_delay_sec", 120)
 
     log.info(f"auto_scrape_after_post: scheduling 3 scrapes for post {post_id} (first in {scrape_delay}s)")

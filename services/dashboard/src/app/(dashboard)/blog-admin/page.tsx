@@ -179,8 +179,8 @@ export default function BlogAdminPage() {
               <h2 className="text-lg font-bold text-zinc-100">{editingId ? t("blogAdmin.editTitle") : t("blogAdmin.createTitle")}</h2>
 
               <div className="flex gap-1 bg-zinc-800 rounded-lg p-1">
-                <button onClick={() => setTab("en")} className={`flex-1 py-1.5 rounded text-sm font-medium transition ${tab === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>EN</button>
-                <button onClick={() => setTab("ru")} className={`flex-1 py-1.5 rounded text-sm font-medium transition ${tab === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>RU</button>
+                <button onClick={() => setTab("en")} className={`flex-1 py-1.5 rounded text-sm font-medium transition ${tab === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>{t("common.langEn")}</button>
+                <button onClick={() => setTab("ru")} className={`flex-1 py-1.5 rounded text-sm font-medium transition ${tab === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>{t("common.langRu")}</button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">

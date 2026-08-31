@@ -63,7 +63,7 @@ async def process_incoming_message(
     """
     # 1. Classify via LLM (keyword heuristic fallback)
     from app.tenant_settings import get_tenant_settings_from_db
-    tenant_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id)
+    tenant_cfg = await get_tenant_settings_from_db(tenant_id)
     classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)  # ponytail: tenant_cfg passed for keyword merge
     intent_score = classification["intent_score"]
 
@@ -130,7 +130,7 @@ async def process_incoming_message(
         try:
             from app.notifications import notify_hot_lead
             from app.tenant_settings import get_tenant_settings_from_db
-            tenant_cfg = get_tenant_settings_from_db(DATABASE_URL, tenant_id)
+            tenant_cfg = await get_tenant_settings_from_db(tenant_id)
             await notify_hot_lead(tenant_id, lead_payload, tenant_cfg)
         except Exception as e:
             log.debug(f"Email notify failed (non-blocking): {e}")

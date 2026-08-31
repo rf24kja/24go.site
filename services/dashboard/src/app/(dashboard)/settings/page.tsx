@@ -160,12 +160,13 @@ function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: bool
 
 function ListInput({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [text, setText] = useState("");
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <Input value={text} onChange={setText} placeholder={placeholder || "Add item..."} />
+        <Input value={text} onChange={setText} placeholder={placeholder || t("settings.addItem")} />
         <button type="button" onClick={() => { if (text.trim()) { onChange([...value, text.trim()]); setText(""); } }}
-          className="px-3 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 whitespace-nowrap">Add</button>
+          className="px-3 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 whitespace-nowrap">{t("settings.add")}</button>
       </div>
       <div className="flex flex-wrap gap-2">
         {value.map((item, i) => (
@@ -214,7 +215,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
               ]} />
           </Field>
           <Field label={t("settings.model")}>
-            <Input value={cfg.model || ""} onChange={(v) => set("model", v)} placeholder="deepseek-chat" />
+            <Input value={cfg.model || ""} onChange={(v) => set("model", v)} placeholder={t("settings.modelPlaceholder")} />
           </Field>
         </div>
       </Card>

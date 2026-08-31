@@ -9,22 +9,24 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
-from collections import defaultdict
 
+import time
+import redis as redis_lib
 from app.config import settings
 
-# Simple in-memory rate limiter
-_rate_limits: dict[str, list[datetime]] = defaultdict(list)
+_redis = redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
+
 
 def _check_rate_limit(key: str, max_requests: int = 5, window_seconds: int = 60) -> bool:
-    """Returns True if request is allowed."""
-    now = datetime.utcnow()
-    cutoff = now - timedelta(seconds=window_seconds)
-    _rate_limits[key] = [t for t in _rate_limits[key] if t > cutoff]
-    if len(_rate_limits[key]) >= max_requests:
-        return False
-    _rate_limits[key].append(now)
-    return True
+    """Sliding window rate limit using Redis sorted sets. Returns True if allowed."""
+    now = time.time()
+    pipe = _redis.pipeline()
+    pipe.zremrangebyscore(key, 0, now - window_seconds)
+    pipe.zadd(key, {str(now): now})
+    pipe.zcard(key)
+    pipe.expire(key, window_seconds)
+    results = pipe.execute()
+    return results[2] <= max_requests
 from app.audit import log_event
 from app.database import get_db
 from app.models import User, Tenant

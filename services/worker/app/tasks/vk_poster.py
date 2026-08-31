@@ -35,11 +35,8 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     log.info(f"post_to_vk: tenant={tenant_id} group={group_id}")
 
     # Load tenant settings
-    from app.tenant_settings import get_tenant_settings_from_db
-    posting_cfg = get_tenant_settings_from_db(
-        __import__("os").getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
-        tenant_id
-    ).get("posting", {})
+    from app.tenant_settings import get_tenant_settings_sync
+    posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
 
     # Render spintax
     rendered = _render_spintax(text, posting_cfg.get("spintax_max_depth", 10))

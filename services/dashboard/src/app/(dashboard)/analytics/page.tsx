@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
   }));
 
   const sourceData = (data.source_breakdown || []).map((s: any) => ({
-    name: s.source === "dm" ? "💬 DM" : s.source === "comment" ? "💭 Comment" : s.source === "group" ? "👥 Group" : s.source === "manual" ? "✏️ Manual" : s.source,
+    name: s.source === "dm" ? t("analytics.sourceDm") : s.source === "comment" ? t("analytics.sourceComment") : s.source === "group" ? t("analytics.sourceGroup") : s.source === "manual" ? t("analytics.sourceManual") : s.source,
     leads: s.leads,
     hot: s.hot_leads,
   }));

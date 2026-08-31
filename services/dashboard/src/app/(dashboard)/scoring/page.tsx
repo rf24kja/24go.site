@@ -187,7 +187,7 @@ export default function ScoringPage() {
               <textarea placeholder={t("scoring.keywordsPlaceholder")} required rows={3} value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("scoring.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
                   {saving ? t("scoring.creating") : t("scoring.create")}
                 </button>

@@ -96,6 +96,13 @@
   "leads.intent.warm": "ТЁПЛЫЙ",
   "leads.intent.cold": "ХОЛОДНЫЙ",
   "leads.intent.spam": "СПАМ",
+  "leads.backToList": "← Назад к лидам",
+  "leads.notFound": "Лид не найден",
+  "leads.openDialog": "Открыть диалог ↗",
+  "leads.leadCreated": "Лид создан",
+  "leads.campaignRun": "Запуск кампании",
+  "leads.noEvents": "Событий пока нет",
+  "leads.statusUpdateFailed": "Не удалось обновить статус",
 
   "accounts.title": "Аккаунты",
   "accounts.bulkImport": "Массовый импорт",
@@ -470,6 +477,8 @@
   "settings.passwordsMismatch": "Пароли не совпадают",
   "settings.minChars": "Минимум 8 символов",
   "settings.saveFailed": "Не удалось сохранить",
+  "settings.addItem": "Добавить элемент...",
+  "settings.add": "Добавить",
   "settings.loadDemoConfirm": "Загрузить демо-данные?",
   "settings.resetConfirm": "Сбросить {section} по умолчанию?",
 
@@ -498,6 +507,7 @@
   "scoring.creating": "Создание...",
   "scoring.create": "Создать",
   "scoring.deleteConfirm": "Удалить это правило?",
+  "scoring.cancel": "Отмена",
 
   "analytics.title": "Аналитика",
   "analytics.7d": "7д",
@@ -533,6 +543,10 @@
   "analytics.schedule": "Расписание",
   "analytics.manual": "вручную",
   "analytics.noData": "Нет данных",
+  "analytics.sourceDm": "💬 ЛС",
+  "analytics.sourceComment": "💭 Комментарии",
+  "analytics.sourceGroup": "👥 Группа",
+  "analytics.sourceManual": "✏️ Вручную",
 
   "audit.title": "Журнал аудита",
   "audit.filterAll": "все",
@@ -547,6 +561,10 @@
   "audit.colDetails": "Детали",
   "audit.colIp": "IP",
   "audit.empty": "Записей аудита пока нет.",
+  "audit.action.status_change": "Изменение статуса",
+  "audit.action.created": "Создано",
+  "audit.action.deleted": "Удалено",
+  "audit.action.updated": "Обновлено",
 
   "users.title": "Участники команды",
   "users.emailPlaceholder": "коллега@компания.com",
@@ -589,6 +607,7 @@
   "health.status.healthy": "норма",
   "health.status.error": "ошибка",
   "health.status.unknown": "неизвестно",
+  "health.containerLabel": "Контейнер:",
 
   "sidebar.analytics": "Аналитика",
   "sidebar.leads": "Лиды",
@@ -729,8 +748,12 @@
   "blogAdmin.postDeleted": "Пост удалён",
   "blogAdmin.deleteFailed": "Не удалось удалить",
   "campaigns.deleteConfirm": "Удалить эту кампанию?",
+  "campaigns.hotStats": "ГОРЯЧИЕ",
+  "campaigns.perDaySuffix": "/день",
   "groups.members": "участников",
   "groups.never": "никогда",
+  "groups.platformTelegram": "✈️ Telegram",
+  "groups.platformVkontakte": "🔵 VKontakte",
   "settings.section.ai": "ИИ и классификация",
   "settings.section.warmup": "Прогрев аккаунтов",
   "settings.section.posting": "Публикации и UTM",
@@ -738,5 +761,7 @@
   "settings.section.groups": "Сканирование групп",
   "settings.section.account": "Аккаунт и оплата",
   "targets.cancel": "Отмена",
-  "targets.never": "никогда"
+  "targets.never": "никогда",
+  "common.langEn": "EN",
+  "common.langRu": "RU"
 }

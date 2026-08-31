@@ -67,23 +67,30 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
             log.warning(f"Account {account_id} locked by another worker, retrying")
             raise self.retry(countdown=30, exc=Exception("Account lock active"))
 
-        from app.tenant_settings import get_tenant_settings_from_db
-        posting_cfg = get_tenant_settings_from_db(
-            __import__("os").getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db"),
-            tenant_id
-        ).get("posting", {})
+        from app.tenant_settings import get_tenant_settings_sync
+        posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
         limit = posting_cfg.get("stage3_daily_limit", WARMUP_LIMITS.get(3, 20))
 
-        # Atomic daily limit: INCR first, check, decrement if over
+        # Atomic daily limit via Lua script (no race between INCR/check/DECR)
         from app.locks import _get_redis
         daily_key = f"daily_actions:{tenant_id}:{account_id}:{__import__('time').strftime('%Y-%m-%d')}"
         r = _get_redis()
-        new_count = r.incr(daily_key)
-        if new_count == 1:
-            r.expire(daily_key, 86400)
-        if new_count > limit:
-            r.decr(daily_key)
-            log.info(f"Account {account_id} reached daily limit ({new_count}/{limit})")
+        LUA_CHECK_AND_INCR = """
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local current = tonumber(redis.call('GET', key) or '0')
+if current >= limit then
+    return 0
+end
+redis.call('INCR', key)
+if current == 0 then
+    redis.call('EXPIRE', key, 86400)
+end
+return 1
+"""
+        allowed = r.eval(LUA_CHECK_AND_INCR, 1, daily_key, limit)
+        if not allowed:
+            log.info(f"Account {account_id} reached daily limit ({limit})")
             return {"status": "skipped", "reason": "daily_limit_reached"}
 
         # Render content
