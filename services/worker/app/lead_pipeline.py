@@ -129,11 +129,28 @@ async def process_incoming_message(
         # Email alert for HOT/WARM leads
         try:
             from app.notifications import notify_hot_lead
-            from app.tenant_settings import get_tenant_settings_from_db
-            tenant_cfg = await get_tenant_settings_from_db(tenant_id)
             await notify_hot_lead(tenant_id, lead_payload, tenant_cfg)
         except Exception as e:
             log.debug(f"Email notify failed (non-blocking): {e}")
+
+        # Telegram/Slack notifications
+        try:
+            from app.notify_leads import notify_new_lead
+            notif_cfg = tenant_cfg.get("notifications", {})
+            if notif_cfg.get("telegram_bot_token") or notif_cfg.get("slack_webhook_url"):
+                await notify_new_lead(
+                    lead_handle=user_handle,
+                    intent=intent_score,
+                    message=message_text[:500],
+                    source=source,
+                    geo=geo_tag or None,
+                    telegram_bot_token=notif_cfg.get("telegram_bot_token", ""),
+                    telegram_chat_id=notif_cfg.get("telegram_chat_id", ""),
+                    slack_webhook_url=notif_cfg.get("slack_webhook_url", ""),
+                    min_intent=notif_cfg.get("notify_min_intent", "WARM"),
+                )
+        except Exception as e:
+            log.debug(f"Telegram/Slack notify failed (non-blocking): {e}")
 
     # 5. Broadcast to backend WebSocket for real-time dashboard
     try:

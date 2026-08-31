@@ -438,6 +438,15 @@
   "settings.dailySummary": "Ежедневный отчёт",
   "settings.sendDailySummary": "Отправлять ежедневный отчёт",
   "settings.summaryHour": "Час отчёта (UTC)",
+  "settings.notifWebhooks": "Telegram и Slack",
+  "settings.notifTelegramToken": "Токен Telegram бота",
+  "settings.notifTelegramTokenHint": "Создайте бота через @BotFather и вставьте токен",
+  "settings.notifTelegramChat": "Chat ID Telegram",
+  "settings.notifTelegramChatHint": "Отправьте сообщение боту, затем проверьте @userinfobot",
+  "settings.notifSlackWebhook": "URL Slack Webhook",
+  "settings.notifSlackWebhookHint": "Создайте входящий webhook в настройках Slack-приложения",
+  "settings.notifMinIntent": "Минимальный intent для уведомлений",
+  "settings.notifMinIntentHint": "Уведомлять только для лидов с этим намерением или выше",
   "settings.groupsDesc": "Настройте сканирование отслеживаемых Telegram-групп и сообществ VK для поиска лидов",
   "settings.scanBehavior": "Поведение сканирования",
   "settings.scanInterval": "Интервал сканирования (минуты)",
@@ -813,5 +822,21 @@
   "help.faqLimits.q": "Что происходит при превышении лимитов тарифа?",
   "help.faqLimits.a": "Вы увидите предупреждение при приближении к лимитам. После достижения новые посты и AI-классификации останавливаются до следующего расчётного периода или обновления тарифа. Существующие лиды сохраняются.",
 
-  "help.support": "Нужна помощь? Свяжитесь с нашей службой поддержки:"
+  "help.support": "Нужна помощь? Свяжитесь с нашей службой поддержки:",
+
+  "wizard.welcome": "Добро пожаловать в 24GO!",
+  "wizard.welcomeDesc": "Настройте лидогенерацию за 3 простых шага",
+  "wizard.connectTitle": "Подключите Telegram",
+  "wizard.connectDesc": "Свяжите аккаунт Telegram для захвата лидов из ЛС и групп",
+  "wizard.connectStep1": "Добавить аккаунт",
+  "wizard.connectStep2": "Введите код",
+  "wizard.connectStep3": "Готово",
+  "wizard.readyTitle": "Всё готово!",
+  "wizard.readyDesc": "Начните с добавления целевых групп, и лиды потекут",
+  "wizard.groupTask": "Добавить целевые группы",
+  "wizard.leadTask": "Захватить первый лид",
+  "wizard.skip": "Пропустить",
+  "wizard.getStarted": "Начать",
+  "wizard.connectBtn": "Подключить аккаунт",
+  "wizard.goDashboard": "Перейти к дашборду"
 }

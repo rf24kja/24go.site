@@ -402,6 +402,28 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
         </div>
       </Card>
 
+      <Card title={t("settings.notifWebhooks")}>
+        <div className="space-y-4">
+          <Field label={t("settings.notifMinIntent")} hint={t("settings.notifMinIntentHint")}>
+            <Select value={cfg.notify_min_intent || "WARM"} onChange={(v) => set("notify_min_intent", v)}
+              options={[
+                { value: "HOT", label: "HOT" },
+                { value: "WARM", label: "WARM" },
+                { value: "COLD", label: "COLD" },
+              ]} />
+          </Field>
+          <Field label={t("settings.notifTelegramToken")} hint={t("settings.notifTelegramTokenHint")}>
+            <Input value={cfg.telegram_bot_token || ""} onChange={(v) => set("telegram_bot_token", v)} placeholder="123456:ABC-DEF..." type="password" />
+          </Field>
+          <Field label={t("settings.notifTelegramChat")} hint={t("settings.notifTelegramChatHint")}>
+            <Input value={cfg.telegram_chat_id || ""} onChange={(v) => set("telegram_chat_id", v)} placeholder="-1001234567890" />
+          </Field>
+          <Field label={t("settings.notifSlackWebhook")} hint={t("settings.notifSlackWebhookHint")}>
+            <Input value={cfg.slack_webhook_url || ""} onChange={(v) => set("slack_webhook_url", v)} placeholder="https://hooks.slack.com/services/..." />
+          </Field>
+        </div>
+      </Card>
+
       <Card title={t("settings.dailySummary")}>
         <div className="space-y-4">
           <Toggle value={cfg.daily_summary !== false} onChange={(v) => set("daily_summary", v)} label={t("settings.sendDailySummary")} />

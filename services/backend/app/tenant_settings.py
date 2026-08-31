@@ -81,6 +81,10 @@ DEFAULTS = {
         "daily_summary_hour": 9,            # UTC
         "email_subject_prefix": "[LeadGen]",
         "lead_created_sound": False,
+        "telegram_bot_token": "",           # User's own bot token
+        "telegram_chat_id": "",             # Chat/group ID to send notifications
+        "slack_webhook_url": "",            # Slack incoming webhook URL
+        "notify_min_intent": "WARM",        # Minimum intent to notify (HOT, WARM)
     },
     "groups": {
         "scan_interval_min": 30,

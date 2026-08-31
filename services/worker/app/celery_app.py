@@ -63,6 +63,11 @@ celery.conf.update(
             "schedule": crontab(hour=2, minute=0),
             "options": {"queue": "billing"},
         },
+        "trial-emails": {
+            "task": "app.tasks.trial_emailer.send_trial_emails",
+            "schedule": crontab(hour=10, minute=0),
+            "options": {"queue": "billing"},
+        },
     },
 )
 

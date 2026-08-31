@@ -453,6 +453,15 @@
   "settings.dailySummary": "Daily Summary",
   "settings.sendDailySummary": "Send daily summary email",
   "settings.summaryHour": "Summary hour (UTC)",
+  "settings.notifWebhooks": "Telegram & Slack",
+  "settings.notifTelegramToken": "Telegram Bot Token",
+  "settings.notifTelegramTokenHint": "Create a bot via @BotFather and paste the token",
+  "settings.notifTelegramChat": "Telegram Chat ID",
+  "settings.notifTelegramChatHint": "Send a message to your bot, then check @userinfobot",
+  "settings.notifSlackWebhook": "Slack Webhook URL",
+  "settings.notifSlackWebhookHint": "Create an incoming webhook in your Slack app settings",
+  "settings.notifMinIntent": "Minimum Intent to Notify",
+  "settings.notifMinIntentHint": "Only notify for leads with this intent or higher",
   "settings.groupsDesc": "Configure how monitored Telegram groups and VK communities are scanned for leads",
   "settings.scanBehavior": "Scan Behavior",
   "settings.scanInterval": "Scan interval (minutes)",
@@ -813,5 +822,21 @@
   "help.faqLimits.q": "What happens when I reach my plan limits?",
   "help.faqLimits.a": "You'll see a warning when approaching limits. Once reached, new posts and AI classifications stop until the next billing period or until you upgrade. Existing leads are preserved.",
 
-  "help.support": "Need help? Contact our support team:"
+  "help.support": "Need help? Contact our support team:",
+
+  "wizard.welcome": "Welcome to 24GO!",
+  "wizard.welcomeDesc": "Let's set up your lead generation in 3 simple steps",
+  "wizard.connectTitle": "Connect Your Telegram",
+  "wizard.connectDesc": "Link your Telegram account to start capturing leads from DMs and groups",
+  "wizard.connectStep1": "Add Account",
+  "wizard.connectStep2": "Enter Code",
+  "wizard.connectStep3": "Done",
+  "wizard.readyTitle": "You're All Set!",
+  "wizard.readyDesc": "Start by adding target groups, then watch leads flow in",
+  "wizard.groupTask": "Add target groups",
+  "wizard.leadTask": "Capture first lead",
+  "wizard.skip": "Skip",
+  "wizard.getStarted": "Get Started",
+  "wizard.connectBtn": "Connect Account",
+  "wizard.goDashboard": "Go to Dashboard"
 }
