@@ -33,7 +33,9 @@ async def get_db(request: Request = None):
             if not _UUID_RE.match(tid):
                 raise ValueError(f"Invalid tenant_id format: {tid}")
             await session.execute(text("BEGIN"))
+            # ponytail: SET doesn't support parameterized queries in PostgreSQL.
+            # UUID is validated by strict regex above, so f-string is safe here.
             await session.execute(
-                text("SET LOCAL app.current_tenant = :tid"), {"tid": tid}
+                text(f"SET LOCAL app.current_tenant = '{tid}'")
             )
         yield session
