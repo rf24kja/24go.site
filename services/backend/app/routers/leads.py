@@ -49,74 +49,6 @@ async def lead_stats(
     }
 
 
-@router.get("/{lead_id}")
-async def get_lead(
-    lead_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Get full lead detail with audit history."""
-    import uuid as _uuid
-    from fastapi import HTTPException
-
-    q = select(Lead).where(
-        Lead.id == _uuid.UUID(lead_id),
-        Lead.tenant_id == current_user.tenant_id,
-    )
-    result = await db.execute(q)
-    lead = result.scalar_one_or_none()
-    if not lead:
-        raise HTTPException(404, "Lead not found")
-
-    # Fetch audit trail for this lead via the same session
-    events = []
-    try:
-        from sqlalchemy import text
-        audit_q = text(
-            "SELECT action, old_value, new_value, created_at "
-            "FROM audit_log WHERE entity_type = 'lead' AND entity_id = :eid "
-            "ORDER BY created_at DESC LIMIT 50"
-        )
-        audit_result = await db.execute(audit_q, {"eid": lead.id})
-        rows = audit_result.fetchall()
-        events = [
-            {
-                "action": r["action"],
-                "old_value": r["old_value"],
-                "new_value": r["new_value"],
-                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-            }
-            for r in rows
-        ]
-    except Exception:
-        pass  # Audit log table may not exist yet
-
-    # Resolve target name if present
-    target_name = None
-    if lead.target_id:
-        target = await db.execute(select(Target).where(Target.id == lead.target_id))
-        t = target.scalar_one_or_none()
-        if t:
-            target_name = t.title
-
-    return {
-        "id": str(lead.id),
-        "user_handle": lead.user_handle,
-        "user_full_name": lead.user_full_name,
-        "platform": lead.platform.value if hasattr(lead.platform, "value") else lead.platform,
-        "intent_score": lead.intent_score.value if hasattr(lead.intent_score, "value") else lead.intent_score,
-        "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
-        "source": getattr(lead, "source", "dm") or "dm",
-        "post_id": getattr(lead, "post_id", None),
-        "geo_tag": lead.geo_tag,
-        "message_text": lead.message_text,
-        "dialog_url": lead.dialog_url,
-        "target_name": target_name,
-        "created_at": lead.created_at.isoformat() if lead.created_at else None,
-        "events": events,
-    }
-
-
 @router.get("/")
 async def list_leads(
     intent_score: str | None = None,
@@ -378,3 +310,70 @@ async def import_leads_csv(
 
     await db.commit()
     return ImportResult(imported=imported, skipped=skipped, errors=errors[:50])
+
+
+@router.get("/{lead_id}")
+async def get_lead(
+    lead_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get full lead detail with audit history."""
+    import uuid as _uuid
+    from fastapi import HTTPException
+
+    q = select(Lead).where(
+        Lead.id == _uuid.UUID(lead_id),
+        Lead.tenant_id == current_user.tenant_id,
+    )
+    result = await db.execute(q)
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+
+    # Fetch audit trail
+    events = []
+    try:
+        from sqlalchemy import text
+        audit_q = text(
+            "SELECT action, old_value, new_value, created_at "
+            "FROM audit_log WHERE entity_type = 'lead' AND entity_id = :eid "
+            "ORDER BY created_at DESC LIMIT 50"
+        )
+        audit_result = await db.execute(audit_q, {"eid": lead.id})
+        rows = audit_result.fetchall()
+        events = [
+            {
+                "action": r["action"],
+                "old_value": r["old_value"],
+                "new_value": r["new_value"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+            for r in rows
+        ]
+    except Exception:
+        pass
+
+    target_name = None
+    if lead.target_id:
+        target = await db.execute(select(Target).where(Target.id == lead.target_id))
+        t = target.scalar_one_or_none()
+        if t:
+            target_name = t.title
+
+    return {
+        "id": str(lead.id),
+        "user_handle": lead.user_handle,
+        "user_full_name": lead.user_full_name,
+        "platform": lead.platform.value if hasattr(lead.platform, "value") else lead.platform,
+        "intent_score": lead.intent_score.value if hasattr(lead.intent_score, "value") else lead.intent_score,
+        "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
+        "source": getattr(lead, "source", "dm") or "dm",
+        "post_id": getattr(lead, "post_id", None),
+        "geo_tag": lead.geo_tag,
+        "message_text": lead.message_text,
+        "dialog_url": lead.dialog_url,
+        "target_name": target_name,
+        "created_at": lead.created_at.isoformat() if lead.created_at else None,
+        "events": events,
+    }

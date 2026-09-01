@@ -107,7 +107,7 @@ async def admin_create_post(
     post = BlogPost(
         tenant_id=current_user.tenant_id,
         slug=slug,
-        **body.model_dump(),
+        **{k: v for k, v in body.model_dump().items() if k != "slug"},
     )
     db.add(post)
     await db.commit()
