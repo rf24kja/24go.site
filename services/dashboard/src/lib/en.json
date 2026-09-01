@@ -905,5 +905,24 @@
   "wizard.skip": "Skip",
   "wizard.getStarted": "Get Started",
   "wizard.connectBtn": "Connect Account",
-  "wizard.goDashboard": "Go to Dashboard"
+  "wizard.goDashboard": "Go to Dashboard",
+
+  "hints.llmProvider": "AI model for lead classification. OpenRouter recommended",
+  "hints.llmApiKey": "Your API key for the selected AI provider",
+  "hints.llmPrompt": "Custom prompt for AI. Use {message} as placeholder",
+  "hints.llmKeywords": "Comma-separated trigger words indicating purchase intent",
+  "hints.llmThreshold": "Minimum confidence score (0-1) to qualify a lead",
+  "hints.warmupMessages": "Daily warmup messages to build reputation (10-30)",
+  "hints.warmupDelay": "Seconds between messages to avoid spam detection",
+  "hints.postingSchedule": "When to post: daily, weekly, or custom",
+  "hints.postsPerDay": "Number of posts per day (1-5)",
+  "hints.timezone": "Your timezone for scheduling",
+  "hints.n8nUrl": "Webhook URL for lead notifications",
+  "hints.n8nSecret": "Shared secret for webhook signature verification",
+  "hints.autoReply": "Auto-reply template. Use {first_name} for personalization",
+  "hints.tgBotToken": "Bot token from @BotFather",
+  "hints.tgChatId": "Your Telegram chat ID for notifications",
+  "hints.platform": "Select the social network",
+  "hints.phoneNumber": "Telegram phone with country code (e.g., +79001234567)",
+  "hints.vkToken": "Token from VK group settings → API usage"
 }

@@ -905,5 +905,24 @@
   "wizard.skip": "Пропустить",
   "wizard.getStarted": "Начать",
   "wizard.connectBtn": "Подключить аккаунт",
-  "wizard.goDashboard": "Перейти к дашборду"
+  "wizard.goDashboard": "Перейти к дашборду",
+
+  "hints.llmProvider": "AI-модель для классификации лидов. Рекомендуется OpenRouter",
+  "hints.llmApiKey": "API-ключ для выбранного AI-провайдера",
+  "hints.llmPrompt": "Свой промпт для AI. Используйте {message} как заполнитель",
+  "hints.llmKeywords": "Ключевые слова через запятую, указывающие на интерес к покупке",
+  "hints.llmThreshold": "Минимальная уверенность (0-1) для зачёта лида",
+  "hints.warmupMessages": "Ежедневные разогревочные сообщения (10-30)",
+  "hints.warmupDelay": "Задержка между сообщениями в секундах",
+  "hints.postingSchedule": "Когда публиковать: ежедневно, еженедельно",
+  "hints.postsPerDay": "Количество постов в день (1-5)",
+  "hints.timezone": "Ваш часовой пояс для планирования",
+  "hints.n8nUrl": "URL вебхука для уведомления о лидах",
+  "hints.n8nSecret": "Общий секрет для проверки подписи вебхука",
+  "hints.autoReply": "Шаблон автоответа. Используйте {first_name}",
+  "hints.tgBotToken": "Токен бота от @BotFather",
+  "hints.tgChatId": "Ваш Telegram chat ID для уведомлений",
+  "hints.platform": "Выберите социальную сеть",
+  "hints.phoneNumber": "Телефон Telegram с кодом страны (напр., +79001234567)",
+  "hints.vkToken": "Токен из настроек VK группы → Использование API"
 }

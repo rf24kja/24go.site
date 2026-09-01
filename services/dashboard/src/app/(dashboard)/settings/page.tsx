@@ -13,6 +13,7 @@ import {
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "account";
 
@@ -130,7 +131,7 @@ export default function SettingsPage() {
 }
 
 // ── Shared field components ───────────────────────────────────────
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-zinc-400">{label}</label>
@@ -218,7 +219,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
 
       <Card title={t("settings.llmProvider")}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={t("settings.provider")} hint={t("settings.providerHint")}>
+          <Field label={<>{t("settings.provider")} <FieldHint hint={t("hints.llmProvider")} /></>}>
             <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)}
               options={[
                 { value: "auto", label: t("settings.providerAuto") },
@@ -235,7 +236,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.systemPrompt")}>
-        <Field label={t("settings.llmPrompt")} hint={t("settings.llmPromptHint")}>
+        <Field label={<>{t("settings.llmPrompt")} <FieldHint hint={t("hints.llmPrompt")} /></>}>
           <textarea value={cfg.system_prompt || ""} onChange={(e) => set("system_prompt", e.target.value)} rows={8}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
         </Field>
@@ -263,7 +264,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
           <Field label={t("settings.warmMinMatches")}>
             <NumberInput value={cfg.warm_threshold || 1} onChange={(v) => set("warm_threshold", v)} min={1} max={10} />
           </Field>
-          <Field label={t("settings.confidenceThreshold")} hint={t("settings.confidenceHint")}>
+          <Field label={<>{t("settings.confidenceThreshold")} <FieldHint hint={t("hints.llmThreshold")} /></>}>
             <NumberInput value={cfg.confidence_threshold || 0.5} onChange={(v) => set("confidence_threshold", v)} min={0} max={1} step={0.05} />
           </Field>
         </div>
@@ -322,7 +323,7 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
 
       <Card title={t("settings.timing")}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={t("settings.minDelay")}>
+          <Field label={<>{t("settings.minDelay")} <FieldHint hint={t("hints.warmupDelay")} /></>}>
             <NumberInput value={cfg.random_delay_min_sec || 2} onChange={(v) => set("random_delay_min_sec", v)} min={1} max={30} />
           </Field>
           <Field label={t("settings.maxDelay")}>
@@ -426,10 +427,10 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
                 { value: "COLD", label: "COLD" },
               ]} />
           </Field>
-          <Field label={t("settings.notifTelegramToken")} hint={t("settings.notifTelegramTokenHint")}>
+          <Field label={<>{t("settings.notifTelegramToken")} <FieldHint hint={t("hints.tgBotToken")} /></>}>
             <Input value={cfg.telegram_bot_token || ""} onChange={(v) => set("telegram_bot_token", v)} placeholder="123456:ABC-DEF..." type="password" />
           </Field>
-          <Field label={t("settings.notifTelegramChat")} hint={t("settings.notifTelegramChatHint")}>
+          <Field label={<>{t("settings.notifTelegramChat")} <FieldHint hint={t("hints.tgChatId")} /></>}>
             <Input value={cfg.telegram_chat_id || ""} onChange={(v) => set("telegram_chat_id", v)} placeholder="-1001234567890" />
           </Field>
           <Field label={t("settings.notifSlackWebhook")} hint={t("settings.notifSlackWebhookHint")}>
@@ -496,7 +497,7 @@ function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) 
                 { value: "cyclic", label: t("settings.autoReplyCyclic") },
               ]} />
           </Field>
-          <Field label={t("settings.autoReplyReplies")} hint={`${replies.length}/10`}>
+          <Field label={<>{t("settings.autoReplyReplies")} <FieldHint hint={t("hints.autoReply")} /></>} hint={`${replies.length}/10`}>
             <div className="space-y-2">
               {replies.map((reply: string, idx: number) => (
                 <div key={idx} className="flex gap-2">
@@ -601,10 +602,10 @@ function WebhooksSection({ settings, defaults, onSave, onReset, saving }: any) {
       <Card title={t("settings.n8nEnabled")}>
         <div className="space-y-4">
           <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.n8nEnabled")} />
-          <Field label={t("settings.n8nUrl")}>
+          <Field label={<>{t("settings.n8nUrl")} <FieldHint hint={t("hints.n8nUrl")} /></>}>
             <Input value={cfg.url || ""} onChange={(v) => set("url", v)} placeholder="https://n8n.example.com/webhook/..." />
           </Field>
-          <Field label={t("settings.n8nSecret")}>
+          <Field label={<>{t("settings.n8nSecret")} <FieldHint hint={t("hints.n8nSecret")} /></>}>
             <Input value={cfg.secret || ""} onChange={(v) => set("secret", v)} placeholder="optional_hmac_secret" type="password" />
           </Field>
           <div className="flex items-center gap-3">

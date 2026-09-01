@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 import { Spinner } from "@/components/Spinner";
+import { FieldHint } from "@/components/FieldHint";
 
 type Account = {
   id: string;
@@ -334,7 +335,7 @@ export default function AccountsPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.phoneNumber")}</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.phoneNumber")} <FieldHint hint={t("hints.phoneNumber")} /></label>
               <input type="tel" placeholder={t("accounts.phonePlaceholder")} required value={addPhone} onChange={(e) => setAddPhone(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
             </div>
@@ -591,7 +592,7 @@ export default function AccountsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")}</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")} <FieldHint hint={t("hints.platform")} /></label>
                 <select value={bulkPlatform} onChange={(e) => setBulkPlatform(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                   <option value="telegram">{t("accounts.telegram")}</option>
