@@ -24,13 +24,13 @@ except ImportError:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-# Priority: openrouter (free models) → deepseek (cheap) → openai (fallback)
+# Priority: openrouter (free models) -> deepseek (cheap) -> openai (fallback)
 LLM_ENDPOINTS = [
     {
         "name": "openrouter",
         "url": "https://openrouter.ai/api/v1/chat/completions",
         "key": OPENROUTER_API_KEY,
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "model": "google/gemma-4-31b-it:free",
     },
     {
         "name": "deepseek",
@@ -66,16 +66,31 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 DEFAULT_HOT_KEYWORDS = [
+    # RU
     "сколько стоит", "цена", "купить", "аренду", "оплатить",
-    "готов", "заказать", "стоимость", "buy", "price", "order",
+    "готов", "заказать", "стоимость", "контракт", "подписать",
+    # EN
+    "buy", "price", "order", "purchase", "cost", "contract",
+    "sign", "budget", "invest", "roi", "ready to",
 ]
 DEFAULT_WARM_KEYWORDS = [
+    # RU
     "подскажите", "какие есть", "расскажите", "варианты",
-    "интересует", "хотел бы", "планирую", "interested", "tell me more",
+    "интересует", "хотел бы", "планирую", "каталог",
+    # EN
+    "interested", "tell me more", "catalog", "options",
+    "recommend", "available", "properties", "listings",
+    "can you", "do you have", "what do you",
 ]
 DEFAULT_SPAM_KEYWORDS = [
-    "casino", "crypto", "earn money", "заработать",
-    "бесплатно", "free", "click here", "нажми",
+    # EN
+    "casino", "crypto", "earn money", "click here",
+    "you won", "congratulations", "claim now", "free money",
+    "buy followers", "cheap followers", "nigerian prince",
+    "viagra", "pills", "weight loss", "miracle cure",
+    # RU
+    "заработать", "бесплатно", "нажми", " казино",
+    "выиграл", "поздравляем", "подпишись дешево",
 ]
 
 
@@ -85,13 +100,13 @@ def _classify_by_keywords(text: str, cfg: dict | None = None) -> dict:
     hot_kws = cfg.get("hot_keywords", DEFAULT_HOT_KEYWORDS)
     warm_kws = cfg.get("warm_keywords", DEFAULT_WARM_KEYWORDS)
     spam_kws = cfg.get("spam_keywords", DEFAULT_SPAM_KEYWORDS)
-    hot_thresh = cfg.get("hot_threshold", 2)
+    hot_thresh = cfg.get("hot_threshold", 1)
     warm_thresh = cfg.get("warm_threshold", 1)
 
     lower = text.lower()
 
     spam_hits = sum(1 for kw in spam_kws if kw.lower() in lower)
-    if spam_hits >= 2:
+    if spam_hits >= 1:
         return {
             "intent_score": "SPAM",
             "confidence": 0.85,
@@ -183,7 +198,7 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
         if not ep["key"]:
             continue
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=settings.LLM_TIMEOUT)) as client:
+            async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
                 resp = await client.post(
                     ep["url"],
                     headers={
