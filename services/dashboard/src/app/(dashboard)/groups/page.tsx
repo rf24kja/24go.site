@@ -6,6 +6,7 @@ import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, 
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Group = {
   id: string;
@@ -291,7 +292,7 @@ export default function GroupsPage() {
           <h2 className="text-sm font-medium text-zinc-400">{t("groups.addFormTitle")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")} <FieldHint hint={t("groups.hint.platform")} /></label>
               <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                 <option value="telegram">Telegram</option>
@@ -300,7 +301,7 @@ export default function GroupsPage() {
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">
-                {addPlatform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")}
+                {addPlatform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")} <FieldHint hint={t("groups.hint.groupLink")} />
               </label>
               <input type="text" required value={addIdentifier}
                 placeholder={addPlatform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}

@@ -7,6 +7,7 @@ import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampai
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import { Spinner } from "@/components/Spinner";
+import { FieldHint } from "@/components/FieldHint";
 
 type Campaign = {
   id: string;
@@ -245,19 +246,31 @@ export default function CampaignsPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-zinc-100">{modalMode === "edit" ? t("campaigns.editTitle") : t("campaigns.createTitle")}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input type="text" placeholder={t("campaigns.namePlaceholder")} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
-              <textarea placeholder={t("campaigns.textPlaceholder")} required rows={4} value={form.base_text} onChange={(e) => setForm({ ...form, base_text: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
-              <input type="text" placeholder={t("campaigns.geosPlaceholder")} value={form.target_geos} onChange={(e) => setForm({ ...form, target_geos: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
-              <input type="text" placeholder={t("campaigns.nichesPlaceholder")} value={form.target_niches} onChange={(e) => setForm({ ...form, target_niches: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.namePlaceholder")} <FieldHint hint={t("campaigns.hint.name")} /></label>
+                <input type="text" placeholder={t("campaigns.namePlaceholder")} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.textPlaceholder")} <FieldHint hint={t("campaigns.hint.text")} /></label>
+                <textarea placeholder={t("campaigns.textPlaceholder")} required rows={4} value={form.base_text} onChange={(e) => setForm({ ...form, base_text: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.geosPlaceholder")} <FieldHint hint={t("campaigns.hint.geos")} /></label>
+                <input type="text" placeholder={t("campaigns.geosPlaceholder")} value={form.target_geos} onChange={(e) => setForm({ ...form, target_geos: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.nichesPlaceholder")} <FieldHint hint={t("campaigns.hint.niches")} /></label>
+                <input type="text" placeholder={t("campaigns.nichesPlaceholder")} value={form.target_niches} onChange={(e) => setForm({ ...form, target_niches: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              </div>
 
               {/* Schedule */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.schedule")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.schedule")} <FieldHint hint={t("campaigns.hint.schedule")} /></label>
                   <select value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                     {scheduleOptions.map((o) => (
@@ -266,12 +279,12 @@ export default function CampaignsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.postsPerDay")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.postsPerDay")} <FieldHint hint={t("campaigns.hint.postsPerDay")} /></label>
                   <input type="number" min="1" max="50" value={form.posts_per_day} onChange={(e) => setForm({ ...form, posts_per_day: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.timezone")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.timezone")} <FieldHint hint={t("campaigns.hint.timezone")} /></label>
                   <select value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                     <option value="UTC">{t("campaigns.tz.utc")}</option>

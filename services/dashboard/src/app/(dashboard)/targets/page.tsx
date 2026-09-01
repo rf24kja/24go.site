@@ -6,6 +6,7 @@ import { getTargets, discoverGroups, scrapeTargetComments } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Target = {
   id: string;
@@ -105,12 +106,12 @@ export default function TargetsPage() {
         <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("targets.discoverNew")}</h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")}</label>
+            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")} <FieldHint hint={t("targets.hint.geos")} /></label>
             <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>
           <div className="flex-1">
-            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")}</label>
+            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")} <FieldHint hint={t("targets.hint.niches")} /></label>
             <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>

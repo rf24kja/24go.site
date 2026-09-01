@@ -58,13 +58,19 @@ export default function AccountsPage() {
   const [addPlatform, setAddPlatform] = useState("telegram");
   const [addSaving, setAddSaving] = useState(false);
 
-  // Connect modal state
+  // Connect modal state (Telegram)
   const [connectModal, setConnectModal] = useState<{ accountId: string; phone: string; step: "phone" | "code" | "password" } | null>(null);
   const [connectPhone, setConnectPhone] = useState("");
   const [connectCode, setConnectCode] = useState("");
   const [connectPassword, setConnectPassword] = useState("");
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState("");
+
+  // VK connect state
+  const [vkModal, setVkModal] = useState<string | null>(null); // accountId
+  const [vkToken, setVkToken] = useState("");
+  const [vkBusy, setVkBusy] = useState(false);
+  const [vkError, setVkError] = useState("");
 
   // Bulk import state
   const [showBulk, setShowBulk] = useState(false);
@@ -188,6 +194,31 @@ export default function AccountsPage() {
       await disconnectTelegram(auth.token, accountId);
       load();
     } catch (e: any) { setConnectError(e?.message || t("accounts.disconnectFailed")); } finally { setActionBusy(null); }
+  };
+
+  // ── VK Connect Flow ──────────────────────────────────────────────
+  const handleVkConnect = async () => {
+    if (!auth?.token || !vkModal || !vkToken.trim()) return;
+    setVkBusy(true);
+    setVkError("");
+    try {
+      const res = await fetch(`/api/v1/accounts/${vkModal}/connect-vk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+        body: JSON.stringify({ token: vkToken.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || t("accounts.vkConnectFailed"));
+      }
+      setVkModal(null);
+      setVkToken("");
+      load();
+    } catch (e: any) {
+      setVkError(e.message || t("accounts.vkConnectFailed"));
+    } finally {
+      setVkBusy(false);
+    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -420,7 +451,14 @@ export default function AccountsPage() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {!tgHasSession ? (
+                        {acct.platform === "vkontakte" ? (
+                          !tgHasSession ? (
+                            <button onClick={() => { setVkModal(acct.id); setVkToken(""); setVkError(""); }}
+                              className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
+                              {t("accounts.connectVk")}
+                            </button>
+                          ) : null
+                        ) : !tgHasSession ? (
                           <button onClick={() => handleConnectStart(acct.id)}
                             className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
                             {t("accounts.connectTg")}
@@ -517,6 +555,29 @@ export default function AccountsPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── VK Connect Modal ────────────────────────────────────────────── */}
+      {vkModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setVkModal(null)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-zinc-100">{t("accounts.vkConnectTitle")}</h2>
+            <p className="text-xs text-zinc-500">{t("accounts.vkConnectDesc")}</p>
+            <input type="text" placeholder={t("accounts.vkTokenPlaceholder")} value={vkToken}
+              onChange={(e) => setVkToken(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
+            {vkError && <p className="text-xs text-rose-400">{vkError}</p>}
+            <p className="text-[10px] text-zinc-600">{t("accounts.vkTokenHint")}</p>
+            <div className="flex gap-3">
+              <button onClick={handleVkConnect} disabled={vkBusy || !vkToken.trim()}
+                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {vkBusy ? t("accounts.connecting") : t("accounts.connectVk")}
+              </button>
+              <button onClick={() => setVkModal(null)}
+                className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
+            </div>
           </div>
         </div>
       )}

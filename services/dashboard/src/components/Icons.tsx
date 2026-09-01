@@ -249,3 +249,11 @@ export const Pen = (p: IconProps) => (
     <path d="m15 5 4 4" />
   </S>
 );
+
+export const HelpCircle = (p: IconProps) => (
+  <S {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </S>
+);

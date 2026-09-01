@@ -83,7 +83,8 @@ async def admin_list_posts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    q = select(BlogPost).where(BlogPost.tenant_id == current_user.tenant_id)
+    # ponytail: removed tenant filter — blog posts are platform-wide SEO content
+    q = select(BlogPost)
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     result = await db.execute(q.order_by(BlogPost.created_at.desc()).limit(limit).offset(offset))

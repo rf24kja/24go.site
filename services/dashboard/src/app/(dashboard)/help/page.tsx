@@ -1,44 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 
 const STEPS = [
-  {
-    num: 1,
-    icon: "🔗",
-    key: "connect",
-    fields: ["title", "desc", "details"],
-  },
-  {
-    num: 2,
-    icon: "🎯",
-    key: "discover",
-    fields: ["title", "desc", "details"],
-  },
-  {
-    num: 3,
-    icon: "🤖",
-    key: "classify",
-    fields: ["title", "desc", "details"],
-  },
-  {
-    num: 4,
-    icon: "📊",
-    key: "leads",
-    fields: ["title", "desc", "details"],
-  },
-  {
-    num: 5,
-    icon: "📣",
-    key: "campaigns",
-    fields: ["title", "desc", "details"],
-  },
-  {
-    num: 6,
-    icon: "💰",
-    key: "billing",
-    fields: ["title", "desc", "details"],
-  },
+  { num: 1, href: "/billing", icon: "💳", key: "register" },
+  { num: 2, href: "/accounts", icon: "🔗", key: "connectTg" },
+  { num: 3, href: "/targets", icon: "🎯", key: "discoverTargets" },
+  { num: 4, href: "/scoring", icon: "⚙️", key: "scoring" },
+  { num: 5, href: null, icon: "📡", key: "listener" },
+  { num: 6, href: "/campaigns", icon: "📣", key: "campaign" },
+  { num: 7, href: "/leads", icon: "📊", key: "leads" },
+  { num: 8, href: "/settings", icon: "🤖", key: "autoReply" },
+  { num: 9, href: "/settings", icon: "🔗", key: "webhooks" },
 ];
 
 const FAQ = [
@@ -63,7 +37,7 @@ export default function HelpPage() {
         <p className="text-zinc-400 mt-1">{t("help.subtitle")}</p>
       </div>
 
-      {/* Quick Start Steps */}
+      {/* Steps */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-zinc-200">{t("help.quickStart")}</h2>
         {STEPS.map((step) => (
@@ -87,6 +61,14 @@ export default function HelpPage() {
                       <p key={i}>{line}</p>
                     ))}
                 </div>
+                {step.href && (
+                  <Link
+                    href={step.href}
+                    className="inline-block mt-3 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition"
+                  >
+                    {t("help.goTo")} →
+                  </Link>
+                )}
               </div>
             </div>
           </div>
