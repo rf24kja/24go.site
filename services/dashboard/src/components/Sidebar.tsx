@@ -24,20 +24,20 @@ export function Sidebar() {
   if (!auth.token) return null;
 
   const NAV = [
-    { href: "/analytics", label: t("nav.analytics"), icon: ChartBar },
-    { href: "/leads", label: t("nav.leads"), icon: Crosshair },
-    { href: "/scoring", label: t("nav.scoring"), icon: Scales },
-    { href: "/targets", label: t("nav.targets"), icon: Radar },
-    { href: "/groups", label: t("nav.groups"), icon: Radio },
-    { href: "/accounts", label: t("nav.accounts"), icon: UserCircle },
-    { href: "/campaigns", label: t("nav.campaigns"), icon: Megaphone },
-    { href: "/blog-admin", label: t("nav.blog"), icon: Pen },
-    { href: "/billing", label: t("nav.billing"), icon: CreditCard },
-    { href: "/users", label: t("nav.team"), icon: UsersGroup },
-    { href: "/audit", label: t("nav.audit"), icon: FileText },
-    { href: "/health", label: t("nav.health"), icon: Heartbeat },
+    { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair },
+    { href: "/scoring", label: t("sidebar.scoring"), icon: Scales },
+    { href: "/targets", label: t("sidebar.targets"), icon: Radar },
+    { href: "/groups", label: t("sidebar.groups"), icon: Radio },
+    { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle },
+    { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone },
+    { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen },
+    { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
+    { href: "/users", label: t("sidebar.team"), icon: UsersGroup },
+    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText },
+    { href: "/health", label: t("sidebar.health"), icon: Heartbeat },
     { href: "/help", label: t("nav.help"), icon: FileText },
-    { href: "/settings", label: t("nav.settings"), icon: Cog },
+    { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ];
 
   return (
