@@ -428,7 +428,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                 row = await conn.fetchrow(
                     """SELECT a.id, s.session_data FROM account_pool a
                        JOIN account_sessions s ON s.account_id = a.id
-                       WHERE a.tenant_id = $1 AND a.status = 'active'
+                        WHERE a.tenant_id = $1 AND a.status IN ('active', 'warming_up')
                        ORDER BY a.created_at LIMIT 1""",
                     tenant_id,
                 )
