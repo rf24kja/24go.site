@@ -84,8 +84,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     content={"error": "rate_limited", "limit": limit, "retry_after": 60 - (int(time.time()) % 60)},
                     headers={"Retry-After": str(60 - (int(time.time()) % 60))},
                 )
-        except Exception:
-            # Redis down — skip rate limiting, don't block requests
-            pass
+        except Exception as e:
+            # Redis down — log warning, skip rate limiting for this request
+            log.warning("Redis unavailable — rate limiting skipped: %s", type(e).__name__)
 
         return await call_next(request)

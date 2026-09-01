@@ -42,8 +42,20 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 50
     MAX_PAGE_SIZE: int = 200
 
+    # YooKassa
+    YOOKASSA_SECRET_KEY: str = ""
+    YOOKASSA_SHOP_ID: str = ""
+
     class Config:
         env_file = ".env"
 
 
 settings = Settings()
+
+# Startup guards for critical secrets
+if not settings.ENCRYPTION_KEY:
+    import logging
+    logging.getLogger(__name__).warning(
+        "ENCRYPTION_KEY not set — Telegram session data stored unencrypted! "
+        "Set ENCRYPTION_KEY in .env for production."
+    )

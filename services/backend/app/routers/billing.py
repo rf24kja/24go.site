@@ -12,6 +12,7 @@ import asyncpg
 import httpx
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -285,35 +286,59 @@ async def stripe_webhook(request: Request):
 async def yookassa_webhook(request: Request):
     """Handle YooKassa webhook events.
 
-    YooKassa doesn't use HMAC — they send a specific IP whitelist.
-    We verify: 1) request origin, 2) metadata.tenant_id exists, 3) idempotency.
+    YooKassa doesn't use HMAC — we verify by calling back to YooKassa API
+    to confirm the payment status matches what was received.
     """
     try:
         body = await request.json()
     except Exception:
-        return {"error": "Invalid JSON"}, 400
+        return JSONResponse(status_code=400, content={"error": "Invalid JSON"})
 
     if not body or "object" not in body:
-        return {"error": "Invalid payload"}, 400
+        return JSONResponse(status_code=400, content={"error": "Invalid payload"})
 
     obj = body.get("object", {})
     if not obj.get("id") or not obj.get("status"):
-        return {"error": "Missing required fields"}, 400
+        return JSONResponse(status_code=400, content={"error": "Missing required fields"})
 
     valid_statuses = {"succeeded", "cancelled", "waiting_for_capture", "pending", "canceled"}
     if obj["status"] not in valid_statuses:
         return {"status": "ignored"}
 
-    amount = obj.get("amount", {})
     try:
-        value = float(amount.get("value", 0))
+        value = float(obj.get("amount", {}).get("value", 0))
         if value <= 0:
-            return {"error": "Invalid amount"}, 400
+            return JSONResponse(status_code=400, content={"error": "Invalid amount"})
     except (TypeError, ValueError):
-        return {"error": "Invalid amount format"}, 400
+        return JSONResponse(status_code=400, content={"error": "Invalid amount format"})
 
     event_type = body.get("event", "")
     log.info(f"YooKassa webhook: {event_type}")
+
+    # Verify payment by calling YooKassa API (prevent forged webhooks)
+    provider_tx_id = obj.get("id", "")
+    if YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY and provider_tx_id:
+        try:
+            import base64, urllib.request
+            auth_str = base64.b64encode(
+                f"{YOOKASSA_SHOP_ID}:{YOOKASSA_SECRET_KEY}".encode()
+            ).decode()
+            req = urllib.request.Request(
+                f"https://api.yookassa.ru/v3/payments/{provider_tx_id}",
+                headers={"Authorization": f"Basic {auth_str}", "Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                verified = json.loads(resp.read())
+                if verified.get("status") != obj.get("status"):
+                    log.warning(
+                        f"YooKassa webhook status mismatch: got {obj.get('status')} but API says {verified.get('status')}"
+                    )
+                    return {"status": "ignored"}
+        except Exception as e:
+            log.warning(f"YooKassa API verification failed: {type(e).__name__}: {e}")
+            return JSONResponse(status_code=502, content={"error": "Verification failed"})
+    else:
+        log.warning("YooKassa API verification skipped — missing credentials")
 
     # Validate required fields
     tenant_id = obj.get("metadata", {}).get("tenant_id")
@@ -322,7 +347,6 @@ async def yookassa_webhook(request: Request):
         return {"status": "ignored"}
 
     # Idempotency: check if we already processed this payment
-    provider_tx_id = obj.get("id", "")
     if provider_tx_id:
         url = settings.DATABASE_URL.replace("+asyncpg", "")
         conn = await asyncpg.connect(url)

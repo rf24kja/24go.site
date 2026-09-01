@@ -1,6 +1,8 @@
-"""FastAPI application — LeadGen Control Plane v0.3.2."""
+"""FastAPI application — LeadGen Control Plane v0.3.3."""
 import asyncio
+import hmac
 import logging
+import os
 import time
 import uuid
 from collections import deque
@@ -18,12 +20,14 @@ from app.routers import auth, tenants, targets, accounts, campaigns, leads, task
 if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
 
+_is_production = os.getenv("ENVIRONMENT", "production").lower() == "production" and not os.getenv("DEBUG", "")
+
 app = FastAPI(
     title="LeadGen Control Plane",
     description="Multi-tenant B2B SaaS platform for automated lead generation in Telegram/VK social networks.",
     version="0.3.3",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if not _is_production else None,
+    redoc_url="/redoc" if not _is_production else None,
     openapi_tags=[
         {"name": "auth", "description": "User registration, login, JWT tokens"},
         {"name": "leads", "description": "Lead capture, qualification, status management, CSV import/export"},
@@ -195,7 +199,7 @@ async def broadcast_event(
     x_internal_key: str = Header(default=""),
 ):
     """Internal endpoint for workers — requires X-Internal-Key header."""
-    if not settings.INTERNAL_API_KEY or x_internal_key != settings.INTERNAL_API_KEY:
+    if not settings.INTERNAL_API_KEY or not hmac.compare_digest(x_internal_key, settings.INTERNAL_API_KEY):
         raise HTTPException(403, "Invalid internal key")
     queue = get_event_queue()
     await queue.put((tenant_id, event))
@@ -291,8 +295,8 @@ async def health():
         await conn.fetchval("SELECT 1")
         await conn.close()
         checks["database"] = "ok"
-    except Exception as e:
-        checks["database"] = f"error: {str(e)[:80]}"
+    except Exception:
+        checks["database"] = "error"
         checks["status"] = "degraded"
 
     # Redis check
@@ -301,8 +305,8 @@ async def health():
         r = _redis.from_url(settings.REDIS_URL, socket_timeout=3)
         r.ping()
         checks["redis"] = "ok"
-    except Exception as e:
-        checks["redis"] = f"error: {str(e)[:80]}"
+    except Exception:
+        checks["redis"] = "error"
         checks["status"] = "degraded"
 
     return checks
