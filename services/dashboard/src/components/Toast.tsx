@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           };
           return (
             <div key={t.id}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg pointer-events-auto animate-slide-up ${colors[t.type]}`}>
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg pointer-events-auto animate-toast-in ${colors[t.type]}`}>
               {t.message}
             </div>
           );

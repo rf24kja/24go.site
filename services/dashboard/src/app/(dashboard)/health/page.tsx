@@ -57,7 +57,7 @@ export default function HealthPage() {
   const apiBase = getApiBase();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-slide-in">
       <h1 className="text-2xl font-bold">{t("health.title")}</h1>
 
       {/* Status cards */}

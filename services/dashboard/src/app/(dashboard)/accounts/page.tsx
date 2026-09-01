@@ -251,7 +251,7 @@ export default function AccountsPage() {
   const statusLabels = getStatusLabels(t);
 
   return (
-    <div className={`p-6 space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`p-6 space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-zinc-100">{t("accounts.title")}</h1>
         <div className="flex gap-3">
@@ -260,7 +260,7 @@ export default function AccountsPage() {
             {t("accounts.bulkImport")}
           </button>
           <button onClick={() => setShowAdd(!showAdd)}
-            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
+            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
             {t("accounts.addAccount")}
           </button>
         </div>

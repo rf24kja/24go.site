@@ -1,4 +1,4 @@
-"""Send outbound webhooks for events (new leads, etc.)."""
+"""Send outbound webhooks to n8n for events (new leads, etc.)."""
 import hashlib
 import hmac
 import json
@@ -14,12 +14,12 @@ async def dispatch_lead_webhooks(
     lead_data: dict,
     webhook_config: dict,
 ):
-    """Send webhooks when a new lead is captured."""
+    """Send webhook to n8n when a new lead is captured."""
     if not webhook_config.get("enabled"):
         return
 
-    urls = webhook_config.get("urls", [])
-    if not urls:
+    url = webhook_config.get("url", "")
+    if not url:
         return
 
     payload = {
@@ -30,34 +30,27 @@ async def dispatch_lead_webhooks(
     }
 
     payload_bytes = json.dumps(payload, default=str).encode()
+    secret = webhook_config.get("secret", "")
 
-    async with httpx.AsyncClient() as client:
-        for entry in urls:
-            url = entry.get("url", "")
-            secret = entry.get("secret", "")
-            events = entry.get("events", ["lead.new"])
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "X-Webhook-Event": "lead.new",
+            "X-Tenant-Id": tenant_id,
+        }
 
-            if "lead.new" not in events or not url:
-                continue
+        if secret:
+            signature = hmac.new(
+                secret.encode(), payload_bytes, hashlib.sha256
+            ).hexdigest()
+            headers["X-Webhook-Signature"] = f"sha256={signature}"
 
-            try:
-                headers = {
-                    "Content-Type": "application/json",
-                    "X-Webhook-Event": "lead.new",
-                    "X-Tenant-Id": tenant_id,
-                }
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, content=payload_bytes, headers=headers, timeout=10)
 
-                if secret:
-                    signature = hmac.new(
-                        secret.encode(), payload_bytes, hashlib.sha256
-                    ).hexdigest()
-                    headers["X-Webhook-Signature"] = f"sha256={signature}"
-
-                resp = await client.post(url, content=payload_bytes, headers=headers, timeout=10)
-
-                if 200 <= resp.status_code < 300:
-                    log.info(f"Webhook sent to {url} for tenant {tenant_id}")
-                else:
-                    log.warning(f"Webhook {url} returned {resp.status_code}")
-            except Exception as e:
-                log.warning(f"Webhook to {url} failed: {e}")
+        if 200 <= resp.status_code < 300:
+            log.info(f"Webhook sent to {url} for tenant {tenant_id}")
+        else:
+            log.warning(f"Webhook {url} returned {resp.status_code}")
+    except Exception as e:
+        log.warning(f"Webhook to {url} failed: {e}")

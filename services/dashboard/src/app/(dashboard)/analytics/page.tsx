@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
   ].filter((d) => d.value > 0);
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-slide-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("analytics.title")}</h1>
         <div className="flex gap-1">

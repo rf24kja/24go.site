@@ -75,7 +75,7 @@ export default function UsersPage() {
   const isAdmin = auth?.user?.role === "admin" || isOwner;
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <h1 className="text-2xl font-bold">{t("users.title")}</h1>
 
       {/* Invite form */}
@@ -91,7 +91,7 @@ export default function UsersPage() {
             <option value="viewer">{t("users.roleViewer")}</option>
           </select>
           <button type="submit" disabled={inviting || !inviteEmail.trim()}
-            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
+            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 btn-press">
             {inviting ? "..." : t("users.invite")}
           </button>
         </form>

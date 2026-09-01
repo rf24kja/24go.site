@@ -67,14 +67,14 @@ export default function ScoringPage() {
   };
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("scoring.title")}</h1>
           <p className="text-zinc-500 text-sm mt-1">{t("scoring.subtitle")}</p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
+          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
           {t("scoring.newRule")}
         </button>
       </div>
@@ -188,7 +188,7 @@ export default function ScoringPage() {
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("scoring.cancel")}</button>
-                <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
+                <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
                   {saving ? t("scoring.creating") : t("scoring.create")}
                 </button>
               </div>

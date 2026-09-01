@@ -127,7 +127,7 @@ export default function BillingPage() {
   const tokensUsed = usage?.total_tokens_used ?? 0;
 
   return (
-    <div className="p-6 space-y-8 animate-fade-in">
+    <div className="p-6 space-y-8 animate-fade-slide-in">
       <h1 className="text-2xl font-semibold text-zinc-100">{t("billing.title")}</h1>
 
       {/* Current Subscription */}
@@ -239,7 +239,7 @@ export default function BillingPage() {
                       ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                       : checkoutBusy === p.name.toLowerCase()
                         ? "bg-zinc-700 text-zinc-400 cursor-wait"
-                        : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                        : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 btn-press"
                   }`}
                 >
                   {isCurrent ? t("billing.currentPlan") : checkoutBusy === p.name.toLowerCase() ? t("billing.redirecting") : t("billing.upgrade")}

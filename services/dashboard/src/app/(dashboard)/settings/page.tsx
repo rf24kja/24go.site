@@ -23,7 +23,7 @@ const getSections = (t: (k: string) => string): { key: Section; label: string; I
   { key: "notifications", label: t("settings.section.notifications"), Icon: Bell },
   { key: "auto_reply", label: t("settings.autoReply"), Icon: Send },
   { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
-  { key: "webhooks", label: t("settings.section.webhooks"), Icon: Zap },
+  { key: "webhooks", label: t("settings.n8nIntegration"), Icon: Zap },
   { key: "account", label: t("settings.section.account"), Icon: Cog },
 ];
 
@@ -77,7 +77,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className={`flex gap-6 max-w-6xl${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`flex gap-6 max-w-6xl animate-fade-slide-in`}>
       {/* Sidebar nav */}
       <nav className="w-52 shrink-0 space-y-1">
         <h1 className="text-lg font-bold mb-4">{t("settings.title")}</h1>
@@ -188,7 +188,7 @@ function SectionActions({ onSave, onReset, saving, t }: { onSave: () => void; on
   return (
     <div className="flex items-center gap-3 pt-4 border-t border-zinc-800">
       <button onClick={onSave} disabled={saving}
-        className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
+        className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 btn-press">
         {saving ? t("settings.saving") : t("settings.save")}
       </button>
       <button onClick={onReset} className="px-4 py-2 text-zinc-500 text-sm hover:text-zinc-300 transition">{t("settings.resetDefaults")}</button>
@@ -448,6 +448,23 @@ function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) 
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
   const { t } = useI18n();
 
+  const replies = cfg.replies || [];
+
+  const addReply = () => {
+    if (replies.length >= 10) return;
+    set("replies", [...replies, ""]);
+  };
+
+  const updateReply = (idx: number, value: string) => {
+    const next = [...replies];
+    next[idx] = value;
+    set("replies", next);
+  };
+
+  const removeReply = (idx: number) => {
+    set("replies", replies.filter((_: string, i: number) => i !== idx));
+  };
+
   return (
     <div className="space-y-6">
       <SectionHeader Icon={Send} title={t("settings.autoReply")} desc={t("settings.autoReplyDesc")} />
@@ -462,9 +479,30 @@ function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) 
                 { value: "WARM", label: "WARM" },
               ]} />
           </Field>
-          <Field label={t("settings.autoReplyMessage")} hint={t("settings.autoReplyMessageHint")}>
-            <textarea value={cfg.reply_message || ""} onChange={(e) => set("reply_message", e.target.value)} rows={3}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" />
+          <Field label={t("settings.autoReplyMode")}>
+            <Select value={cfg.reply_mode || "random"} onChange={(v) => set("reply_mode", v)}
+              options={[
+                { value: "random", label: t("settings.autoReplyRandom") },
+                { value: "cyclic", label: t("settings.autoReplyCyclic") },
+              ]} />
+          </Field>
+          <Field label={t("settings.autoReplyReplies")} hint={`${replies.length}/10`}>
+            <div className="space-y-2">
+              {replies.map((reply: string, idx: number) => (
+                <div key={idx} className="flex gap-2">
+                  <textarea value={reply} onChange={(e) => updateReply(idx, e.target.value)} rows={2}
+                    className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" />
+                  <button type="button" onClick={() => removeReply(idx)}
+                    className="px-2 text-zinc-500 hover:text-rose-400 transition self-start mt-1">×</button>
+                </div>
+              ))}
+              {replies.length < 10 && (
+                <button type="button" onClick={addReply}
+                  className="px-4 py-2 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition w-full">
+                  + {t("settings.addReply")}
+                </button>
+              )}
+            </div>
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label={t("settings.autoReplyDelay")} hint={t("settings.autoReplyDelayHint")}>
@@ -529,81 +567,44 @@ function WebhooksSection({ settings, defaults, onSave, onReset, saving }: any) {
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
   const { t } = useI18n();
   const { auth } = useAuth();
-  const [testingIdx, setTestingIdx] = useState<number | null>(null);
-  const [testResult, setTestResult] = useState<{ idx: number; ok: boolean } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<"ok" | "fail" | null>(null);
 
-  const addUrl = () => {
-    const urls = [...(cfg.urls || []), { url: "", events: ["lead.new"], secret: "" }];
-    set("urls", urls);
-  };
-
-  const removeUrl = (idx: number) => {
-    set("urls", cfg.urls.filter((_: any, i: number) => i !== idx));
-  };
-
-  const updateUrl = (idx: number, field: string, value: any) => {
-    const urls = [...cfg.urls];
-    urls[idx] = { ...urls[idx], [field]: value };
-    set("urls", urls);
-  };
-
-  const handleTest = async (idx: number) => {
-    const url = cfg.urls?.[idx]?.url;
+  const handleTest = async () => {
+    const url = cfg.url;
     if (!url || !auth?.token) return;
-    setTestingIdx(idx);
+    setTesting(true);
     setTestResult(null);
     try {
       const res = await testWebhook(auth.token, url);
-      setTestResult({ idx, ok: res.success });
+      setTestResult(res.success ? "ok" : "fail");
     } catch {
-      setTestResult({ idx, ok: false });
+      setTestResult("fail");
     }
-    setTestingIdx(null);
+    setTesting(false);
   };
 
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={Zap} title={t("settings.webhooks")} desc={t("settings.webhooksDesc")} />
+      <SectionHeader Icon={Zap} title={t("settings.n8nIntegration")} desc={t("settings.n8nDesc")} />
 
-      <Card title={t("settings.webhooksEnabled")}>
-        <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.webhooksEnabled")} />
-      </Card>
-
-      <Card title={t("settings.webhookUrls")}>
+      <Card title={t("settings.n8nEnabled")}>
         <div className="space-y-4">
-          {(cfg.urls || []).map((entry: any, idx: number) => (
-            <div key={idx} className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 space-y-3">
-                  <Field label={t("settings.webhookUrl")}>
-                    <Input value={entry.url || ""} onChange={(v) => updateUrl(idx, "url", v)} placeholder="https://n8n.example.com/webhook/..." />
-                  </Field>
-                  <Field label={t("settings.webhookSecret")}>
-                    <Input value={entry.secret || ""} onChange={(v) => updateUrl(idx, "secret", v)} placeholder="optional_hmac_secret" type="password" />
-                  </Field>
-                </div>
-                <div className="flex flex-col gap-2 pt-5">
-                  <button onClick={() => handleTest(idx)} disabled={testingIdx === idx || !entry.url}
-                    className="px-3 py-1.5 bg-zinc-700 text-zinc-200 rounded-lg text-xs hover:bg-zinc-600 disabled:opacity-50 whitespace-nowrap">
-                    {testingIdx === idx ? t("settings.webhookTesting") : t("settings.webhookTest")}
-                  </button>
-                  <button onClick={() => removeUrl(idx)}
-                    className="px-3 py-1.5 text-zinc-500 text-xs hover:text-rose-400 transition">
-                    ×
-                  </button>
-                </div>
-              </div>
-              {testResult?.idx === idx && (
-                <div className={`text-xs ${testResult.ok ? "text-emerald-400" : "text-rose-400"}`}>
-                  {testResult.ok ? t("settings.webhookSuccess") : t("settings.webhookFailed")}
-                </div>
-              )}
-            </div>
-          ))}
-          <button onClick={addUrl}
-            className="px-4 py-2 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition w-full">
-            + {t("settings.webhookAdd")}
-          </button>
+          <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.n8nEnabled")} />
+          <Field label={t("settings.n8nUrl")}>
+            <Input value={cfg.url || ""} onChange={(v) => set("url", v)} placeholder="https://n8n.example.com/webhook/..." />
+          </Field>
+          <Field label={t("settings.n8nSecret")}>
+            <Input value={cfg.secret || ""} onChange={(v) => set("secret", v)} placeholder="optional_hmac_secret" type="password" />
+          </Field>
+          <div className="flex items-center gap-3">
+            <button onClick={handleTest} disabled={testing || !cfg.url}
+              className="px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 disabled:opacity-50">
+              {testing ? t("settings.n8nTesting") : t("settings.n8nTest")}
+            </button>
+            {testResult === "ok" && <span className="text-emerald-400 text-sm">{t("settings.n8nSuccess")}</span>}
+            {testResult === "fail" && <span className="text-rose-400 text-sm">{t("settings.n8nFailed")}</span>}
+          </div>
         </div>
       </Card>
 
@@ -686,7 +687,7 @@ function AccountSection() {
             <Input value={companyName} onChange={setCompanyName} />
           </Field>
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 btn-press">
               {saving ? t("settings.saving") : t("settings.saveBtn")}
             </button>
             {saved && <span className="text-emerald-400 text-sm">{t("settings.saved")}</span>}
@@ -731,9 +732,9 @@ function AccountSection() {
 
       <Card title={t("settings.demoBackup")}>
         <div className="flex gap-3">
-          <button onClick={handleSeed} disabled={seeding}
-            className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium hover:bg-emerald-500/20 disabled:opacity-50">
-            {seeding ? t("settings.loading") : t("settings.loadDemo")}
+            <button onClick={handleSeed} disabled={seeding}
+              className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium hover:bg-emerald-500/20 disabled:opacity-50 btn-press">
+              {seeding ? t("settings.loading") : t("settings.loadDemo")}
           </button>
           <button onClick={handleBackup}
             className="px-4 py-2 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700">
@@ -754,7 +755,7 @@ function AccountSection() {
           <Input type="password" value={newPass} onChange={setNewPass} placeholder={t("settings.newPassword")} />
           <Input type="password" value={confirmPass} onChange={setConfirmPass} placeholder={t("settings.confirmPassword")} />
           <div className="flex items-center gap-3">
-            <button type="submit" className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">{t("settings.changePassword")}</button>
+            <button type="submit" className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">{t("settings.changePassword")}</button>
             {passMsg && <span className="text-emerald-400 text-sm">{passMsg}</span>}
             {passErr && <span className="text-rose-400 text-sm">{passErr}</span>}
           </div>

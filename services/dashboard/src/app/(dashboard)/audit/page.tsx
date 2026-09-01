@@ -42,7 +42,7 @@ export default function AuditPage() {
   }, [auth?.token, entityFilter]);
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("audit.title")}</h1>
         <div className="flex gap-1">

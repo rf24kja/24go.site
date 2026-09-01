@@ -77,7 +77,12 @@ DEFAULTS = {
     "auto_reply": {
         "enabled": False,
         "min_intent": "HOT",
-        "reply_message": "Thank you for your interest! Our manager will contact you shortly. 🙏",
+        "reply_mode": "random",
+        "replies": [
+            "Thank you for your interest! Our manager will contact you shortly. 🙏",
+            "Hi there! Thanks for reaching out. We'll get back to you soon! 😊",
+            "Great to hear from you! Our team will follow up shortly. ✨"
+        ],
         "reply_delay_seconds": 5,
         "max_replies_per_hour": 10,
     },

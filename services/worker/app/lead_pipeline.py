@@ -175,7 +175,7 @@ async def process_incoming_message(
     except Exception as e:
         log.debug(f"Auto-reply dispatch failed (non-blocking): {e}")
 
-    # 8. Outbound webhooks (n8n, Zapier, custom)
+    # 8. Outbound webhooks (n8n)
     try:
         webhook_cfg = tenant_cfg.get("webhooks", {})
         if webhook_cfg.get("enabled"):

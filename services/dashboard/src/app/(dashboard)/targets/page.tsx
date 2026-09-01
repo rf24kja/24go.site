@@ -85,7 +85,7 @@ export default function TargetsPage() {
   };
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("targets.title")}</h1>
       </div>
@@ -115,7 +115,7 @@ export default function TargetsPage() {
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>
           <button onClick={handleScan} disabled={scanning}
-            className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 whitespace-nowrap">
+            className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 whitespace-nowrap btn-press">
             {scanning ? t("targets.scanning") : t("targets.scan")}
           </button>
         </div>

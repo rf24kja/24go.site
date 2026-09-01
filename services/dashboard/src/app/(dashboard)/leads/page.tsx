@@ -210,7 +210,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("leads.title")}</h1>
         <div className="flex items-center gap-3">
@@ -293,7 +293,7 @@ export default function LeadsPage() {
           className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
           placeholder={t("leads.qualifyPlaceholder")} />
         <button type="submit" disabled={qualifying || !testMessage.trim()}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
+          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 btn-press">
           {qualifying ? "..." : t("leads.qualify")}
         </button>
       </form>

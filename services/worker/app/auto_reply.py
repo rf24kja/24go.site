@@ -1,6 +1,7 @@
 """Auto-reply to HOT leads via Telegram."""
 import asyncio
 import logging
+import random
 import time
 
 log = logging.getLogger(__name__)
@@ -44,7 +45,20 @@ async def send_auto_reply(
     delay = auto_reply_config.get("reply_delay_seconds", 5)
     await asyncio.sleep(delay)
 
-    reply_text = auto_reply_config.get("reply_message", "Thank you for your interest!")
+    replies = auto_reply_config.get("replies", [])
+    if not replies:
+        reply_text = auto_reply_config.get("reply_message", "Thank you for your interest!")
+    else:
+        mode = auto_reply_config.get("reply_mode", "random")
+        if mode == "cyclic":
+            idx_key = f"reply_idx_{tenant_id}"
+            idx = getattr(send_auto_reply, '_idx', {}).get(idx_key, 0)
+            reply_text = replies[idx % len(replies)]
+            if not hasattr(send_auto_reply, '_idx'):
+                send_auto_reply._idx = {}
+            send_auto_reply._idx[idx_key] = idx + 1
+        else:
+            reply_text = random.choice(replies)
 
     try:
         from app.telegram_client import get_client

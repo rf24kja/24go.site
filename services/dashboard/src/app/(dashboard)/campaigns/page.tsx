@@ -149,11 +149,11 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("campaigns.title")}</h1>
         <button onClick={openCreate}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
+          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
           {t("campaigns.newCampaign")}
         </button>
       </div>
@@ -380,7 +380,7 @@ export default function CampaignsPage() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalMode(null)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
-                <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
+                <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
                   {saving ? t("campaigns.saving") : modalMode === "edit" ? t("campaigns.update") : t("campaigns.create")}
                 </button>
               </div>

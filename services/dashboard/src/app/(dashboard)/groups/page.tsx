@@ -166,11 +166,11 @@ export default function GroupsPage() {
   };
 
   return (
-    <div className={`space-y-6${!loading ? " animate-fade-in" : ""}`}>
+    <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("groups.title")}</h1>
         <button onClick={() => setShowAdd(!showAdd)}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200">
+          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
           {t("groups.addGroup")}
         </button>
       </div>
@@ -244,7 +244,7 @@ export default function GroupsPage() {
                 </select>
               </div>
               <button onClick={handleDiscover} disabled={discoverLoading || !discoverGeo.trim() || !discoverNiche.trim()}
-                className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 whitespace-nowrap">
+                className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 whitespace-nowrap btn-press">
                 {discoverLoading ? t("groups.searching") : t("groups.discover")}
               </button>
             </div>
@@ -325,7 +325,7 @@ export default function GroupsPage() {
           </p>
           <div className="flex gap-3">
             <button type="submit" disabled={addSaving || !addIdentifier.trim() || !addAccountId}
-              className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50">
+              className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
               {addSaving ? t("groups.adding") : t("groups.addBtn")}
             </button>
             <button type="button" onClick={() => setShowAdd(false)}
