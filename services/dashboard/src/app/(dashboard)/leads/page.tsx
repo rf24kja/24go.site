@@ -211,9 +211,9 @@ export default function LeadsPage() {
 
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t("leads.title")}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1">
             {[{ key: "ALL", label: t("leads.filterAll") }, { key: "HOT", label: t("leads.filterHot") }, { key: "WARM", label: t("leads.filterWarm") }, { key: "COLD", label: t("leads.filterCold") }].map((f) => (
               <button key={f.key} onClick={() => setFilter(f.key)}
@@ -286,7 +286,7 @@ export default function LeadsPage() {
       )}
 
       {/* Qualify form */}
-      <form onSubmit={handleQualify} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3">
+      <form onSubmit={handleQualify} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row gap-3">
         <input type="text" value={testHandle} onChange={(e) => setTestHandle(e.target.value)}
           className="w-40 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" placeholder={t("leads.qualifyHandle")} />
         <input type="text" value={testMessage} onChange={(e) => setTestMessage(e.target.value)}
@@ -313,7 +313,7 @@ export default function LeadsPage() {
 
       {view === "table" ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b border-zinc-800">
                 <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableHandle")}</th>

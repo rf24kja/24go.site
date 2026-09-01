@@ -249,7 +249,7 @@ export default function AnalyticsPage() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.leaderboard")}</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-zinc-800">
                   <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">#</th>

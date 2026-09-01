@@ -324,7 +324,7 @@ export default function AccountsPage() {
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
           <h2 className="text-sm font-medium text-zinc-400">{t("accounts.addNew")}</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")}</label>
               <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
@@ -374,8 +374,8 @@ export default function AccountsPage() {
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colWarmup")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colQuota")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colWarmup")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colQuota")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colActions")}</th>
             </tr>
           </thead>
@@ -430,7 +430,7 @@ export default function AccountsPage() {
                         {statusLabels[acct.status] ?? acct.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="w-20 h-2 bg-zinc-800 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${WARMUP_COLORS[acct.warmup_stage] ?? "bg-zinc-600"}`}
@@ -439,7 +439,7 @@ export default function AccountsPage() {
                         <span className="text-zinc-400 text-xs">{acct.warmup_stage}/3</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${pct > 80 ? "bg-rose-500" : pct > 50 ? "bg-amber-500" : "bg-zinc-500"}`}

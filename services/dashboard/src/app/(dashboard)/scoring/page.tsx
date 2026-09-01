@@ -91,7 +91,7 @@ export default function ScoringPage() {
 
       {/* Rules table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("scoring.colPriority")}</th>
@@ -162,7 +162,7 @@ export default function ScoringPage() {
             <form onSubmit={handleCreate} className="space-y-3">
               <input type="text" placeholder={t("scoring.ruleNamePlaceholder")} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.colIntent")}</label>
                   <select value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })}

@@ -213,20 +213,20 @@ export default function GroupsPage() {
             <p className="text-xs text-zinc-500">
               {t("groups.discoverDesc")}
             </p>
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
+            <div className="flex flex-col md:flex-row gap-3 items-end">
+              <div className="flex-1 w-full">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.geoLabel")}</label>
                 <input type="text" value={discoverGeo} onChange={(e) => setDiscoverGeo(e.target.value)}
                   placeholder={t("groups.geoPlaceholder")}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 w-full">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.nicheLabel")}</label>
                 <input type="text" value={discoverNiche} onChange={(e) => setDiscoverNiche(e.target.value)}
                   placeholder={t("groups.nichePlaceholder")}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
-              <div className="w-32">
+              <div className="w-full md:w-32">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
                 <select value={discoverPlatform} onChange={(e) => setDiscoverPlatform(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
@@ -234,7 +234,7 @@ export default function GroupsPage() {
                   <option value="vkontakte">VKontakte</option>
                 </select>
               </div>
-              <div className="w-48">
+              <div className="w-full md:w-48">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.useAccount")}</label>
                 <select value={addAccountId} onChange={(e) => setAddAccountId(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
@@ -342,9 +342,9 @@ export default function GroupsPage() {
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colGroup")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colMembers")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colMembers")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colStatus")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colLastScan")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colLastScan")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colActions")}</th>
             </tr>
           </thead>
@@ -382,13 +382,13 @@ export default function GroupsPage() {
                       <p className="text-zinc-500 text-xs font-mono">{g.group_identifier}</p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400">{(g.members_count || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{(g.members_count || 0).toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[g.status] ?? STATUS_STYLES.idle}`}>
                       {g.status === "scanning" ? t("groups.status.scanning") : g.status === "error" ? t("groups.status.error") : t("groups.status.idle")}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 text-xs">
+                  <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">
                     {g.last_scan_at ? new Date(g.last_scan_at).toLocaleString() : <span className="text-zinc-600">{t("groups.never")}</span>}
                   </td>
                   <td className="px-4 py-3">

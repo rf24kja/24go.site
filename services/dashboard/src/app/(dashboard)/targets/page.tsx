@@ -104,13 +104,13 @@ export default function TargetsPage() {
       {/* Scan controls */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("targets.discoverNew")}</h2>
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
+        <div className="flex flex-col md:flex-row gap-3 items-end">
+          <div className="flex-1 w-full">
             <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")} <FieldHint hint={t("targets.hint.geos")} /></label>
             <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")} <FieldHint hint={t("targets.hint.niches")} /></label>
             <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
@@ -124,16 +124,16 @@ export default function TargetsPage() {
 
       {/* Targets table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm min-w-[1000px]">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colTitle")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colGeo")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colNiche")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colAccess")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colGeo")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colNiche")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colAccess")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colMembers")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colLastParsed")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colLastParsed")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colStatus")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActions")}</th>
             </tr>
@@ -168,13 +168,13 @@ export default function TargetsPage() {
                 <tr key={target.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
                   <td className="px-4 py-3">{PLATFORM_ICONS[target.platform] ?? "❓"} {target.platform}</td>
                   <td className="px-4 py-3 text-zinc-100 truncate max-w-[200px]">{target.title}</td>
-                  <td className="px-4 py-3 text-zinc-400">{target.geo_tag}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{target.geo_tag}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
                     <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-xs">{target.niche}</span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 text-xs">{target.access}</td>
+                  <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">{target.access}</td>
                   <td className="px-4 py-3 text-zinc-400">{(target.members_count || 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-zinc-400 text-xs">
+                  <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">
                     {target.last_parsed_at
                       ? new Date(target.last_parsed_at).toLocaleString()
                       : <span className="text-zinc-600">{t("targets.never")}</span>}

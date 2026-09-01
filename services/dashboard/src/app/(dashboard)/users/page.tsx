@@ -80,7 +80,7 @@ export default function UsersPage() {
 
       {/* Invite form */}
       {isAdmin && (
-        <form onSubmit={handleInvite} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-3">
+        <form onSubmit={handleInvite} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col sm:flex-row gap-3">
           <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
             className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500"
             placeholder={t("users.emailPlaceholder")} required />
@@ -99,7 +99,7 @@ export default function UsersPage() {
       {error && <p className="text-rose-400 text-sm">{error}</p>}
 
       {/* Users table */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">

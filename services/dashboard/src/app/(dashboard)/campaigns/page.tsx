@@ -268,7 +268,7 @@ export default function CampaignsPage() {
               </div>
 
               {/* Schedule */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.schedule")} <FieldHint hint={t("campaigns.hint.schedule")} /></label>
                   <select value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })}

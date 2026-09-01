@@ -78,8 +78,18 @@ export default function SettingsPage() {
 
   return (
     <div className={`flex gap-6 max-w-6xl animate-fade-slide-in`}>
+      {/* Mobile section selector */}
+      <div className="md:hidden w-full">
+        <select value={activeSection} onChange={(e) => { setActiveSection(e.target.value as Section); setSaved(false); setError(""); }}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 mb-4">
+          {SECTIONS.map((s) => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Sidebar nav */}
-      <nav className="w-52 shrink-0 space-y-1">
+      <nav className="hidden md:block w-52 shrink-0 space-y-1">
         <h1 className="text-lg font-bold mb-4">{t("settings.title")}</h1>
         {SECTIONS.map((s) => (
           <button key={s.key} onClick={() => { setActiveSection(s.key); setSaved(false); setError(""); }}
@@ -207,7 +217,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
       <SectionHeader Icon={BrainCircuit} title={t("settings.aiClassification")} desc={t("settings.aiDesc")} />
 
       <Card title={t("settings.llmProvider")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("settings.provider")} hint={t("settings.providerHint")}>
             <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)}
               options={[
@@ -246,7 +256,7 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.thresholds")}>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label={t("settings.hotMinMatches")} hint={t("settings.hotMinHint")}>
             <NumberInput value={cfg.hot_threshold || 2} onChange={(v) => set("hot_threshold", v)} min={1} max={10} />
           </Field>
@@ -286,7 +296,7 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.stageDuration")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("settings.stage1Passive")} hint={t("settings.stage1Hint")}>
             <NumberInput value={cfg.stage1_days || 3} onChange={(v) => set("stage1_days", v)} min={1} max={14} />
           </Field>
@@ -297,7 +307,7 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.actionLimits")}>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label={t("settings.stage1Actions")}>
             <NumberInput value={cfg.stage1_actions_per_day || 5} onChange={(v) => set("stage1_actions_per_day", v)} min={1} max={20} />
           </Field>
@@ -311,7 +321,7 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.timing")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("settings.minDelay")}>
             <NumberInput value={cfg.random_delay_min_sec || 2} onChange={(v) => set("random_delay_min_sec", v)} min={1} max={30} />
           </Field>
@@ -337,7 +347,7 @@ function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
       <SectionHeader Icon={Send} title={t("settings.postingUtm")} desc={t("settings.postingDesc")} />
 
       <Card title={t("settings.utmDefaults")}>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label={t("settings.utmSource")}>
             <Input value={cfg.utm_source || "leadgen"} onChange={(v) => set("utm_source", v)} />
           </Field>
@@ -351,7 +361,7 @@ function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
       </Card>
 
       <Card title={t("settings.postingBehavior")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("settings.delayBetweenPosts")} hint={t("settings.delayHint")}>
             <NumberInput value={cfg.delay_between_posts_sec || 30} onChange={(v) => set("delay_between_posts_sec", v)} min={5} max={300} />
           </Field>
@@ -504,7 +514,7 @@ function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) 
               )}
             </div>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label={t("settings.autoReplyDelay")} hint={t("settings.autoReplyDelayHint")}>
               <NumberInput value={cfg.reply_delay_seconds || 5} onChange={(v) => set("reply_delay_seconds", v)} min={0} max={60} />
             </Field>
@@ -531,7 +541,7 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
       <SectionHeader Icon={UsersGroup} title={t("settings.groupScanning")} desc={t("settings.groupsDesc")} />
 
       <Card title={t("settings.scanBehavior")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t("settings.scanInterval")} hint={t("settings.scanIntervalHint")}>
             <NumberInput value={cfg.scan_interval_min || 30} onChange={(v) => set("scan_interval_min", v)} min={5} max={180} />
           </Field>
@@ -544,7 +554,7 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
       <Card title={t("settings.autoDiscovery")}>
         <div className="space-y-4">
           <Toggle value={cfg.auto_discover_enabled !== false} onChange={(v) => set("auto_discover_enabled", v)} label={t("settings.enableAutoDiscover")} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label={t("settings.discoverInterval")}>
               <NumberInput value={cfg.auto_discover_interval_hours || 6} onChange={(v) => set("auto_discover_interval_hours", v)} min={1} max={48} />
             </Field>
@@ -697,7 +707,7 @@ function AccountSection() {
 
       {sub && (
         <Card title={t("settings.subscription")}>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div><span className="text-zinc-500">{t("settings.planLabel")}</span><span className="text-zinc-200 ml-2 font-medium capitalize">{sub.plan}</span></div>
             <div><span className="text-zinc-500">{t("settings.statusLabel")}</span>
               <span className={`ml-2 font-medium ${sub.status === "active" ? "text-emerald-400" : "text-rose-400"}`}>{sub.status}</span></div>
@@ -710,7 +720,7 @@ function AccountSection() {
 
       {usage && (
         <Card title={t("settings.usagePeriod")}>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div><span className="text-zinc-500">{t("settings.tokensUsed")}</span><span className="text-zinc-200 ml-2">{(usage.total_tokens_used || 0).toLocaleString()}</span></div>
             <div><span className="text-zinc-500">{t("settings.costLabel")}</span><span className="text-zinc-200 ml-2">${(usage.total_cost_usd || 0).toFixed(4)}</span></div>
           </div>
@@ -719,7 +729,7 @@ function AccountSection() {
 
       {sysInfo && (
         <Card title={t("settings.systemInfo")}>
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
             {Object.entries(sysInfo.record_counts || {}).map(([table, count]) => (
               <div key={table} className="bg-zinc-800 rounded-lg px-3 py-2">
                 <div className="text-zinc-400 text-xs">{table}</div>

@@ -45,7 +45,7 @@ export default function AuditPage() {
     <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("audit.title")}</h1>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {ENTITY_FILTERS.map((f) => (
             <button key={f} onClick={() => setEntityFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-sm transition capitalize ${entityFilter === f ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
@@ -55,7 +55,7 @@ export default function AuditPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
@@ -95,15 +95,15 @@ export default function AuditPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-zinc-300 capitalize">{e.entity_type}</td>
-                  <td className="px-4 py-3 text-zinc-400 text-xs max-w-[300px]">
+                  <td className="px-4 py-3 text-zinc-400 text-xs max-w-[300px] truncate">
                     {e.old_value && e.new_value ? (
-                      <span>
+                      <span className="truncate block">
                         <span className="text-rose-400 line-through">{typeof e.old_value === "object" ? JSON.stringify(e.old_value) : e.old_value}</span>
                         {" → "}
                         <span className="text-emerald-400">{typeof e.new_value === "object" ? JSON.stringify(e.new_value) : e.new_value}</span>
                       </span>
                     ) : e.new_value ? (
-                      <span className="text-emerald-400">{typeof e.new_value === "object" ? JSON.stringify(e.new_value) : e.new_value}</span>
+                      <span className="text-emerald-400 truncate block">{typeof e.new_value === "object" ? JSON.stringify(e.new_value) : e.new_value}</span>
                     ) : (
                       <span className="text-zinc-500">—</span>
                     )}
