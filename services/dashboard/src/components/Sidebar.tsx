@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
-  Cog, LogOut, Cross, Menu, Pen,
+  Cog, LogOut, Cross, Menu, Pen, Send,
 } from "@/components/Icons";
 
 export function Sidebar() {
@@ -31,6 +31,7 @@ export function Sidebar() {
     { href: "/groups", label: t("sidebar.groups"), icon: Radio },
     { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone },
+    { href: "/mailings", label: t("sidebar.mailings"), icon: Send },
     { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup },

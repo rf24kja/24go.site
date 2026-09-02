@@ -30,6 +30,7 @@ celery.conf.update(
         "app.tasks.vk_comment_scraper.*": {"queue": "parser"},
         "app.tasks.vk_group_scanner.*": {"queue": "listener"},
         "app.tasks.billing.*": {"queue": "billing"},
+        "app.tasks.mailer.*": {"queue": "poster"},
     },
     # ── Periodic Task Schedule (Celery Beat) ──────────────────────────
     beat_schedule={

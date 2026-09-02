@@ -143,6 +143,33 @@ export async function bulkConnectAccounts(token: string, accountIds: string[]) {
   });
 }
 
+export async function bulkImportAccounts(token: string, files: File[]) {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+  const res = await fetch(`${API_URL}/api/v1/accounts/bulk-import`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    let message = body;
+    try {
+      const parsed = JSON.parse(body);
+      message = parsed.detail || parsed.error || body;
+    } catch { /* use raw body */ }
+    throw new Error(message);
+  }
+  return res.json();
+}
+
 export async function connectVK(token: string, accountId: string, groupToken: string, groupId: number) {
   return api<any>(`/api/v1/accounts/${accountId}/connect-vk`, {
     method: "POST", body: JSON.stringify({ group_token: groupToken, group_id: groupId }), token,
@@ -486,4 +513,40 @@ export async function getPublicBlogPost(slug: string, locale = "en") {
 export async function getBlogSlugs() {
   const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=100");
   return data.items || [];
+}
+
+// ── Mailings ─────────────────────────────────────────────────────
+
+export async function getMailings(token: string, params?: { limit?: number; offset?: number }) {
+  const qs = new URLSearchParams(params as any).toString();
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/mailings/${qs ? `?${qs}` : ""}`, { token });
+}
+
+export async function createMailing(token: string, data: { name: string; message_text: string; platform: string; delay_seconds: number }) {
+  return api<any>("/api/v1/mailings/", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function getMailing(token: string, mailingId: string) {
+  return api<any>(`/api/v1/mailings/${mailingId}`, { token });
+}
+
+export async function importMailingRecipients(token: string, csvContent: string, mailingId?: string) {
+  const qs = mailingId ? `?mailing_id=${mailingId}` : "";
+  return api<any>(`/api/v1/mailings/import${qs}`, {
+    method: "POST",
+    body: JSON.stringify({ file: csvContent }),
+    token,
+  });
+}
+
+export async function startMailing(token: string, mailingId: string) {
+  return api<any>(`/api/v1/mailings/${mailingId}/start`, { method: "POST", token });
+}
+
+export async function pauseMailing(token: string, mailingId: string) {
+  return api<any>(`/api/v1/mailings/${mailingId}/pause`, { method: "POST", token });
+}
+
+export async function stopMailing(token: string, mailingId: string) {
+  return api<any>(`/api/v1/mailings/${mailingId}/stop`, { method: "POST", token });
 }

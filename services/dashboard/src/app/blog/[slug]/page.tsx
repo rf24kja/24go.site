@@ -53,7 +53,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
     post = await getPublicBlogPost(params.slug, locale);
   } catch {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center grid-bg">
         <div className="text-center">
           <p className="text-zinc-400 mb-4">Post not found.</p>
           <Link href="/blog" className="text-emerald-400 hover:underline">Back to blog</Link>
@@ -72,7 +72,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 grid-bg">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <header className="border-b border-zinc-800">

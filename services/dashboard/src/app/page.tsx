@@ -7,9 +7,42 @@ import {
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
 
+const HOW_STEPS = [
+  {
+    num: "1",
+    titleKey: "landing.step1Title",
+    descKey: "landing.step1Desc",
+    points: [
+      "landing.step1Point1",
+      "landing.step1Point2",
+      "landing.step1Point3",
+    ],
+  },
+  {
+    num: "2",
+    titleKey: "landing.step2Title",
+    descKey: "landing.step2Desc",
+    points: [
+      "landing.step2Point1",
+      "landing.step2Point2",
+      "landing.step2Point3",
+    ],
+  },
+  {
+    num: "3",
+    titleKey: "landing.step3Title",
+    descKey: "landing.step3Desc",
+    points: [
+      "landing.step3Point1",
+      "landing.step3Point2",
+      "landing.step3Point3",
+    ],
+  },
+];
+
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -18,7 +51,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30 grid-bg">
       {/* ── Nav ──────────────────────────────────────────────────── */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrollY > 50 ? "bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/50 shadow-xl shadow-black/20" : ""}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 lg:px-12 py-5">
@@ -28,7 +61,12 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-sm">
             <a href="#features" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navFeatures")}</a>
             <a href="#how" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navHow")}</a>
+            <Link href="/blog" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navBlog")}</Link>
             <Link href="/login" className="text-zinc-400 hover:text-zinc-100 transition">{t("landing.navSignIn")}</Link>
+            <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-0.5">
+              <button onClick={() => setLang("en")} className={`px-2 py-1 rounded text-xs font-medium transition ${lang === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}>EN</button>
+              <button onClick={() => setLang("ru")} className={`px-2 py-1 rounded text-xs font-medium transition ${lang === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}>RU</button>
+            </div>
             <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/20">
               {t("landing.ctaButton")}
             </Link>
@@ -111,9 +149,9 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-3 gap-8">
-            <Step num="1" title={t("landing.step1Title")} desc={t("landing.step1Desc")} />
-            <Step num="2" title={t("landing.step2Title")} desc={t("landing.step2Desc")} />
-            <Step num="3" title={t("landing.step3Title")} desc={t("landing.step3Desc")} />
+            {HOW_STEPS.map((step) => (
+              <Step key={step.num} num={step.num} title={t(step.titleKey)} desc={t(step.descKey)} points={step.points.map(t)} />
+            ))}
           </div>
         </div>
       </section>
@@ -164,6 +202,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-sm text-zinc-500">
             <a href="#features" className="hover:text-zinc-300 transition">{t("landing.navFeatures")}</a>
+            <Link href="/blog" className="hover:text-zinc-300 transition">{t("landing.navBlog")}</Link>
             <Link href="/login" className="hover:text-zinc-300 transition">{t("landing.navSignIn")}</Link>
           </div>
           <span className="text-xs text-zinc-600">{t("landing.copyright", { year: new Date().getFullYear() })}</span>
@@ -185,7 +224,7 @@ function FeatureCard({ Icon, title, desc }: { Icon: React.FC<{ className?: strin
   );
 }
 
-function Step({ num, title, desc }: { num: string; title: string; desc: string }) {
+function Step({ num, title, desc, points }: { num: string; title: string; desc: string; points?: string[] }) {
   return (
     <div className="text-center sm:text-left">
       <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-sm font-bold mb-4 mx-auto sm:mx-0 border border-emerald-500/20">
@@ -193,6 +232,16 @@ function Step({ num, title, desc }: { num: string; title: string; desc: string }
       </div>
       <h3 className="font-semibold text-zinc-100 mb-2">{title}</h3>
       <p className="text-sm text-zinc-500 leading-relaxed">{desc}</p>
+      {points && points.length > 0 && (
+        <ul className="mt-3 space-y-1.5 text-sm text-zinc-400">
+          {points.map((point, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5">✓</span>
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -76,6 +76,7 @@ class Tenant(Base):
     leads = relationship("Lead", back_populates="tenant", cascade="all, delete-orphan")
     daily_analytics = relationship("DailyAnalytic", back_populates="tenant", cascade="all, delete-orphan")
     monitored_groups = relationship("MonitoredGroup", back_populates="tenant", cascade="all, delete-orphan")
+    mailings = relationship("Mailing", back_populates="tenant", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -315,3 +316,60 @@ class BlogPost(Base):
     updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (UniqueConstraint("tenant_id", "slug"),)
+
+
+# ── Mailing / Broadcasting ────────────────────────────────────────
+class MailingStatus(str, enum.Enum):
+    draft = "draft"
+    running = "running"
+    paused = "paused"
+    completed = "completed"
+
+
+class MailingRecipientStatus(str, enum.Enum):
+    pending = "pending"
+    sent = "sent"
+    failed = "failed"
+    blocked = "blocked"
+
+
+class Mailing(Base):
+    __tablename__ = "mailings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    message_text = Column(Text, nullable=False)
+    platform = Column(Enum(PlatformType, name="platform_type"), nullable=False)
+    status = Column(Enum(MailingStatus, name="mailing_status"), nullable=False, default=MailingStatus.draft)
+    total_count = Column(Integer, nullable=False, default=0)
+    sent_count = Column(Integer, nullable=False, default=0)
+    failed_count = Column(Integer, nullable=False, default=0)
+    delay_seconds = Column(Integer, nullable=False, default=30)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_mailings_tenant", "tenant_id", "status"),
+    )
+
+    recipients = relationship("MailingRecipient", back_populates="mailing", cascade="all, delete-orphan")
+    tenant = relationship("Tenant", back_populates="mailings")
+
+
+class MailingRecipient(Base):
+    __tablename__ = "mailing_recipients"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    mailing_id = Column(UUID(as_uuid=True), ForeignKey("mailings.id", ondelete="CASCADE"), nullable=False)
+    username = Column(String(255), nullable=False)
+    first_name = Column(String(255), nullable=True)
+    status = Column(Enum(MailingRecipientStatus, name="mailing_recipient_status"), nullable=False, default=MailingRecipientStatus.pending)
+    error_message = Column(Text, nullable=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_mailing_recipients_mailing", "mailing_id", "status"),
+    )
+
+    mailing = relationship("Mailing", back_populates="recipients")

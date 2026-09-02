@@ -150,3 +150,44 @@ class LeadResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Mailing ────────────────────────────────────────────────────────
+class MailingCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    message_text: str = Field(..., min_length=1, max_length=5000)
+    platform: str = Field(..., pattern="^(telegram|vkontakte)$")
+    delay_seconds: int = Field(default=30, ge=5, le=300)
+
+
+class MailingResponse(BaseModel):
+    id: UUID
+    name: str
+    message_text: str
+    platform: str
+    status: str
+    total_count: int
+    sent_count: int
+    failed_count: int
+    delay_seconds: int
+    created_at: datetime | None = None
+    started_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class MailingRecipientResponse(BaseModel):
+    id: UUID
+    username: str
+    first_name: str | None
+    status: str
+    error_message: str | None
+    sent_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class MailingImportRequest(BaseModel):
+    file: str = Field(..., description="CSV content (username, first_name optional)")

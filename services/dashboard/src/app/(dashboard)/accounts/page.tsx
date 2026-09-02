@@ -7,7 +7,7 @@ import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
   disconnectTelegram, getTelegramStatus,
-  bulkCreateAccounts, bulkConnectAccounts,
+  bulkImportAccounts,
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 import { Spinner } from "@/components/Spinner";
@@ -73,12 +73,12 @@ export default function AccountsPage() {
   const [vkBusy, setVkBusy] = useState(false);
   const [vkError, setVkError] = useState("");
 
-  // Bulk import state
+  // Bulk import state (file upload)
   const [showBulk, setShowBulk] = useState(false);
-  const [bulkPlatform, setBulkPlatform] = useState("telegram");
-  const [bulkPhones, setBulkPhones] = useState("");
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ created: number; errors: string[]; sent: number; failed: string[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ imported: number; failed: number; accounts: { id?: string; identifier: string; status: string; error?: string | null }[] } | null>(null);
+  const [bulkDragOver, setBulkDragOver] = useState(false);
 
   const load = () => {
     if (!auth?.token) return;
@@ -237,37 +237,41 @@ export default function AccountsPage() {
     } catch (e: any) { setConnectError(e?.message || t("accounts.addFailed")); } finally { setAddSaving(false); }
   };
 
-  // ── Bulk Import ──────────────────────────────────────────────────────
-  const bulkParsed = bulkPhones
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  // ── Bulk Import (file upload) ──────────────────────────────────────────
+  const handleBulkFiles = (fileList: FileList | null) => {
+    if (!fileList) return;
+    const newFiles = Array.from(fileList).filter(
+      (f) => f.name.endsWith(".json") || f.name.endsWith(".session")
+    );
+    setBulkFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name));
+      return [...prev, ...newFiles.filter((f) => !existing.has(f.name))];
+    });
+    setBulkResult(null);
+  };
+
+  const handleBulkDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setBulkDragOver(false);
+    handleBulkFiles(e.dataTransfer.files);
+  };
+
+  const handleBulkRemoveFile = (name: string) => {
+    setBulkFiles((prev) => prev.filter((f) => f.name !== name));
+    setBulkResult(null);
+  };
 
   const handleBulkImport = async () => {
-    if (!auth?.token || bulkParsed.length === 0) return;
+    if (!auth?.token || bulkFiles.length === 0) return;
     setBulkBusy(true);
     setBulkResult(null);
     try {
-      const accounts = bulkParsed.map((p) => ({ platform: bulkPlatform, account_identifier: p }));
-      const createRes = await bulkCreateAccounts(auth.token, accounts);
-      // Auto-connect all created accounts (up to 10)
-      let connectRes = { sent: 0, failed: [] as string[] };
-      if (createRes.created > 0) {
-        // Re-fetch to get IDs of new accounts
-        const refreshed = await getAccounts(auth.token);
-        const items = refreshed.items || refreshed;
-        const newIds = items
-          .filter((a: any) => bulkParsed.includes(a.account_identifier))
-          .slice(0, 10)
-          .map((a: any) => a.id);
-        if (newIds.length > 0) {
-          connectRes = await bulkConnectAccounts(auth.token, newIds);
-        }
-      }
-      setBulkResult({ created: createRes.created, errors: createRes.errors, sent: connectRes.sent, failed: connectRes.failed });
+      const res = await bulkImportAccounts(auth.token, bulkFiles);
+      setBulkResult(res);
+      setBulkFiles([]);
       load();
     } catch (e: any) {
-      setBulkResult({ created: 0, errors: [e?.message || t("accounts.importFailed")], sent: 0, failed: [] });
+      setBulkResult({ imported: 0, failed: 1, accounts: [{ identifier: "—", status: "failed", error: e?.message || t("accounts.importFailed") }] });
     } finally {
       setBulkBusy(false);
     }
@@ -587,59 +591,85 @@ export default function AccountsPage() {
       {showBulk && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowBulk(false)}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-zinc-100">{t("accounts.bulkTitle")}</h2>
-            <p className="text-xs text-zinc-500">{t("accounts.bulkDesc")}</p>
+            <h2 className="text-lg font-bold text-zinc-100">{t("accounts.bulkFileTitle")}</h2>
+            <p className="text-xs text-zinc-500">{t("accounts.bulkFileDesc")}</p>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-              <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")} <FieldHint hint={t("hints.platform")} /></label>
-                <select value={bulkPlatform} onChange={(e) => setBulkPlatform(e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                  <option value="telegram">{t("accounts.telegram")}</option>
-                  <option value="vkontakte">{t("accounts.vkontakte")}</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.bulkCount", { count: String(bulkParsed.length) })}</label>
-                <p className="text-[10px] text-zinc-600 mt-2">{t("accounts.bulkMax")}</p>
-              </div>
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setBulkDragOver(true); }}
+              onDragLeave={() => setBulkDragOver(false)}
+              onDrop={handleBulkDrop}
+              onClick={() => document.getElementById("bulk-file-input")?.click()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
+                bulkDragOver ? "border-emerald-500 bg-emerald-500/5" : "border-zinc-700 hover:border-zinc-500"
+              }`}
+            >
+              <input
+                id="bulk-file-input"
+                type="file"
+                multiple
+                accept=".json,.session"
+                className="hidden"
+                onChange={(e) => handleBulkFiles(e.target.files)}
+              />
+              <p className="text-sm text-zinc-300 mb-1">{t("accounts.bulkDropHere")}</p>
+              <p className="text-xs text-zinc-500">{t("accounts.bulkDropHint")}</p>
             </div>
 
-            <textarea
-              placeholder={bulkPlatform === "telegram" ? "+1234567890\n+0987654321" : "group_token_abc123\ngroup_token_def456"}
-              value={bulkPhones}
-              onChange={(e) => { setBulkPhones(e.target.value); setBulkResult(null); }}
-              rows={8}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono resize-none"
-            />
-
-            {/* Preview */}
-            {bulkParsed.length > 0 && (
-              <div className="text-xs text-zinc-500">
-                {t("accounts.bulkPreview", { preview: bulkParsed.slice(0, 5).join(", ") + (bulkParsed.length > 5 ? ` ... +${bulkParsed.length - 5} more` : "") })}
+            {/* File list */}
+            {bulkFiles.length > 0 && (
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {bulkFiles.map((f) => (
+                  <div key={f.name} className="flex items-center justify-between px-3 py-1.5 bg-zinc-800 rounded text-xs">
+                    <span className="text-zinc-300 font-mono truncate">{f.name}</span>
+                    <button onClick={() => handleBulkRemoveFile(f.name)} className="text-zinc-500 hover:text-rose-400 ml-2">✕</button>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Result */}
+            {/* Result table */}
             {bulkResult && (
-              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 text-xs space-y-1">
-                <p className="text-emerald-400">{t("accounts.bulkCreated", { created: String(bulkResult.created) })}</p>
-                <p className="text-emerald-400">{t("accounts.bulkSent", { sent: String(bulkResult.sent) })}</p>
-                {bulkResult.errors.length > 0 && (
-                  <p className="text-rose-400">{t("accounts.bulkErrors", { errors: bulkResult.errors.join("; ") })}</p>
-                )}
-                {bulkResult.failed.length > 0 && (
-                  <p className="text-rose-400">{t("accounts.bulkFailed", { failed: bulkResult.failed.join("; ") })}</p>
+              <div className="space-y-2">
+                <div className="flex gap-4 text-xs">
+                  <span className="text-emerald-400">{t("accounts.bulkImported", { count: String(bulkResult.imported) })}</span>
+                  {bulkResult.failed > 0 && <span className="text-rose-400">{t("accounts.bulkFailedCount", { count: String(bulkResult.failed) })}</span>}
+                </div>
+                {bulkResult.accounts.length > 0 && (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead><tr className="border-b border-zinc-700">
+                        <th className="text-left px-3 py-1.5 text-zinc-400">{t("accounts.colIdentifier")}</th>
+                        <th className="text-left px-3 py-1.5 text-zinc-400">{t("accounts.colStatus")}</th>
+                        <th className="text-left px-3 py-1.5 text-zinc-400">{t("accounts.colActions")}</th>
+                      </tr></thead>
+                      <tbody>
+                        {bulkResult.accounts.map((a, i) => (
+                          <tr key={i} className="border-b border-zinc-800 last:border-0">
+                            <td className="px-3 py-1.5 text-zinc-300 font-mono">{a.identifier}</td>
+                            <td className="px-3 py-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                a.status === "warming_up" ? "bg-amber-500/10 text-amber-400" :
+                                a.status === "active" ? "bg-emerald-500/10 text-emerald-400" :
+                                "bg-rose-500/10 text-rose-400"
+                              }`}>{a.status}</span>
+                            </td>
+                            <td className="px-3 py-1.5 text-zinc-500">{a.error || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
             <div className="flex gap-3">
-              <button onClick={handleBulkImport} disabled={bulkBusy || bulkParsed.length === 0}
+              <button onClick={handleBulkImport} disabled={bulkBusy || bulkFiles.length === 0}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                {bulkBusy ? t("accounts.importing") : t("accounts.importSendCodes")}
+                {bulkBusy ? t("accounts.importing") : t("accounts.bulkImportBtn")}
               </button>
-              <button onClick={() => setShowBulk(false)}
+              <button onClick={() => { setShowBulk(false); setBulkFiles([]); setBulkResult(null); }}
                 className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("accounts.cancel")}</button>
             </div>
           </div>

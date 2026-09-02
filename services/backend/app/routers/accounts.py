@@ -1,8 +1,10 @@
 """Account Pool CRUD + Telegram connection endpoints."""
 import logging
+import re
+import json as _json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,6 +112,135 @@ async def bulk_create_accounts(
         await db.commit()
 
     return {"created": created, "errors": errors}
+
+
+@router.post("/bulk-import")
+async def bulk_import_accounts(
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Import Telegram accounts from .json + .session file pairs.
+
+    Matches files by prefix (e.g. +66920004002.json + +66920004002.session).
+    For each pair: stores encrypted session, creates AccountPool record,
+    dispatches async validation task.
+    """
+    # Check account limit
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    from sqlalchemy import func as _func
+    count = (await db.execute(
+        _func.count()).select_from(
+        select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
+    )).scalar() or 0
+
+    # Separate json and session files
+    json_files: dict[str, UploadFile] = {}
+    session_files: dict[str, UploadFile] = {}
+
+    for f in files:
+        name = f.filename or ""
+        if name.endswith(".json"):
+            prefix = name[:-5]  # strip .json
+            json_files[prefix] = f
+        elif name.endswith(".session"):
+            prefix = name[:-8]  # strip .session
+            session_files[prefix] = f
+
+    # Match pairs by prefix
+    matched_prefixes = set(json_files.keys()) & set(session_files.keys())
+
+    results = []
+    imported = 0
+    failed = 0
+
+    for prefix in sorted(matched_prefixes):
+        if count + imported >= limits["max_accounts"]:
+            failed += 1
+            results.append({
+                "identifier": prefix,
+                "status": "failed",
+                "error": f"Account limit reached ({limits['max_accounts']}) for {plan} plan",
+            })
+            continue
+
+        try:
+            # Read .json config
+            json_content = await json_files[prefix].read()
+            config = _json.loads(json_content)
+            phone = config.get("phone", "")
+            api_id = config.get("api_id")
+            api_hash = config.get("api_hash", "")
+
+            if not phone:
+                raise ValueError("Missing 'phone' in JSON config")
+            if not api_id or not api_hash:
+                raise ValueError("Missing 'api_id' or 'api_hash' in JSON config")
+
+            # Read .session file (binary) and base64-encode for storage
+            import base64
+            session_bytes = await session_files[prefix].read()
+            session_string = base64.b64encode(session_bytes).decode()
+
+            # Encrypt and store session
+            encrypted_session = encrypt(session_string)
+            account = AccountPool(
+                tenant_id=current_user.tenant_id,
+                platform="telegram",
+                account_identifier=phone,
+                session_data=encrypted_session,
+                device_fingerprint={"api_id": api_id, "api_hash": api_hash},
+                status="warming_up",
+            )
+            db.add(account)
+            await db.flush()  # get the ID
+
+            # Insert session into account_sessions table
+            import uuid as _uuid
+            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
+            try:
+                await conn.execute(
+                    """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
+                    _uuid.UUID(str(account.id)), encrypted_session,
+                )
+            finally:
+                await conn.close()
+
+            # Dispatch validation task
+            try:
+                from app.celery_app import celery
+                celery.send_task(
+                    "app.tasks.account_validator.validate_imported_account",
+                    args=[str(current_user.tenant_id), str(account.id)],
+                    queue="warmup",
+                )
+            except Exception as dispatch_err:
+                log.warning(f"Failed to dispatch validator for {account.id}: {dispatch_err}")
+
+            imported += 1
+            results.append({
+                "id": str(account.id),
+                "identifier": phone,
+                "status": "warming_up",
+                "error": None,
+            })
+
+        except Exception as e:
+            failed += 1
+            results.append({
+                "identifier": prefix,
+                "status": "failed",
+                "error": str(e)[:200],
+            })
+            log.error(f"bulk_import failed for {prefix}: {e}")
+
+    if imported:
+        await db.commit()
+
+    return {"imported": imported, "failed": failed, "accounts": results}
 
 
 @router.post("/connect-all")

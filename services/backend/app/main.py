@@ -279,6 +279,8 @@ app.include_router(groups.router)
 app.include_router(notifications.router)
 app.include_router(tenant_settings.router)
 app.include_router(blog.router)
+from app.routers import mailings
+app.include_router(mailings.router)
 
 
 @app.get("/health")

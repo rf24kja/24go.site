@@ -12,3 +12,4 @@ from app.tasks import vk_comment_scraper  # noqa: F401
 from app.tasks import vk_group_scanner  # noqa: F401
 from app.tasks import campaign_scheduler  # noqa: F401
 from app.tasks import trial_emailer  # noqa: F401
+from app.tasks import account_validator  # noqa: F401
