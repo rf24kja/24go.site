@@ -88,9 +88,12 @@ DEFAULT_SPAM_KEYWORDS = [
     "you won", "congratulations", "claim now", "free money",
     "buy followers", "cheap followers", "nigerian prince",
     "viagra", "pills", "weight loss", "miracle cure",
+    "free", "bitcoin", "porn", "sex", "dating",
+    "work from home", "prize", "lottery",
     # RU
-    "заработать", "бесплатно", "нажми", " казино",
+    "заработать", "бесплатно", "нажми", "казино",
     "выиграл", "поздравляем", "подпишись дешево",
+    "порно", "секс", "знакомства", "приз", "лотерея",
 ]
 
 
@@ -153,6 +156,40 @@ def _classify_by_keywords(text: str, cfg: dict | None = None) -> dict:
     }
 
 
+def _is_spam_message(text: str) -> bool:
+    """Pre-check for obvious spam/low-value messages before classification.
+    
+    Detects: URL-only, verification codes, @username-only, very short.
+    """
+    text = text.strip()
+    if not text:
+        return True
+    
+    # URL-only messages (t.me/ links, http links with no other content)
+    url_pattern = re.compile(r'(https?://|t\.me/)', re.IGNORECASE)
+    if url_pattern.search(text):
+        # If message is mostly a URL (< 100 chars, no other words)
+        words = text.split()
+        if len(words) <= 3 and len(text) < 100:
+            return True
+    
+    # Verification codes (digits only or "code: 123456")
+    code_pattern = re.compile(r'^(\d{4,6}|code\s*:?\s*\d{4,6}|код\s*:?\s*\d{4,6})$', re.IGNORECASE)
+    if code_pattern.match(text):
+        return True
+    
+    # @username only (no other content)
+    at_pattern = re.compile(r'^@\w+$')
+    if at_pattern.match(text):
+        return True
+    
+    # Very short messages (< 5 chars) with no commercial keywords
+    if len(text) < 5:
+        return True
+    
+    return False
+
+
 async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None = None) -> dict:
     """Classify incoming message intent via LLM or keyword fallback.
 
@@ -165,8 +202,20 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
     """
     llm_cfg = (tenant_cfg or {}).get("llm", tenant_cfg or {})
 
-    # Strip and validate
+    # Pre-check for obvious spam/low-value messages
     text = text.strip()
+    if _is_spam_message(text):
+        return {
+            "intent_score": "SPAM",
+            "confidence": 0.9,
+            "summary": "Obvious spam/low-value message",
+            "extracted_parameters": {
+                "geo_origin": None, "budget_mentioned": None,
+                "dates_mentioned": None, "service_category": "general",
+            },
+        }
+
+    # Strip and validate
     if not text or len(text) < 3:
         return _classify_by_keywords(text or "empty", llm_cfg)
 

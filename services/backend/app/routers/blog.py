@@ -83,6 +83,9 @@ async def admin_list_posts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Only platform owner can manage blog
+    if current_user.email != "rf24krsk@gmail.com":
+        raise HTTPException(403, "Blog management is restricted to platform owner")
     # ponytail: removed tenant filter — blog posts are platform-wide SEO content
     q = select(BlogPost)
     count_q = select(func.count()).select_from(q.subquery())
@@ -98,6 +101,9 @@ async def admin_create_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Only platform owner can manage blog
+    if current_user.email != "rf24krsk@gmail.com":
+        raise HTTPException(403, "Blog management is restricted to platform owner")
     slug = body.slug or _make_slug(body.title_en or body.title_ru)
     existing = await db.execute(
         select(BlogPost).where(BlogPost.tenant_id == current_user.tenant_id, BlogPost.slug == slug)
@@ -123,6 +129,9 @@ async def admin_update_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Only platform owner can manage blog
+    if current_user.email != "rf24krsk@gmail.com":
+        raise HTTPException(403, "Blog management is restricted to platform owner")
     result = await db.execute(
         select(BlogPost).where(BlogPost.id == post_id, BlogPost.tenant_id == current_user.tenant_id)
     )
@@ -144,6 +153,9 @@ async def admin_delete_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Only platform owner can manage blog
+    if current_user.email != "rf24krsk@gmail.com":
+        raise HTTPException(403, "Blog management is restricted to platform owner")
     result = await db.execute(
         select(BlogPost).where(BlogPost.id == post_id, BlogPost.tenant_id == current_user.tenant_id)
     )

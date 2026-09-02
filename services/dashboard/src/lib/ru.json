@@ -16,6 +16,8 @@
   "billing.redirecting": "Перенаправление...",
   "billing.upgrade": "Улучшить",
   "billing.checkoutFailed": "Ошибка оплаты. Пожалуйста, попробуйте снова.",
+  "planGuard.title": "Раздел недоступен",
+  "planGuard.required": "Этот раздел доступен на тарифе {plan}",
   "plans.starter": "Стартер",
   "plans.starterPrice": "$75",
   "plans.pro": "Про",

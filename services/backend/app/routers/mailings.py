@@ -104,17 +104,29 @@ async def import_recipients(
         db.add(mailing)
         await db.flush()
 
-    reader = csv.DictReader(io.StringIO(body.file))
+    # Parse plain text: 1 username per line
+    # Supports: @username, username, https://t.me/username
+    # Ignores: empty lines, comments (#)
+    lines = body.file.strip().splitlines()
     imported = 0
     skipped = 0
     errors = []
 
-    for i, row in enumerate(reader, start=2):
+    for i, line in enumerate(lines, start=1):
         try:
-            username = (row.get("username") or row.get("user") or "").strip().lstrip("@")
-            first_name = (row.get("first_name") or row.get("name") or "").strip()
-            if not username:
-                errors.append(f"Row {i}: missing username")
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            
+            # Extract username from various formats
+            username = line
+            if "t.me/" in line:
+                # Extract from URL: https://t.me/username or https://t.me/+invite
+                username = line.split("t.me/")[-1].split("/")[0].split("?")[0]
+            username = username.lstrip("@").strip()
+            
+            if not username or len(username) < 3:
+                errors.append(f"Line {i}: invalid username '{line}'")
                 skipped += 1
                 continue
 
@@ -122,7 +134,7 @@ async def import_recipients(
                 id=_uuid.uuid4(),
                 mailing_id=mailing.id,
                 username=username,
-                first_name=first_name or None,
+                first_name=None,
             )
             db.add(recipient)
             imported += 1

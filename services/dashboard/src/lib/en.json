@@ -16,6 +16,8 @@
   "billing.redirecting": "Redirecting...",
   "billing.upgrade": "Upgrade",
   "billing.checkoutFailed": "Checkout failed. Please try again.",
+  "planGuard.title": "Section Unavailable",
+  "planGuard.required": "This section is available on the {plan} plan",
   "plans.starter": "Starter",
   "plans.starterPrice": "$75",
   "plans.pro": "Pro",

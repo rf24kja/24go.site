@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { PlanGuard } from "@/components/PlanGuard";
 import { getUsers, inviteUser, updateUserRole, removeUser } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -75,7 +76,8 @@ export default function UsersPage() {
   const isAdmin = auth?.user?.role === "admin" || isOwner;
 
   return (
-    <div className={`space-y-6 animate-fade-slide-in`}>
+    <PlanGuard feature="users">
+      <div className={`space-y-6 animate-fade-slide-in`}>
       <h1 className="text-2xl font-bold">{t("users.title")}</h1>
 
       {/* Invite form */}
@@ -177,5 +179,6 @@ export default function UsersPage() {
         </div>
       </div>
     </div>
+    </PlanGuard>
   );
 }

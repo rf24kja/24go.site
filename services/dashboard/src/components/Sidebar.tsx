@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useI18n } from "@/lib/i18n";
+import { usePlanAccess } from "@/hooks/usePlanAccess";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
-  Cog, LogOut, Cross, Menu, Pen, Send,
+  Cog, LogOut, Cross, Menu, Pen, Send, Bot,
 } from "@/components/Icons";
 
 export function Sidebar() {
@@ -17,6 +18,7 @@ export function Sidebar() {
   const { auth, logout } = useAuth();
   const { connected } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
   const { t, lang, setLang } = useI18n();
+  const { hasAccess } = usePlanAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -24,22 +26,23 @@ export function Sidebar() {
   if (!auth.token) return null;
 
   const NAV = [
-    { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar },
-    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair },
-    { href: "/scoring", label: t("sidebar.scoring"), icon: Scales },
-    { href: "/targets", label: t("sidebar.targets"), icon: Radar },
-    { href: "/groups", label: t("sidebar.groups"), icon: Radio },
-    { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle },
-    { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone },
-    { href: "/mailings", label: t("sidebar.mailings"), icon: Send },
-    { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen },
+    { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar, feature: "analytics" },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
+    { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
+    { href: "/targets", label: t("sidebar.targets"), icon: Radar, feature: "targets" },
+    { href: "/groups", label: t("sidebar.groups"), icon: Radio, feature: "groups" },
+    { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle, feature: "accounts" },
+    { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
+    { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
+    { href: "/auto-replies", label: t("sidebar.autoReplies"), icon: Bot, feature: "auto-replies" },
+    { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
-    { href: "/users", label: t("sidebar.team"), icon: UsersGroup },
-    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText },
-    { href: "/health", label: t("sidebar.health"), icon: Heartbeat },
+    { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
+    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit" },
+    { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
-  ];
+  ].filter((item) => !item.feature || hasAccess(item.feature));
 
   return (
     <>

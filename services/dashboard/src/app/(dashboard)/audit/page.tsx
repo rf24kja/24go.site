@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { PlanGuard } from "@/components/PlanGuard";
 import { getAuditLog } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -42,7 +43,8 @@ export default function AuditPage() {
   }, [auth?.token, entityFilter]);
 
   return (
-    <div className={`space-y-6 animate-fade-slide-in`}>
+    <PlanGuard feature="audit">
+      <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("audit.title")}</h1>
         <div className="flex flex-wrap gap-1">
@@ -116,5 +118,6 @@ export default function AuditPage() {
         </table>
       </div>
     </div>
+    </PlanGuard>
   );
 }

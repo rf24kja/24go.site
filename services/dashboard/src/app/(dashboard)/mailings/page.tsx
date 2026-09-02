@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { PlanGuard } from "@/components/PlanGuard";
 import { FieldHint } from "@/components/FieldHint";
 import { Spinner } from "@/components/Spinner";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -128,7 +129,8 @@ export default function MailingsPage() {
   const progress = (m: Mailing) => m.total_count > 0 ? Math.round(((m.sent_count + m.failed_count) / m.total_count) * 100) : 0;
 
   return (
-    <div className="space-y-6 animate-fade-slide-in">
+    <PlanGuard feature="mailings">
+      <div className="space-y-6 animate-fade-slide-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("mailings.title")}</h1>
         <div className="flex gap-2">
@@ -336,5 +338,6 @@ export default function MailingsPage() {
         </div>
       )}
     </div>
+    </PlanGuard>
   );
 }

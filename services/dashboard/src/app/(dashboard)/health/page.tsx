@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { PlanGuard } from "@/components/PlanGuard";
 import { getApiBase } from "@/lib/api";
 
 type HealthData = {
@@ -57,7 +58,8 @@ export default function HealthPage() {
   const apiBase = getApiBase();
 
   return (
-    <div className="space-y-6 animate-fade-slide-in">
+    <PlanGuard feature="health">
+      <div className="space-y-6 animate-fade-slide-in">
       <h1 className="text-2xl font-bold">{t("health.title")}</h1>
 
       {/* Status cards */}
@@ -129,6 +131,7 @@ export default function HealthPage() {
         </div>
       </div>
     </div>
+    </PlanGuard>
   );
 }
 
@@ -139,7 +142,7 @@ function StatusCard({ label, status, value }: { label: string; status?: "healthy
     unknown: "text-zinc-400",
   };
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
       <p className="text-zinc-500 text-xs mb-1">{label}</p>
       {status ? (
         <div className="flex items-center gap-2">

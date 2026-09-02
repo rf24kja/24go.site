@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "@/lib/api";
 import { TableSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
+import { PlanGuard } from "@/components/PlanGuard";
 import { useI18n } from "@/lib/i18n";
 
 type BlogPost = {
@@ -129,7 +130,8 @@ export default function BlogAdminPage() {
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <div className="space-y-6">
+    <PlanGuard feature="blog-admin">
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("blogAdmin.title")}</h1>
         <button onClick={openCreate}
@@ -249,5 +251,6 @@ export default function BlogAdminPage() {
         </div>
       )}
     </div>
+    </PlanGuard>
   );
 }
