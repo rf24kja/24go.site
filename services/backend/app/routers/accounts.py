@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import asyncpg
 from app.config import settings
 from app.audit import log_event
 from app.crypto import encrypt, decrypt
