@@ -258,6 +258,12 @@ export async function discoverGroups(token: string, data: { geo_tag: string; nic
   });
 }
 
+export async function bulkImportGroups(token: string, groups: { group_identifier: string; platform: string }[]) {
+  return api<{ imported: number; skipped: number; errors: string[] }>("/api/v1/groups/bulk-import", {
+    method: "POST", body: JSON.stringify({ groups }), token,
+  });
+}
+
 // ── Billing ───────────────────────────────────────────────────────────
 
 export async function getSubscription(token: string) {

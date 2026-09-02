@@ -6,6 +6,7 @@ import { getSubscription, getUsage, createCheckout } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 const getPlans = (t: (k: string) => string) => [
   {
@@ -224,10 +225,10 @@ export default function BillingPage() {
                   <span className="text-zinc-400 text-sm">{p.period}</span>
                 </div>
                 <ul className="space-y-2 flex-1">
-                  {p.features.map((f) => (
+                  {p.features.map((f, i) => (
                     <li key={f} className="text-zinc-400 text-sm flex items-center gap-2">
                       <span className={isCurrent ? "text-emerald-400" : "text-zinc-600"}>✓</span>
-                      {f}
+                      {f} <FieldHint hint={t(`hints.billing.${p.name.toLowerCase()}Feature${i}`)} />
                     </li>
                   ))}
                 </ul>

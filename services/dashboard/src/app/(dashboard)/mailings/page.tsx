@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
+import { FieldHint } from "@/components/FieldHint";
 import { Spinner } from "@/components/Spinner";
 import { CardSkeleton } from "@/components/Skeleton";
 import {
@@ -217,13 +218,13 @@ export default function MailingsPage() {
             <h2 className="text-lg font-bold text-zinc-100">{t("mailings.createTitle")}</h2>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.nameLabel")}</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.nameLabel")} <FieldHint hint={t("hints.mailings.name")} /></label>
                 <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100"
                   placeholder={t("mailings.namePlaceholder")} />
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.messageLabel")}</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.messageLabel")} <FieldHint hint={t("hints.mailings.message")} /></label>
                 <textarea required rows={4} value={form.message_text} onChange={(e) => setForm({ ...form, message_text: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none"
                   placeholder={t("mailings.messagePlaceholder")} />
@@ -231,7 +232,7 @@ export default function MailingsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.platform")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.platform")} <FieldHint hint={t("hints.mailings.platform")} /></label>
                   <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                     <option value="telegram">Telegram</option>
@@ -239,7 +240,7 @@ export default function MailingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.delayLabel")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.delayLabel")} <FieldHint hint={t("hints.mailings.delay")} /></label>
                   <input type="number" min="5" max="300" value={form.delay_seconds}
                     onChange={(e) => setForm({ ...form, delay_seconds: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />

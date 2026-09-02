@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, getAccounts, discoverGroups } from "@/lib/api";
+import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, getAccounts, discoverGroups, bulkImportGroups } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
@@ -47,6 +47,16 @@ export default function GroupsPage() {
   const [addSaving, setAddSaving] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
+  // Bulk import state
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [bulkPreview, setBulkPreview] = useState<{ identifier: string; platform: string }[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+
+  // Account map for showing assigned account in table
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
+
   // Auto-discover state
   const [showDiscover, setShowDiscover] = useState(false);
   const [discoverGeo, setDiscoverGeo] = useState("");
@@ -64,7 +74,9 @@ export default function GroupsPage() {
       getAccounts(auth.token).catch(() => ({ items: [] })),
     ]).then(([g, a]) => {
       setGroups(g.items || []);
-      setAccounts((a.items || []).filter((acc: Account) => acc.status === "active"));
+      const items = a.items || [];
+      setAllAccounts(items);
+      setAccounts(items.filter((acc: Account) => acc.status === "active"));
     }).catch(() => {}).finally(() => setLoading(false));
   };
 
@@ -166,14 +178,52 @@ export default function GroupsPage() {
     }
   };
 
+  const parseBulkInput = (text: string) => {
+    return text.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+      const tgMatch = line.match(/(?:https?:\/\/t\.me\/|@)(\w+)/);
+      if (tgMatch) return { identifier: `@${tgMatch[1]}`, platform: "telegram" };
+      if (line.match(/^\d+$/)) return { identifier: `vk_${line}`, platform: "vkontakte" };
+      if (line.startsWith("vk_")) return { identifier: line, platform: "vkontakte" };
+      return { identifier: line, platform: "telegram" };
+    });
+  };
+
+  const handleBulkPreview = () => {
+    setBulkPreview(parseBulkInput(bulkInput));
+    setBulkResult(null);
+  };
+
+  const handleBulkImport = async () => {
+    if (!auth?.token || bulkPreview.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await bulkImportGroups(auth.token, bulkPreview.map((g) => ({ group_identifier: g.identifier, platform: g.platform })));
+      setBulkResult(res);
+      toast(t("groups.bulkImportResult", { imported: res.imported, skipped: res.skipped }), "success");
+      if (res.imported > 0) load();
+    } catch (e: any) {
+      toast(e.message || t("groups.bulkImportFailed"), "error");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const accountMap = Object.fromEntries(allAccounts.map((a) => [a.id, a]));
+
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("groups.title")}</h1>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
-          {t("groups.addGroup")}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowBulkImport(true)}
+            className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium hover:bg-zinc-700 btn-press">
+            {t("groups.bulkImport")}
+          </button>
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">
+            {t("groups.addGroup")}
+          </button>
+        </div>
       </div>
 
       {/* How it works */}
@@ -198,6 +248,27 @@ export default function GroupsPage() {
           </div>
         </div>
       </div>
+
+      {/* Account/Group Ratio Info */}
+      {!loading && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <div className="flex flex-wrap items-center gap-6 text-sm">
+            <span className="text-zinc-400">{t("groups.accountRatio")}: <span className="text-zinc-200 font-medium">{accounts.length}</span></span>
+            <span className="text-zinc-400">{t("groups.groupsCount")}: <span className="text-zinc-200 font-medium">{groups.length}</span></span>
+            <span className="text-zinc-400">
+              {t("groups.recommended")}: <span className="text-zinc-200 font-medium">{Math.ceil(groups.length / 30) || 1}</span>
+            </span>
+            {(() => {
+              const acctCount = accounts.length || 1;
+              const ratio = groups.length / acctCount;
+              let color = "text-emerald-400";
+              if (ratio > 30) color = "text-rose-400";
+              else if (ratio > 20) color = "text-amber-400";
+              return <span className={`font-medium ${color}`}>{ratio > 30 ? t("groups.ratioBad") : ratio > 20 ? t("groups.ratioTight") : t("groups.ratioOk")}</span>;
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Auto-Discovery */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
@@ -335,6 +406,61 @@ export default function GroupsPage() {
         </form>
       )}
 
+      {/* Bulk Import Modal */}
+      {showBulkImport && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowBulkImport(false); setBulkInput(""); setBulkPreview([]); setBulkResult(null); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-zinc-100">{t("groups.bulkImportTitle")}</h2>
+            <p className="text-xs text-zinc-500">{t("groups.bulkImportHint")}</p>
+            <textarea
+              rows={8}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              placeholder={"@group1\n@group2\nhttps://t.me/group3\n12345678"}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono resize-none"
+            />
+            {bulkPreview.length > 0 && !bulkResult && (
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-400">{t("groups.bulkImportPreview")}: {bulkPreview.length}</p>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {bulkPreview.map((g, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-zinc-300 bg-zinc-800 rounded px-2 py-1">
+                      <span>{g.platform === "telegram" ? "✈️" : "🔵"}</span>
+                      <span className="font-mono">{g.identifier}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {bulkResult && (
+              <div className="bg-zinc-800 rounded-lg p-3 text-sm space-y-1">
+                <p className="text-emerald-400">{t("groups.bulkImportResult", { imported: bulkResult.imported, skipped: bulkResult.skipped })}</p>
+                {bulkResult.errors.length > 0 && (
+                  <p className="text-rose-400 text-xs">{bulkResult.errors.join(", ")}</p>
+                )}
+              </div>
+            )}
+            <div className="flex gap-3">
+              {bulkPreview.length === 0 ? (
+                <button onClick={handleBulkPreview}
+                  disabled={!bulkInput.trim()}
+                  className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
+                  {t("groups.bulkPreview")}
+                </button>
+              ) : (
+                <button onClick={handleBulkImport}
+                  disabled={bulkBusy}
+                  className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
+                  {bulkBusy ? t("groups.importing") : t("groups.bulkImportBtn")}
+                </button>
+              )}
+              <button onClick={() => { setShowBulkImport(false); setBulkInput(""); setBulkPreview([]); setBulkResult(null); }}
+                className="px-4 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("groups.cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Groups table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
@@ -343,6 +469,7 @@ export default function GroupsPage() {
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colGroup")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colMembers")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colAccount")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colStatus")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colLastScan")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colActions")}</th>
@@ -350,7 +477,7 @@ export default function GroupsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8">
+              <tr><td colSpan={7} className="px-4 py-8">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="flex gap-4">
@@ -365,7 +492,7 @@ export default function GroupsPage() {
                 </div>
               </td></tr>
             ) : groups.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                 <p className="text-zinc-300 font-medium mb-2">{t("groups.empty")}</p>
                 <p className="text-xs text-zinc-500 mb-1">{t("groups.emptyDesc")}</p>
                 <p className="text-xs text-zinc-600">{t("groups.emptyHint")}</p>
@@ -383,6 +510,22 @@ export default function GroupsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{(g.members_count || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    {g.account_id && accountMap[g.account_id] ? (
+                      <div>
+                        <p className="text-zinc-200 text-xs">{accountMap[g.account_id].account_identifier}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                          accountMap[g.account_id].status === "active" ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" :
+                          accountMap[g.account_id].status === "warming_up" ? "text-amber-400 border-amber-500/20 bg-amber-500/10" :
+                          "text-zinc-400 border-zinc-500/20 bg-zinc-500/10"
+                        }`}>
+                          {accountMap[g.account_id].status === "active" ? t("accounts.status.active") : accountMap[g.account_id].status === "warming_up" ? t("accounts.status.warmingUp") : accountMap[g.account_id].status}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-amber-400 text-xs">{t("groups.noAccount")}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[g.status] ?? STATUS_STYLES.idle}`}>
                       {g.status === "scanning" ? t("groups.status.scanning") : g.status === "error" ? t("groups.status.error") : t("groups.status.idle")}

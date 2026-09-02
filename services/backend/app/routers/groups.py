@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -25,7 +25,7 @@ _active_scanners: dict[str, str] = {}  # group_id -> task_id
 class GroupCreateRequest(BaseModel):
     platform: str  # 'telegram' | 'vkontakte'
     group_identifier: str  # '@username' or 'vk_id:12345'
-    account_id: str  # UUID of the account to use for monitoring
+    account_id: str | None = None  # UUID of account; auto-assigned if omitted
 
 
 @router.get("/")
@@ -89,6 +89,13 @@ async def add_group(
     )).scalar() or 0
     if count >= limits["max_targets"]:
         raise HTTPException(403, f"Target limit reached ({limits['max_targets']}) for {plan} plan")
+
+    # Auto-assign least-loaded account if none provided
+    if not body.account_id:
+        auto_id = await _get_least_loaded_account(db, str(current_user.tenant_id))
+        if not auto_id:
+            raise HTTPException(400, "No active accounts available")
+        body.account_id = auto_id
 
     # Verify account exists and belongs to this tenant
     acct_result = await db.execute(
@@ -169,6 +176,104 @@ async def add_group(
         "members_count": members_count,
         "status": "idle",
     }
+
+
+# ── Bulk Import ─────────────────────────────────────────────────────
+
+class BulkGroupItem(BaseModel):
+    group_identifier: str
+    platform: str = "telegram"
+
+class BulkImportRequest(BaseModel):
+    groups: list[BulkGroupItem]
+
+
+async def _get_least_loaded_account(db: AsyncSession, tenant_id: str) -> str | None:
+    """Find the active account with fewest monitored groups."""
+    subq = (
+        select(
+            MonitoredGroup.account_id,
+            func.count().label("group_count"),
+        )
+        .where(
+            MonitoredGroup.tenant_id == tenant_id,
+            MonitoredGroup.is_active == True,
+        )
+        .group_by(MonitoredGroup.account_id)
+        .subquery()
+    )
+    result = await db.execute(
+        select(AccountPool.id, func.coalesce(subq.c.group_count, 0).label("cnt"))
+        .outerjoin(subq, AccountPool.id == subq.c.account_id)
+        .where(
+            AccountPool.tenant_id == tenant_id,
+            AccountPool.status.in_(["active", "warming_up"]),
+        )
+        .order_by("cnt")
+        .limit(1)
+    )
+    row = result.first()
+    return str(row[0]) if row else None
+
+
+@router.post("/bulk-import")
+async def bulk_import_groups(
+    body: BulkImportRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk import groups with auto-assignment of least-loaded account."""
+    imported = 0
+    skipped = 0
+    errors: list[str] = []
+
+    plan = await get_subscription_plan(str(current_user.tenant_id))
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+
+    count = (await db.execute(
+        func.count()
+    ).select_from(
+        select(MonitoredGroup).where(
+            MonitoredGroup.tenant_id == current_user.tenant_id,
+            MonitoredGroup.is_active == True,
+        ).subquery()
+    )).scalar() or 0
+
+    for item in body.groups:
+        if count >= limits["max_targets"]:
+            errors.append(f"Target limit reached ({limits['max_targets']})")
+            break
+
+        # Skip duplicates
+        existing = await db.execute(
+            select(MonitoredGroup).where(
+                MonitoredGroup.tenant_id == current_user.tenant_id,
+                MonitoredGroup.group_identifier == item.group_identifier,
+                MonitoredGroup.is_active == True,
+            )
+        )
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+
+        account_id = await _get_least_loaded_account(db, str(current_user.tenant_id))
+        if not account_id:
+            errors.append("No active accounts available")
+            break
+
+        group = MonitoredGroup(
+            tenant_id=current_user.tenant_id,
+            account_id=_uuid.UUID(account_id),
+            platform=item.platform,
+            group_identifier=item.group_identifier,
+        )
+        db.add(group)
+        count += 1
+        imported += 1
+
+    await db.commit()
+    return {"imported": imported, "skipped": skipped, "errors": errors}
 
 
 @router.post("/{group_id}/start")

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getScoringRules, createScoringRule, deleteScoringRule } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Rule = {
   id: string;
@@ -160,11 +161,14 @@ export default function ScoringPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-zinc-100">{t("scoring.newRuleTitle")}</h2>
             <form onSubmit={handleCreate} className="space-y-3">
-              <input type="text" placeholder={t("scoring.ruleNamePlaceholder")} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.ruleNamePlaceholder")} <FieldHint hint={t("hints.scoring.ruleName")} /></label>
+                <input type="text" placeholder={t("scoring.ruleNamePlaceholder")} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.colIntent")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.colIntent")} <FieldHint hint={t("hints.scoring.intent")} /></label>
                   <select value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
                     <option value="HOT">{t("scoring.intentHot")}</option>
@@ -174,18 +178,21 @@ export default function ScoringPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.confidence")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.confidence")} <FieldHint hint={t("hints.scoring.confidence")} /></label>
                   <input type="number" step="0.1" min="0" max="1" value={form.confidence} onChange={(e) => setForm({ ...form, confidence: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.colPriority")}</label>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.colPriority")} <FieldHint hint={t("hints.scoring.priority")} /></label>
                   <input type="number" min="0" max="100" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
                 </div>
               </div>
-              <textarea placeholder={t("scoring.keywordsPlaceholder")} required rows={3} value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("scoring.keywordsPlaceholder")} <FieldHint hint={t("hints.scoring.keywords")} /></label>
+                <textarea placeholder={t("scoring.keywordsPlaceholder")} required rows={3} value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
+              </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("scoring.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium disabled:opacity-50 btn-press">
