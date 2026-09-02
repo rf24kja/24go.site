@@ -150,7 +150,7 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-3 gap-8">
             {HOW_STEPS.map((step) => (
-              <Step key={step.num} num={step.num} title={t(step.titleKey)} desc={t(step.descKey)} points={step.points.map(t)} />
+              <Step key={step.num} num={step.num} title={t(step.titleKey)} desc={t(step.descKey)} points={step.points.map((p: string) => t(p))} />
             ))}
           </div>
         </div>
