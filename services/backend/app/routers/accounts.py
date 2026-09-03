@@ -69,8 +69,7 @@ async def bulk_create_accounts(
         _func.count()).select_from(
         select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
     )).scalar() or 0
-    if count >= limits["max_accounts"]:
-        raise HTTPException(403, f"Account limit reached ({limits['max_accounts']}) for {plan} plan")
+    # Account limit removed — users can add unlimited accounts
 
     created = 0
     errors: list[str] = []
@@ -156,14 +155,7 @@ async def bulk_import_accounts(
     failed = 0
 
     for prefix in sorted(matched_prefixes):
-        if count + imported >= limits["max_accounts"]:
-            failed += 1
-            results.append({
-                "identifier": prefix,
-                "status": "failed",
-                "error": f"Account limit reached ({limits['max_accounts']}) for {plan} plan",
-            })
-            continue
+        # Account limit removed — users can add unlimited accounts
 
         try:
             # Read .json config
@@ -354,8 +346,7 @@ async def create_account(
         _func.count()).select_from(
         select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
     )).scalar() or 0
-    if count >= limits["max_accounts"]:
-        raise HTTPException(403, f"Account limit reached ({limits['max_accounts']}) for {plan} plan")
+    # Account limit removed — users can add unlimited accounts
 
     account = AccountPool(
         tenant_id=current_user.tenant_id,

@@ -20,19 +20,19 @@ PLAN_LIMITS = {
     "trial": {
         "monthly_posts_limit": 100,
         "token_credits_balance": 100_000,
-        "max_accounts": 2,
+        "max_accounts": 999_999_999,  # No limit
         "max_targets": 10,
     },
     "starter": {
         "monthly_posts_limit": 1_500,
         "token_credits_balance": 1_000_000,
-        "max_accounts": 5,
+        "max_accounts": 999_999_999,  # No limit
         "max_targets": 100,
     },
     "pro": {
         "monthly_posts_limit": 7_500,
         "token_credits_balance": 5_000_000,
-        "max_accounts": 20,
+        "max_accounts": 999_999_999,  # No limit
         "max_targets": 500,
     },
     "enterprise": {
