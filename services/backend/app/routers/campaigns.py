@@ -102,9 +102,12 @@ async def delete_campaign(
 
 class CampaignUpdateRequest(BaseModel):
     name: str | None = None
+    description: str | None = None
+    emoji: str | None = None
     base_text: str | None = None
     target_geos: list[str] | None = None
     target_niches: list[str] | None = None
+    media_urls: list[str] | None = None
     is_active: bool | None = None
     schedule_cron: str | None = None
     posts_per_day: int | None = None
@@ -137,9 +140,9 @@ async def update_campaign(
     # Handle list fields separately (SQLAlchemy column assignment)
     for key, val in update_data.items():
         if key in ("target_geos", "target_niches", "is_active", "schedule_cron", "posts_per_day",
-                    "ab_enabled", "ab_variants"):
+                    "ab_enabled", "ab_variants", "media_urls"):
             setattr(campaign, key, val)
-        elif key in ("name", "base_text"):
+        elif key in ("name", "base_text", "description", "emoji"):
             setattr(campaign, key, val)
 
     await db.commit()

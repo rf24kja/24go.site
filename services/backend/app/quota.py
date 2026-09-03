@@ -206,6 +206,20 @@ async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
         await conn.close()
 
 
+# TgStat API cost per query (in kopeks)
+TGSTAT_COST = {
+    "trial": 0,
+    "starter": 0,
+    "pro": 100,      # 1₽ per query
+    "enterprise": 50,  # 0.50₽ per query
+}
+
+
+def get_tgstat_cost(plan: str) -> int:
+    """Get cost per TgStat query in kopeks. Returns 0 if no access."""
+    return TGSTAT_COST.get(plan, 0)
+
+
 def get_plan_limits(plan: str) -> dict:
     """Return resource limits for a given plan tier."""
     return PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])

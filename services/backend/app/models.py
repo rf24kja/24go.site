@@ -77,6 +77,7 @@ class Tenant(Base):
     daily_analytics = relationship("DailyAnalytic", back_populates="tenant", cascade="all, delete-orphan")
     monitored_groups = relationship("MonitoredGroup", back_populates="tenant", cascade="all, delete-orphan")
     mailings = relationship("Mailing", back_populates="tenant", cascade="all, delete-orphan")
+    balance = relationship("UserBalance", back_populates="tenant", uselist=False)
 
 
 class User(Base):
@@ -164,6 +165,8 @@ class Campaign(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    emoji = Column(String(100), nullable=True)
     base_text = Column(Text, nullable=False)
     target_geos = Column(JSONB, nullable=False)
     target_niches = Column(JSONB, nullable=False)
@@ -373,3 +376,53 @@ class MailingRecipient(Base):
     )
 
     mailing = relationship("Mailing", back_populates="recipients")
+
+
+# ── Balance & Search ─────────────────────────────────────────────────
+
+class UserBalance(Base):
+    """Tenant balance for TgStat API queries."""
+    __tablename__ = "user_balances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), unique=True, nullable=False)
+    balance_kopeks = Column(BigInteger, nullable=False, default=0)  # 50000 = 500₽
+    total_spent_kopeks = Column(BigInteger, nullable=False, default=0)
+    total_queries = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
+
+    tenant = relationship("Tenant", back_populates="balance")
+
+
+class SearchQueryLog(Base):
+    """Log of all search queries for billing and statistics."""
+    __tablename__ = "search_query_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    query = Column(Text, nullable=False)
+    query_type = Column(String(20), nullable=False, default="keyword")  # keyword, tgstat, semantic
+    cost_kopeks = Column(Integer, nullable=False, default=0)  # 0 = бесплатно (keyword)
+    results_count = Column(Integer, nullable=False, default=0)
+    cache_hit = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        Index("idx_query_logs_tenant", "tenant_id", "created_at"),
+    )
+
+
+class SearchCache(Base):
+    """Cache for TgStat search results (24h TTL)."""
+    __tablename__ = "search_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    query_hash = Column(String(64), unique=True, nullable=False)  # SHA256
+    results_json = Column(JSONB, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        Index("idx_search_cache_hash", "query_hash", "expires_at"),
+    )

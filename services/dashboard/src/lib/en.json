@@ -288,7 +288,7 @@
   "campaigns.hint.postsPerDay": "Number of posts per day (1-5)",
   "campaigns.hint.timezone": "Your timezone for scheduling posts",
 
-  "targets.title": "Target Discovery",
+  "targets.title": "Group Search",
   "targets.howItWorks": "How targets work",
   "targets.howDesc": "Targets are Telegram groups and channels where your audience hangs out.",
   "targets.howScan": "Scan by GEO (city/country) and niche to discover them.",
@@ -329,7 +329,7 @@
   "targets.hint.niches": "Niche keywords, comma-separated",
   "targets.never": "never",
 
-  "groups.title": "Monitored Groups",
+  "groups.title": "Monitoring",
   "groups.addGroup": "+ Add Group",
   "groups.howItWorks": "How group monitoring works",
   "groups.step1Title": "Add group",
@@ -701,9 +701,9 @@
 
   "sidebar.analytics": "Analytics",
   "sidebar.leads": "Leads",
-  "sidebar.scoring": "Scoring",
-  "sidebar.targets": "Targets",
-  "sidebar.groups": "Groups",
+  "sidebar.leadRules": "Lead Rules",
+  "sidebar.groupSearch": "Group Search",
+  "sidebar.monitoring": "Monitoring",
   "sidebar.accounts": "Accounts",
   "sidebar.campaigns": "Campaigns",
   "sidebar.blog": "Blog",

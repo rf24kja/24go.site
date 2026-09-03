@@ -268,7 +268,7 @@
   "campaigns.runSuccess": "Опубликовано в {target} через {account}",
   "campaigns.runFailed": "Не удалось запустить",
 
-  "targets.title": "Поиск целей",
+  "targets.title": "Поиск групп",
   "targets.howItWorks": "Как работают цели",
   "targets.howDesc": "Цели — это Telegram-группы и каналы, где находится ваша аудитория.",
   "targets.howScan": "Сканируйте по ГЕО (город/страна) и нише для их обнаружения.",
@@ -305,7 +305,7 @@
   "targets.scrapeStarted": "Извлечение комментариев начато",
   "targets.scrapeFailed": "Ошибка извлечения",
 
-  "groups.title": "Мониторинг групп",
+  "groups.title": "Мониторинг",
   "groups.addGroup": "+ Добавить группу",
   "groups.howItWorks": "Как работает мониторинг групп",
   "groups.step1Title": "Добавить группу",
@@ -665,9 +665,9 @@
 
   "sidebar.analytics": "Аналитика",
   "sidebar.leads": "Лиды",
-  "sidebar.scoring": "Скоринг",
-  "sidebar.targets": "Цели",
-  "sidebar.groups": "Группы",
+  "sidebar.leadRules": "Правила скоринга",
+  "sidebar.groupSearch": "Поиск групп",
+  "sidebar.monitoring": "Мониторинг",
   "sidebar.accounts": "Аккаунты",
   "sidebar.campaigns": "Кампании",
   "sidebar.blog": "Блог",

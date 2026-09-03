@@ -105,6 +105,8 @@ class AccountResponse(BaseModel):
 # ── Campaign ───────────────────────────────────────────────────────────
 class CampaignCreate(BaseModel):
     name: str
+    description: str | None = None
+    emoji: str | None = None
     base_text: str
     target_geos: list[str]
     target_niches: list[str]
@@ -119,9 +121,12 @@ class CampaignCreate(BaseModel):
 class CampaignResponse(BaseModel):
     id: UUID
     name: str
+    description: str | None = None
+    emoji: str | None = None
     base_text: str
     target_geos: list
     target_niches: list
+    media_urls: list = []
     is_active: bool
     schedule_cron: str | None = None
     posts_per_day: int = 1
@@ -190,4 +195,80 @@ class MailingRecipientResponse(BaseModel):
 
 
 class MailingImportRequest(BaseModel):
-    file: str = Field(..., description="CSV content (username, first_name optional)")
+    file: str = Field(..., description="Plain text: 1 username per line")
+
+
+# ── Balance & Search ─────────────────────────────────────────────────
+
+class BalanceResponse(BaseModel):
+    balance_kopeks: int
+    balance_rub: float  # convenience field
+    total_spent_kopeks: int
+    total_queries: int
+
+    class Config:
+        from_attributes = True
+
+
+class TopUpRequest(BaseModel):
+    amount_kopeks: int = Field(..., ge=50000, description="Минимум 50000 копеек (500₽)")  # min 500 RUB
+
+
+class TopUpResponse(BaseModel):
+    checkout_url: str
+    session_id: str
+
+
+class QueryLogResponse(BaseModel):
+    id: UUID
+    query: str
+    query_type: str
+    cost_kopeks: int
+    results_count: int
+    cache_hit: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SemanticQueryRequest(BaseModel):
+    keyword: str = Field(..., min_length=3, description="Ключевое слово для расширения")
+    country: str = Field(default="ru", description="Код страны (ru, th, en)")
+    niche: str = Field(default="", description="Ниша (real_estate, tours)")
+
+
+class SemanticQueryResponse(BaseModel):
+    original: str
+    expanded: list[str]  # 10-15 комбинаций
+    country: str
+
+
+class GroupSearchRequest(BaseModel):
+    query: str = Field(..., min_length=3)
+    country: str = Field(default="ru")
+    language: str = Field(default="russian")
+    peer_type: str = Field(default="all")  # channel, chat, all
+    category: str = Field(default="")
+    limit: int = Field(default=20, le=100)
+    use_tgstat: bool = Field(default=False, description="Использовать TgStat API (платно)")
+
+
+class GroupSearchResult(BaseModel):
+    title: str
+    username: str | None
+    subscribers: int | None
+    description: str | None
+    peer_type: str | None  # channel or chat
+    country: str | None
+    language: str | None
+    category: str | None
+
+
+class GroupSearchResponse(BaseModel):
+    query: str
+    results: list[GroupSearchResult]
+    total: int
+    cost_kopeks: int
+    cache_hit: bool
+    query_type: str  # keyword, tgstat

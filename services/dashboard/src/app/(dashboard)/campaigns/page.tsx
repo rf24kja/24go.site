@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign, previewCron } from "@/lib/api";
@@ -8,13 +8,17 @@ import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import { Spinner } from "@/components/Spinner";
 import { FieldHint } from "@/components/FieldHint";
+import { Paperclip, Image, Film, Smile, X, Upload } from "lucide-react";
 
 type Campaign = {
   id: string;
   name: string;
+  description: string | null;
+  emoji: string | null;
   base_text: string;
   target_geos: string[];
   target_niches: string[];
+  media_urls: string[];
   is_active: boolean;
   schedule_cron: string | null;
   posts_per_day: number | null;
@@ -45,11 +49,14 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] as { name: string; text: string; weight: number; posts: number; leads: number }[] });
+  const [form, setForm] = useState({ name: "", description: "", emoji: "", base_text: "", target_geos: "", target_niches: "", media_urls: [] as string[], schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] as { name: string; text: string; weight: number; posts: number; leads: number }[] });
   const [saving, setSaving] = useState(false);
   const [statsCampaign, setStatsCampaign] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [cronPreview, setCronPreview] = useState<string[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scheduleOptions = getScheduleOptions(t);
 
@@ -74,7 +81,7 @@ export default function CampaignsPage() {
   const openCreate = () => {
     setModalMode("create");
     setEditingId(null);
-    setForm({ name: "", base_text: "", target_geos: "", target_niches: "", schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] });
+    setForm({ name: "", description: "", emoji: "", base_text: "", target_geos: "", target_niches: "", media_urls: [], schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] });
   };
 
   const openEdit = (c: Campaign) => {
@@ -82,9 +89,12 @@ export default function CampaignsPage() {
     setEditingId(c.id);
     setForm({
       name: c.name,
+      description: c.description || "",
+      emoji: c.emoji || "",
       base_text: c.base_text,
       target_geos: (c.target_geos || []).join(", "),
       target_niches: (c.target_niches || []).join(", "),
+      media_urls: c.media_urls || [],
       schedule: c.schedule_cron || "",
       posts_per_day: String(c.posts_per_day || 5),
       timezone: c.timezone || "UTC",
@@ -114,9 +124,12 @@ export default function CampaignsPage() {
     try {
       const data = {
         name: form.name,
+        description: form.description || null,
+        emoji: form.emoji || null,
         base_text: form.base_text,
         target_geos: form.target_geos.split(",").map((s) => s.trim()).filter(Boolean),
         target_niches: form.target_niches.split(",").map((s) => s.trim()).filter(Boolean),
+        media_urls: form.media_urls,
         schedule_cron: form.schedule || null,
         posts_per_day: parseInt(form.posts_per_day) || 5,
         timezone: form.timezone,
@@ -148,6 +161,26 @@ export default function CampaignsPage() {
     try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); } catch { toast(t("campaigns.toggleFailed"), "error"); }
     load();
   };
+
+  const COMMON_EMOJI = ["😀","😂","😍","🥳","🤩","😎","🙌","👍","🔥","💯","⭐","🎯","🚀","💡","📢","📣","💰","🎁","✅","❌","⚡","💪","🤝","👏","🎉","🎊","💎","🏆","📱","💻","🌐","🔗","📊","📈","🔍","🎯","📝","📌","🎨","🏷️"];
+
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setForm((prev) => ({ ...prev, media_urls: [...prev.media_urls, base64] }));
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
 
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
@@ -189,6 +222,7 @@ export default function CampaignsPage() {
             <div key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 min-w-0">
+                  {c.emoji && <span className="text-lg">{c.emoji}</span>}
                   <h2 className="text-zinc-100 font-medium truncate">{c.name}</h2>
                   {c.ab_enabled && (
                     <span className="px-1.5 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-[10px] font-medium shrink-0">A/B</span>
@@ -199,7 +233,28 @@ export default function CampaignsPage() {
                   {c.is_active ? t("campaigns.active") : t("campaigns.paused")}
                 </button>
               </div>
+              {c.description && <p className="text-zinc-500 text-xs line-clamp-1">{c.description}</p>}
               <p className="text-zinc-400 text-sm line-clamp-2">{c.base_text}</p>
+              {(c.media_urls || []).length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {c.media_urls.slice(0, 4).map((url, i) => (
+                    <div key={i} className="w-10 h-10 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden">
+                      {url.startsWith("data:image") ? (
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      ) : url.startsWith("data:video") ? (
+                        <Film size={14} className="text-zinc-500" />
+                      ) : (
+                        <Paperclip size={14} className="text-zinc-500" />
+                      )}
+                    </div>
+                  ))}
+                  {c.media_urls.length > 4 && (
+                    <div className="w-10 h-10 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+                      <span className="text-[10px] text-zinc-500">+{c.media_urls.length - 4}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap gap-1">
                 {(c.target_geos || []).map((geo) => (
                   <span key={geo} className="px-2 py-0.5 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded text-xs">{geo}</span>
@@ -252,9 +307,75 @@ export default function CampaignsPage() {
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
               <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Description</label>
+                <textarea placeholder="Optional campaign description" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
+              </div>
+              <div className="flex gap-2 items-center">
+                <div className="relative">
+                  <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:bg-zinc-700 transition">
+                    <Smile size={14} />
+                    {form.emoji || "Emoji"}
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg p-2 z-10 grid grid-cols-8 gap-1 w-72 shadow-xl">
+                      {COMMON_EMOJI.map((em) => (
+                        <button key={em} type="button" onClick={() => { setForm({ ...form, emoji: em }); setShowEmojiPicker(false); }}
+                          className="w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-700 text-sm transition">
+                          {em}
+                        </button>
+                      ))}
+                      {form.emoji && (
+                        <button type="button" onClick={() => setForm({ ...form, emoji: "" })}
+                          className="col-span-8 text-center text-xs text-zinc-500 hover:text-zinc-300 py-1 mt-1 border-t border-zinc-700">
+                          Remove emoji
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
                 <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.textPlaceholder")} <FieldHint hint={t("campaigns.hint.text")} /></label>
                 <textarea placeholder={t("campaigns.textPlaceholder")} required rows={4} value={form.base_text} onChange={(e) => setForm({ ...form, base_text: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Attachments</label>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${dragOver ? "border-emerald-500 bg-emerald-500/5" : "border-zinc-700 hover:border-zinc-600"}`}>
+                  <Upload size={18} className="mx-auto mb-1 text-zinc-500" />
+                  <p className="text-xs text-zinc-500">Drop files here or click to upload</p>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">Images, videos, documents</p>
+                </div>
+                <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)} />
+                {form.media_urls.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {form.media_urls.map((url, i) => (
+                      <div key={i} className="relative group w-14 h-14 rounded-lg bg-zinc-800 border border-zinc-700 overflow-hidden">
+                        {url.startsWith("data:image") ? (
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                        ) : url.startsWith("data:video") ? (
+                          <div className="w-full h-full flex items-center justify-center"><Film size={16} className="text-zinc-500" /></div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"><Paperclip size={16} className="text-zinc-500" /></div>
+                        )}
+                        <button type="button" onClick={() => setForm({ ...form, media_urls: form.media_urls.filter((_, j) => j !== i) })}
+                          className="absolute top-0.5 right-0.5 bg-zinc-900/80 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
+                          <X size={10} className="text-zinc-300" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.geosPlaceholder")} <FieldHint hint={t("campaigns.hint.geos")} /></label>
