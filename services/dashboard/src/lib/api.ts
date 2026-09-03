@@ -556,3 +556,69 @@ export async function pauseMailing(token: string, mailingId: string) {
 export async function stopMailing(token: string, mailingId: string) {
   return api<any>(`/api/v1/mailings/${mailingId}/stop`, { method: "POST", token });
 }
+
+// ── Auto-replies ─────────────────────────────────────────────────
+
+export async function getAutoReplies(token: string) {
+  return api<any>(`/api/v1/auto-replies`, { token });
+}
+
+export async function getAutoReply(token: string, id: string) {
+  return api<any>(`/api/v1/auto-replies/${id}`, { token });
+}
+
+export async function createAutoReply(token: string, data: any) {
+  return api<any>(`/api/v1/auto-replies`, { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function updateAutoReply(token: string, id: string, data: any) {
+  return api<any>(`/api/v1/auto-replies/${id}`, { method: "PUT", body: JSON.stringify(data), token });
+}
+
+export async function deleteAutoReply(token: string, id: string) {
+  return api<any>(`/api/v1/auto-replies/${id}`, { method: "DELETE", token });
+}
+
+export async function addAutoReplyAnswer(token: string, id: string, text: string) {
+  return api<any>(`/api/v1/auto-replies/${id}/answers`, { method: "POST", body: JSON.stringify({ text }), token });
+}
+
+export async function deleteAutoReplyAnswer(token: string, id: string, answerId: string) {
+  return api<any>(`/api/v1/auto-replies/${id}/answers/${answerId}`, { method: "DELETE", token });
+}
+
+export async function importAutoReplyAnswers(token: string, id: string, text: string) {
+  return api<any>(`/api/v1/auto-replies/${id}/import-answers`, { method: "POST", body: JSON.stringify({ text }), token });
+}
+
+export async function toggleAutoReply(token: string, id: string) {
+  return api<any>(`/api/v1/auto-replies/${id}/toggle`, { method: "POST", token });
+}
+
+// ── Balance ──────────────────────────────────────────────────────
+
+export async function getBalance(token: string) {
+  return api<any>(`/api/v1/balance`, { token });
+}
+
+export async function topUpBalance(token: string, amountKopeks: number) {
+  return api<any>(`/api/v1/balance/topup`, { method: "POST", body: JSON.stringify({ amount_kopeks: amountKopeks }), token });
+}
+
+export async function getBalanceHistory(token: string) {
+  return api<any[]>(`/api/v1/balance/history`, { token });
+}
+
+// ── Group Search ─────────────────────────────────────────────────
+
+export async function searchGroupsTgstat(token: string, data: any) {
+  return api<any>(`/api/v1/group-search`, { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function expandSemanticQueries(token: string, keyword: string, country: string, niche: string) {
+  return api<any>(`/api/v1/group-search/semantic`, { method: "POST", body: JSON.stringify({ keyword, country, niche }), token });
+}
+
+export async function getGroupSearchStats(token: string) {
+  return api<any>(`/api/v1/group-search/stats`, { token });
+}
