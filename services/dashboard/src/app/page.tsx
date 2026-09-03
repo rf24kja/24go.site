@@ -121,15 +121,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────── */}
-      <section id="features" className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
+      {/* ── Features + How it works (merged) ─────────────────────── */}
+      <section id="features" className="py-20 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.featuresTitle")}</h2>
             <p className="text-zinc-400 max-w-lg mx-auto">{t("landing.featuresDesc")}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
             <FeatureCard Icon={Search} title={t("landing.feature1Title")} desc={t("landing.feature1Desc")} />
             <FeatureCard Icon={Bot} title={t("landing.feature2Title")} desc={t("landing.feature2Desc")} />
             <FeatureCard Icon={ChartBar} title={t("landing.feature3Title")} desc={t("landing.feature3Desc")} />
@@ -137,21 +137,26 @@ export default function LandingPage() {
             <FeatureCard Icon={Megaphone} title={t("landing.feature5Title")} desc={t("landing.feature5Desc")} />
             <FeatureCard Icon={CreditCard} title={t("landing.feature6Title")} desc={t("landing.feature6Desc")} />
           </div>
-        </div>
-      </section>
 
-      {/* ── How it works ─────────────────────────────────────────── */}
-      <section id="how" className="py-24 px-6 lg:px-12 bg-zinc-900/50 border-t border-zinc-800/50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.howTitle")}</h2>
-            <p className="text-zinc-400">{t("landing.howDesc")}</p>
-          </div>
+          {/* How it works */}
+          <div id="how" className="scroll-mt-20 pt-8 border-t border-zinc-800/50">
+            <div className="text-center mb-12">
+              <h3 className="text-2xl lg:text-3xl font-bold mb-3">{t("landing.howTitle")}</h3>
+              <p className="text-zinc-400">{t("landing.howDesc")}</p>
+            </div>
 
-          <div className="grid sm:grid-cols-3 gap-8">
-            {HOW_STEPS.map((step) => (
-              <Step key={step.num} num={step.num} title={t(step.titleKey)} desc={t(step.descKey)} points={step.points.map((p: string) => t(p))} />
-            ))}
+            <div className="grid sm:grid-cols-3 gap-8">
+              {HOW_STEPS.map((step, i) => (
+                <div key={step.num} className="flex items-start gap-3">
+                  <Step num={step.num} title={t(step.titleKey)} desc={t(step.descKey)} points={step.points.map((p: string) => t(p))} />
+                  {i < HOW_STEPS.length - 1 && (
+                    <div className="hidden sm:flex items-center pt-5 text-zinc-700">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
