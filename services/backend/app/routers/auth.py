@@ -63,14 +63,14 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     )
     db.add(user)
 
-    # Create default subscription (trial — 14 days, 100 posts, 100k tokens)
+    # Create default subscription (trial — 3 days, 100 posts, 100k tokens)
     now = datetime.now(timezone.utc)
     sub = Subscription(
         tenant_id=tenant.id,
         plan="trial",
         status="active",
         current_period_start=now,
-        current_period_end=now + timedelta(days=14),
+        current_period_end=now + timedelta(days=3),
         monthly_posts_limit=100,
         token_credits_balance=100_000,
     )
