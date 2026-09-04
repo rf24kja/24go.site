@@ -32,6 +32,7 @@ export function Sidebar() {
     { href: "/targets", label: t("sidebar.groupSearch"), icon: Radar, feature: "targets" },
     { href: "/groups", label: t("sidebar.monitoring"), icon: Radio, feature: "groups" },
     { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle, feature: "accounts" },
+    { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
     { href: "/auto-replies", label: t("sidebar.autoReplies"), icon: Bot, feature: "auto-replies" },

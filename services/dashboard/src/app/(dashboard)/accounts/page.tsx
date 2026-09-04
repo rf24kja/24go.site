@@ -8,6 +8,7 @@ import {
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
   disconnectTelegram, getTelegramStatus,
   bulkImportAccounts, connectVK,
+  getProxies, assignAccountProxy,
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 import { Spinner } from "@/components/Spinner";
@@ -21,6 +22,7 @@ type Account = {
   warmup_stage: number;
   actions_today: number;
   daily_action_limit: number;
+  proxy_id?: string | null;
 };
 
 type TgStatus = { has_session: boolean; connected: boolean; tg_status: string };
@@ -81,16 +83,21 @@ export default function AccountsPage() {
   const [bulkResult, setBulkResult] = useState<{ imported: number; failed: number; accounts: { id?: string; identifier: string; status: string; error?: string | null }[] } | null>(null);
   const [bulkDragOver, setBulkDragOver] = useState(false);
 
+  // Proxy state
+  const [proxies, setProxies] = useState<{ id: string; proxy_url: string; is_active: boolean }[]>([]);
+
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
     Promise.all([
       getAccounts(auth.token),
       getListenerStatus(auth.token).catch(() => ({})),
-    ]).then(async ([accts, listeners_]) => {
+      getProxies(auth.token).catch(() => []),
+    ]).then(async ([accts, listeners_, proxyList]) => {
       const items = accts.items || accts;
       setAccounts(items);
       setListeners((listeners_ as any)?.active_workers ?? []);
+      setProxies(Array.isArray(proxyList) ? proxyList : []);
 
       // Fetch TG status for each account
       const statuses: Record<string, TgStatus> = {};
@@ -106,6 +113,16 @@ export default function AccountsPage() {
   };
 
   useEffect(() => { load(); }, [auth?.token]);
+
+  // ── Proxy assignment ──
+  const handleProxyAssign = async (accountId: string, proxyId: string | null) => {
+    try {
+      await assignAccountProxy(auth.token!, accountId, proxyId);
+      load();
+    } catch (e: any) {
+      // silent — already in UI
+    }
+  };
 
   const isListenerActive = (accountId: string) =>
     listeners.some((l) => l.account_id === accountId && l.status === "active");
@@ -482,6 +499,18 @@ export default function AccountsPage() {
                           </>
                         )}
                       </div>
+                      {/* Proxy assignment */}
+                      {acct.platform === "telegram" && proxies.length > 0 && (
+                        <div className="mt-1.5">
+                          <select value={acct.proxy_id || ""} onChange={e => handleProxyAssign(acct.id, e.target.value || null)}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-400 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                            <option value="">{t("accounts.noProxy")}</option>
+                            {proxies.filter(p => p.is_active).map(p => (
+                              <option key={p.id} value={p.id}>{p.proxy_url.replace(/:[^:]+@/, ":****@")}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

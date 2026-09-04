@@ -622,3 +622,29 @@ export async function expandSemanticQueries(token: string, keyword: string, coun
 export async function getGroupSearchStats(token: string) {
   return api<any>(`/api/v1/group-search/stats`, { token });
 }
+
+// ── Proxies ─────────────────────────────────────────────────────
+
+export async function getProxies(token: string) {
+  return api<any[]>(`/api/v1/proxies`, { token });
+}
+
+export async function createProxy(token: string, data: { proxy_url: string; geo_location?: string; rotation_api_url?: string }) {
+  return api<any>(`/api/v1/proxies`, { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function updateProxy(token: string, id: string, data: any) {
+  return api<any>(`/api/v1/proxies/${id}`, { method: "PUT", body: JSON.stringify(data), token });
+}
+
+export async function deleteProxy(token: string, id: string) {
+  return api<any>(`/api/v1/proxies/${id}`, { method: "DELETE", token });
+}
+
+export async function testProxy(token: string, id: string) {
+  return api<any>(`/api/v1/proxies/${id}/test`, { method: "POST", token });
+}
+
+export async function assignAccountProxy(token: string, accountId: string, proxyId: string | null) {
+  return api<any>(`/api/v1/accounts/${accountId}/assign-proxy`, { method: "POST", body: JSON.stringify({ proxy_id: proxyId }), token });
+}

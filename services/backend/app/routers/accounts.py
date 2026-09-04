@@ -981,3 +981,48 @@ async def connect_vk(
     finally:
         await conn.close()
     return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte"}
+
+
+# ── Proxy assignment ─────────────────────────────────────────────────
+
+class ProxyAssignRequest(BaseModel):
+    proxy_id: str | None = None  # UUID or null to unassign
+
+
+@router.post("/{account_id}/assign-proxy")
+async def assign_proxy(
+    account_id: UUID,
+    body: ProxyAssignRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Assign or unassign a proxy to/from an account."""
+    from app.models import Proxy
+
+    result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.id == account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    if body.proxy_id:
+        proxy_result = await db.execute(
+            select(Proxy).where(
+                Proxy.id == UUID(body.proxy_id),
+                Proxy.tenant_id == current_user.tenant_id,
+                Proxy.is_active == True,
+            )
+        )
+        proxy = proxy_result.scalar_one_or_none()
+        if not proxy:
+            raise HTTPException(404, "Proxy not found or inactive")
+        account.proxy_id = proxy.id
+    else:
+        account.proxy_id = None
+
+    await db.commit()
+    return {"status": "updated", "proxy_id": body.proxy_id}
