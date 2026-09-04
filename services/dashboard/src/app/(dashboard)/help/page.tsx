@@ -13,7 +13,6 @@ import {
   Megaphone,
   CreditCard,
   UserCog,
-  ChevronDown,
   Lightbulb,
   AlertTriangle,
   ArrowRight,
@@ -133,21 +132,21 @@ function Section({
       <div className="space-y-6">
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Для чего это нужно
+            {t("wiki.subhead.forWhat")}
           </h3>
           <div className="text-sm text-zinc-300 leading-relaxed">{forWhat}</div>
         </div>
 
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Как пользоваться
+            {t("wiki.subhead.howTo")}
           </h3>
           <StepList items={howTo} />
         </div>
 
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Чего ожидать
+            {t("wiki.subhead.expect")}
           </h3>
           <ExpectList items={expect} />
         </div>
@@ -329,19 +328,19 @@ function TeamSection({ t }: { t: (k: string) => string }) {
       <div className="space-y-6">
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Для чего это нужно
+            {t("wiki.subhead.forWhat")}
           </h3>
           <p className="text-sm text-zinc-300">{t("wiki.section.team.forWhat")}</p>
         </div>
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Как пользоваться
+            {t("wiki.subhead.howTo")}
           </h3>
           <StepList items={t("wiki.section.team.howTo").split("\n")} />
         </div>
         <div>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Роли
+            {t("wiki.subhead.roles")}
           </h3>
           <ExpectList items={t("wiki.section.team.expect").split("\n")} />
         </div>

@@ -114,7 +114,7 @@ export default function BlogPage() {
                   <time>{new Date(post.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", { year: "numeric", month: "short", day: "numeric" })}</time>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {readingTime(post.excerpt)} {locale === "ru" ? "мин" : "min"}
+                    {post.reading_time || readingTime(post.excerpt)} {locale === "ru" ? "мин" : "min"}
                   </span>
                 </div>
               </Link>

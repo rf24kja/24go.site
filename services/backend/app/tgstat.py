@@ -94,7 +94,7 @@ async def set_cached_results(query: str, country: str, results: dict, db: AsyncS
     existing = await db.execute(
         select(SearchCache).where(SearchCache.query_hash == h)
     )
-    cache = existing.scalar_one_none()
+    cache = existing.scalar_one_or_none()
     if cache:
         cache.results_json = results
         cache.expires_at = expires

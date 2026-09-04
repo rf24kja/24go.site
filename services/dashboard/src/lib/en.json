@@ -988,6 +988,11 @@
   "wiki.nav.billing": "Billing",
   "wiki.nav.team": "Team",
 
+  "wiki.subhead.forWhat": "Why you need it",
+  "wiki.subhead.howTo": "How to use",
+  "wiki.subhead.expect": "What to expect",
+  "wiki.subhead.roles": "Roles",
+
   "wiki.section.overview.title": "Platform Overview",
   "wiki.section.overview.forWhat": "24GO is a platform for automating customer discovery in Telegram and VK. It helps real estate agents, travel agencies, and any business find potential buyers without manual searching. Without automation, you spend hours monitoring chats and lose hot customers.",
   "wiki.section.overview.architecture": "The architecture is simple: Accounts → Monitoring → Leads → Sales. Each step is automated.",

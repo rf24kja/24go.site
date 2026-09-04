@@ -189,12 +189,16 @@ async def public_list_posts(
 
     items = []
     for p in posts:
+        content = p.content_ru if locale == "ru" else p.content_en
+        word_count = len(content.split()) if content else 0
+        reading_min = max(1, round(word_count / 200))
         items.append({
             "slug": p.slug,
             "title": p.title_ru if locale == "ru" else p.title_en,
             "excerpt": p.excerpt_ru if locale == "ru" else p.excerpt_en,
             "tags": p.tags or [],
             "og_image_url": p.og_image_url,
+            "reading_time": reading_min,
             "created_at": p.created_at.isoformat() if p.created_at else None,
         })
     return {"items": items, "total": total}
