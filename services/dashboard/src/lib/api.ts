@@ -645,6 +645,14 @@ export async function testProxy(token: string, id: string) {
   return api<any>(`/api/v1/proxies/${id}/test`, { method: "POST", token });
 }
 
+export async function bulkImportProxies(token: string, proxies: string[], geo_location?: string) {
+  return api<any>(`/api/v1/proxies/bulk-import`, { method: "POST", body: JSON.stringify({ proxies, geo_location }), token });
+}
+
+export async function bulkAssignProxies(token: string, resetFirst: boolean = false) {
+  return api<any>(`/api/v1/proxies/bulk-assign`, { method: "POST", body: JSON.stringify({ reset_first: resetFirst }), token });
+}
+
 export async function assignAccountProxy(token: string, accountId: string, proxyId: string | null) {
   return api<any>(`/api/v1/accounts/${accountId}/assign-proxy`, { method: "POST", body: JSON.stringify({ proxy_id: proxyId }), token });
 }

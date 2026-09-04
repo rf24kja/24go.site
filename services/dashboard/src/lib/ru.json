@@ -1342,5 +1342,16 @@
   "proxies.deleted": "Прокси удалён",
   "proxies.confirmDelete": "Удалить прокси? Все привязанные аккаунты будут отвязаны.",
   "proxies.hint": "Каждый аккаунт Telegram должен использовать свой прокси (SOCKS5/HTTP). Смена прокси у аккаунта приведёт к бану. Формат: socks5://user:pass@host:port",
+  "proxies.bulkImport": "Массовый импорт",
+  "proxies.bulkAssign": "Случайное назначение",
+  "proxies.bulkImportTitle": "Импорт прокси списком",
+  "proxies.bulkInputLabel": "Один URL прокси на строку",
+  "proxies.bulkHint": "Форматы: socks5://, socks4://, http://. Дубликаты пропускаются.",
+  "proxies.bulkImportBtn": "Импортировать",
+  "proxies.bulkEmpty": "Вставьте хотя бы один URL прокси",
+  "proxies.bulkCreated": "Создано",
+  "proxies.bulkSkipped": "Пропущено",
+  "proxies.bulkAssignConfirm": "Случайно назначить прокси всем TG-аккаунтам? Текущие назначения будут сброшены.",
+  "proxies.bulkAssigned": "Назначено",
   "accounts.noProxy": "Без прокси"
 }

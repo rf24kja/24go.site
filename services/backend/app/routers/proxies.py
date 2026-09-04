@@ -1,5 +1,6 @@
-"""Proxy Management: CRUD, connectivity test, account assignment."""
+"""Proxy Management: CRUD, connectivity test, account assignment, bulk import/assign."""
 import logging
+import random
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -164,10 +165,114 @@ async def test_proxy(proxy_id: UUID, db: AsyncSession = Depends(get_db), user: U
         return {"status": "error", "message": str(e)[:200]}
 
 
-@router.post("/assign")
-async def assign_proxy(body: ProxyAssign, account_id: UUID | None = None, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Assign proxy to an account. Pass account_id as query param."""
-    raise HTTPException(400, "Use POST /accounts/{id}/assign-proxy instead")
+# ── Bulk Import ─────────────────────────────────────────────────────
+
+class BulkImportRequest(BaseModel):
+    proxies: list[str]  # one URL per line, e.g. ["socks5://u:p@h:1080", "http://u:p@h:8080"]
+    geo_location: str | None = None
+
+
+@router.post("/bulk-import")
+async def bulk_import_proxies(body: BulkImportRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    """Import multiple proxies at once. One URL per entry."""
+    created = 0
+    skipped = 0
+    errors = []
+
+    for url in body.proxies:
+        url = url.strip()
+        if not url:
+            continue
+        # Basic validation
+        if not url.startswith(("socks4://", "socks5://", "http://", "https://")):
+            errors.append(f"{url}: unsupported scheme (use socks4/socks5/http)")
+            skipped += 1
+            continue
+
+        # Check duplicate
+        existing = await db.execute(
+            select(Proxy).where(Proxy.tenant_id == user.tenant_id, Proxy.proxy_url == url)
+        )
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+
+        proxy = Proxy(
+            tenant_id=user.tenant_id,
+            proxy_url=url,
+            geo_location=body.geo_location,
+        )
+        db.add(proxy)
+        created += 1
+
+    if created:
+        await db.commit()
+
+    log.info(f"Bulk import: created={created}, skipped={skipped}, errors={len(errors)}")
+    return {"created": created, "skipped": skipped, "errors": errors}
+
+
+# ── Bulk Assign (random) ───────────────────────────────────────────
+
+class BulkAssignRequest(BaseModel):
+    reset_first: bool = False  # if True, unassign all accounts first before random assign
+
+
+@router.post("/bulk-assign")
+async def bulk_assign_proxies(body: BulkAssignRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    """Randomly assign active proxies to TG accounts. 1 proxy = 1 account.
+    If more accounts than proxies, excess accounts stay unassigned.
+    If reset_first=True, unassigns all accounts before assigning.
+    """
+    # Get active proxies
+    proxy_result = await db.execute(
+        select(Proxy).where(Proxy.tenant_id == user.tenant_id, Proxy.is_active == True)
+    )
+    proxies = list(proxy_result.scalars().all())
+    if not proxies:
+        raise HTTPException(400, "No active proxies to assign")
+
+    # Get TG accounts
+    acct_result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.tenant_id == user.tenant_id,
+            AccountPool.platform == "telegram",
+        )
+    )
+    accounts = list(acct_result.scalars().all())
+    if not accounts:
+        raise HTTPException(400, "No Telegram accounts found")
+
+    # Optionally reset all assignments first
+    if body.reset_first:
+        for acct in accounts:
+            acct.proxy_id = None
+
+    # Shuffle both lists for random assignment
+    random.shuffle(proxies)
+    random.shuffle(accounts)
+
+    # Assign: min(proxies, accounts) pairs
+    assigned = 0
+    for i, acct in enumerate(accounts):
+        if i >= len(proxies):
+            break
+        acct.proxy_id = proxies[i].id
+        assigned += 1
+
+    await db.commit()
+
+    log.info(f"Bulk assign: {assigned}/{len(accounts)} accounts got proxies ({len(proxies)} available)")
+    return {
+        "assigned": assigned,
+        "total_accounts": len(accounts),
+        "total_proxies": len(proxies),
+        "unassigned_accounts": max(0, len(accounts) - len(proxies)),
+        "unused_proxies": max(0, len(proxies) - len(accounts)),
+    }
+
+
+# ── Single Assign (stub — actual logic in accounts router) ─────────
 
 
 # ── Account-level proxy assignment (mounted on accounts router via this helper) ──

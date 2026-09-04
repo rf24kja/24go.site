@@ -1342,5 +1342,16 @@
   "proxies.deleted": "Proxy deleted",
   "proxies.confirmDelete": "Delete this proxy? All assigned accounts will be unassigned.",
   "proxies.hint": "Each Telegram account should use its own dedicated proxy (SOCKS5/HTTP). Changing an account's proxy will get it banned. Format: socks5://user:pass@host:port",
+  "proxies.bulkImport": "Bulk Import",
+  "proxies.bulkAssign": "Random Assign",
+  "proxies.bulkImportTitle": "Import Multiple Proxies",
+  "proxies.bulkInputLabel": "One proxy URL per line",
+  "proxies.bulkHint": "Supported formats: socks5://, socks4://, http://. Duplicates are skipped.",
+  "proxies.bulkImportBtn": "Import Proxies",
+  "proxies.bulkEmpty": "Paste at least one proxy URL",
+  "proxies.bulkCreated": "Created",
+  "proxies.bulkSkipped": "Skipped",
+  "proxies.bulkAssignConfirm": "Randomly assign proxies to all TG accounts? Current assignments will be reset.",
+  "proxies.bulkAssigned": "Assigned",
   "accounts.noProxy": "No proxy"
 }
