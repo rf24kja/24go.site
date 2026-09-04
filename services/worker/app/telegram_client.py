@@ -7,12 +7,15 @@ Architecture:
 - Session strings stored in DB (encrypted via Fernet)
 - Clients cached in-memory per account_id (one process)
 - Connection status tracked in Redis for monitoring
+- Per-account proxy support: 1 proxy = 1 account permanently
 """
 import asyncio
 import json
 import logging
 import os
+import re
 import time
+from urllib.parse import urlparse
 
 import asyncpg
 import redis
@@ -138,6 +141,67 @@ async def delete_session(account_id: str):
         await conn.close()
 
 
+# ── Proxy Resolution ─────────────────────────────────────────────────
+
+async def _resolve_proxy(account_id: str) -> tuple | None:
+    """Look up proxy for this account from DB.
+
+    Returns Telethon-compatible proxy tuple or None.
+    Format: (socks_type, host, port, rdns, username, password)
+    """
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        row = await conn.fetchrow(
+            """SELECT p.proxy_url
+               FROM account_pool a
+               JOIN proxies p ON a.proxy_id = p.id
+               WHERE a.id = $1 AND p.is_active = true""",
+            _uuid(account_id),
+        )
+        if not row:
+            return None
+        return _parse_proxy_url(row["proxy_url"])
+    except Exception as e:
+        log.warning(f"Proxy lookup failed for {account_id}: {e}")
+        return None
+    finally:
+        await conn.close()
+
+
+def _parse_proxy_url(url: str) -> tuple | None:
+    """Parse socks5://user:pass@host:port into Telethon proxy tuple.
+
+    Supports: socks5://, socks4://, http://
+    """
+    if not url:
+        return None
+    try:
+        import socks
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower()
+        host = parsed.hostname
+        port = parsed.port or 1080
+        username = parsed.username or None
+        password = parsed.password or None
+        rdns = True  # resolve DNS through proxy
+
+        if scheme == "socks5":
+            return (socks.SOCKS5, host, port, rdns, username, password)
+        elif scheme == "socks4":
+            return (socks.SOCKS4, host, port, username, password)
+        elif scheme in ("http", "https"):
+            return (socks.HTTP, host, port, rdns, username, password)
+        else:
+            log.warning(f"Unsupported proxy scheme: {scheme}")
+            return None
+    except ImportError:
+        log.error("pysocks not installed — cannot use proxies. pip install pysocks")
+        return None
+    except Exception as e:
+        log.error(f"Failed to parse proxy URL: {e}")
+        return None
+
+
 # ── Client Lifecycle ─────────────────────────────────────────────────────
 
 async def create_client(phone: str, api_id: int = None, api_hash: str = None):
@@ -195,6 +259,7 @@ async def get_client(account_id: str):
     """Get or create a TelegramClient from stored session.
 
     Returns connected client, or None if no session exists.
+    Uses per-account proxy if assigned (1 proxy = 1 account permanently).
     """
     from telethon import TelegramClient
 
@@ -215,9 +280,17 @@ async def get_client(account_id: str):
 
     _ensure_session_dir()
 
+    # Resolve proxy for this account
+    proxy = await _resolve_proxy(account_id)
+
     # Import session from string
     from telethon.sessions import StringSession
-    client = TelegramClient(StringSession(session_string), TG_API_ID, TG_API_HASH)
+    client = TelegramClient(
+        StringSession(session_string),
+        TG_API_ID,
+        TG_API_HASH,
+        proxy=proxy,  # None = direct, tuple = socks proxy
+    )
 
     try:
         await client.connect()
@@ -228,7 +301,8 @@ async def get_client(account_id: str):
 
         _clients[account_id] = client
         _set_status(account_id, "online")
-        log.info(f"Client connected for account {account_id}")
+        proxy_info = f" via proxy" if proxy else ""
+        log.info(f"Client connected for account {account_id}{proxy_info}")
         return client
     except Exception as e:
         log.error(f"Failed to connect client for {account_id}: {e}")

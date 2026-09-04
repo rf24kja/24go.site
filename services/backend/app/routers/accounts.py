@@ -23,6 +23,60 @@ router = APIRouter(prefix="/api/v1/accounts", tags=["accounts"])
 log = logging.getLogger(__name__)
 
 
+# ── Proxy helpers ────────────────────────────────────────────────────
+
+async def _resolve_proxy_for_account(account_id: UUID) -> tuple | None:
+    """Look up proxy for account from DB. Returns Telethon proxy tuple or None."""
+    try:
+        import os
+        from urllib.parse import urlparse
+        db_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(db_url)
+        try:
+            row = await conn.fetchrow(
+                """SELECT p.proxy_url FROM account_pool a
+                   JOIN proxies p ON a.proxy_id = p.id
+                   WHERE a.id = $1 AND p.is_active = true""",
+                account_id,
+            )
+            if not row:
+                return None
+            return _parse_proxy(row["proxy_url"])
+        finally:
+            await conn.close()
+    except Exception as e:
+        log.warning(f"Proxy lookup failed for {account_id}: {e}")
+        return None
+
+
+def _parse_proxy(url: str) -> tuple | None:
+    """Parse socks5://user:pass@host:port into Telethon proxy tuple."""
+    if not url:
+        return None
+    try:
+        import socks
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower()
+        host = parsed.hostname
+        port = parsed.port or 1080
+        username = parsed.username or None
+        password = parsed.password or None
+        rdns = True
+        if scheme == "socks5":
+            return (socks.SOCKS5, host, port, rdns, username, password)
+        elif scheme == "socks4":
+            return (socks.SOCKS4, host, port, username, password)
+        elif scheme in ("http", "https"):
+            return (socks.HTTP, host, port, rdns, username, password)
+        return None
+    except ImportError:
+        log.error("pysocks not installed — cannot use proxies")
+        return None
+    except Exception as e:
+        log.error(f"Failed to parse proxy URL: {e}")
+        return None
+
+
 def _mask_phone(phone: str) -> str:
     """Mask phone for logs: +66987654321 → +669****4321."""
     if not phone or len(phone) < 6:
@@ -280,7 +334,8 @@ async def bulk_connect_accounts(
             from telethon import TelegramClient
             from telethon.sessions import StringSession
 
-            client = TelegramClient(StringSession(), api_id, api_hash)
+            proxy = await _resolve_proxy_for_account(account_id)
+            client = TelegramClient(StringSession(), api_id, api_hash, proxy=proxy)
             await client.connect()
             sent_code = await client.send_code_request(account.account_identifier)
             session_string = client.session.save()
@@ -427,9 +482,12 @@ async def connect_telegram(
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
+        # Resolve proxy for this account
+        proxy = await _resolve_proxy_for_account(account_id)
+
         # Create client, send code request, and save SESSION STATE (not just hash)
         # This keeps the same DC connection for the confirm step
-        client = TelegramClient(StringSession(), api_id, api_hash)
+        client = TelegramClient(StringSession(), api_id, api_hash, proxy=proxy)
         await client.connect()
         sent_code = await client.send_code_request(body.phone)
 
@@ -513,11 +571,14 @@ async def confirm_telegram(
 
         log.info(f"confirm_telegram: account={account_id} stored_phone={_mask_phone(stored_phone)} submitted_phone={_mask_phone(body.phone)} has_hash=True has_session={bool(session_string)}")
 
+        # Resolve proxy for this account
+        proxy = await _resolve_proxy_for_account(account_id)
+
         # Reuse session from connect step to keep same DC connection
         if session_string:
-            client = TelegramClient(StringSession(session_string), api_id, api_hash)
+            client = TelegramClient(StringSession(session_string), api_id, api_hash, proxy=proxy)
         else:
-            client = TelegramClient(StringSession(), api_id, api_hash)
+            client = TelegramClient(StringSession(), api_id, api_hash, proxy=proxy)
         await client.connect()
         log.info(f"confirm_telegram: calling sign_in for {_mask_phone(body.phone)}")
 
@@ -663,7 +724,8 @@ async def confirm_password(
         pending_session = stored["session_string"]
         phone = stored["phone"]
 
-        client = TelegramClient(StringSession(pending_session), api_id, api_hash)
+        proxy = await _resolve_proxy_for_account(account_id)
+        client = TelegramClient(StringSession(pending_session), api_id, api_hash, proxy=proxy)
         await client.connect()
         await client.sign_in(password=body.password)
 

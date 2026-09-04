@@ -22,6 +22,51 @@ log = logging.getLogger(__name__)
 _active_scanners: dict[str, str] = {}  # group_id -> task_id
 
 
+# ── Proxy helpers ────────────────────────────────────────────────────
+
+async def _resolve_proxy_for_account(account_id) -> tuple | None:
+    """Look up proxy for account from DB. Returns Telethon proxy tuple or None."""
+    try:
+        import os, asyncpg
+        from urllib.parse import urlparse
+        from app.config import settings
+        db_url = settings.DATABASE_URL.replace("+asyncpg", "")
+        conn = await asyncpg.connect(db_url)
+        try:
+            import uuid as _u
+            row = await conn.fetchrow(
+                """SELECT p.proxy_url FROM account_pool a
+                   JOIN proxies p ON a.proxy_id = p.id
+                   WHERE a.id = $1 AND p.is_active = true""",
+                _u.UUID(str(account_id)),
+            )
+            if not row:
+                return None
+            url = row["proxy_url"]
+            if not url:
+                return None
+            import socks
+            parsed = urlparse(url)
+            scheme = parsed.scheme.lower()
+            host = parsed.hostname
+            port = parsed.port or 1080
+            username = parsed.username or None
+            password = parsed.password or None
+            rdns = True
+            if scheme == "socks5":
+                return (socks.SOCKS5, host, port, rdns, username, password)
+            elif scheme == "socks4":
+                return (socks.SOCKS4, host, port, username, password)
+            elif scheme in ("http", "https"):
+                return (socks.HTTP, host, port, rdns, username, password)
+            return None
+        finally:
+            await conn.close()
+    except Exception as e:
+        log.warning(f"Proxy lookup failed for {account_id}: {e}")
+        return None
+
+
 class GroupCreateRequest(BaseModel):
     platform: str  # 'telegram' | 'vkontakte'
     group_identifier: str  # '@username' or 'vk_id:12345'
@@ -132,7 +177,8 @@ async def add_group(
                     )
                     if row:
                         session_str = dec(row["session_data"])
-                        client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                        proxy = await _resolve_proxy_for_account(body.account_id)
+                        client = TelegramClient(StringSession(session_str), api_id, api_hash, proxy=proxy)
                         await client.connect()
                         try:
                             entity = await client.get_entity(body.group_identifier)
@@ -518,7 +564,8 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                 )
                 if row:
                     session_str = dec(row["session_data"])
-                    client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                    proxy = await _resolve_proxy_for_account(account_id)
+                    client = TelegramClient(StringSession(session_str), api_id, api_hash, proxy=proxy)
                     await client.connect()
             finally:
                 await conn.close()
@@ -539,7 +586,8 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                 )
                 if row:
                     session_str = dec(row["session_data"])
-                    client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                    proxy = await _resolve_proxy_for_account(row["id"])
+                    client = TelegramClient(StringSession(session_str), api_id, api_hash, proxy=proxy)
                     await client.connect()
             finally:
                 await conn.close()
