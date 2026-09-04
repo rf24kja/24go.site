@@ -13,6 +13,7 @@ type Post = {
   excerpt: string;
   tags: string[];
   created_at: string;
+  reading_time?: number;
 };
 
 function readingTime(text: string): number {
