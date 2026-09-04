@@ -3,23 +3,67 @@ import { getPublicBlogPost, getBlogSlugs, getPublicBlogPosts } from "@/lib/api";
 import type { Metadata } from "next";
 import { ArrowLeft, Clock, Tag } from "lucide-react";
 
-// ponytail: minimal markdown→HTML, no dependency
+// ponytail: minimal markdown→HTML, no dependency. Supports tables, images, code, blockquotes.
 function md(text: string): string {
-  return text
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+  if (!text) return "";
+
+  // Normalize line endings
+  let html = text.replace(/\r\n/g, "\n");
+
+  // Code blocks: ```lang\n...\n``` → <pre><code>...</code></pre>
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
+    const escaped = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return `<pre class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 my-4 overflow-x-auto text-sm"><code class="text-zinc-300">${escaped}</code></pre>`;
+  });
+
+  // Inline code: `code` → <code>code</code>
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-zinc-800 text-emerald-400 px-1.5 py-0.5 rounded text-sm">$1</code>');
+
+  // Images: ![alt](url) → <img>
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-xl border border-zinc-800 my-6 max-w-full" loading="lazy" />');
+
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (_m, header, _sep, body) => {
+    const headers = header.split("|").filter((c: string) => c.trim());
+    const rows = body.trim().split("\n").map((r: string) => r.split("|").filter((c: string) => c.trim()));
+    const ths = headers.map((h: string) => `<th class="px-4 py-2 text-left text-sm font-medium text-zinc-300 bg-zinc-800/50 border-b border-zinc-700">${h.trim()}</th>`).join("");
+    const trs = rows.map((cells: string[]) => {
+      const tds = cells.map((c: string) => `<td class="px-4 py-2 text-sm text-zinc-400 border-b border-zinc-800/50">${c.trim()}</td>`).join("");
+      return `<tr>${tds}</tr>`;
+    }).join("");
+    return `<div class="overflow-x-auto my-6"><table class="w-full border border-zinc-800 rounded-xl overflow-hidden"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  });
+
+  // Blockquotes: > text → <blockquote>
+  html = html.replace(/^(?:> .+\n?)+/gm, (block) => {
+    const inner = block.replace(/^> /gm, "").trim();
+    return `<blockquote class="border-l-4 border-emerald-500/50 pl-4 py-2 my-4 text-zinc-400 italic bg-emerald-500/5 rounded-r-lg">${inner.replace(/\n/g, "<br/>")}</blockquote>`;
+  });
+
+  // Horizontal rules: --- or *** or ___
+  html = html.replace(/^[-*_]{3,}$/gm, '<hr class="border-zinc-800 my-8" />');
+
+  // Standard markdown elements
+  html = html
+    .replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-zinc-100 mt-8 mb-3">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-zinc-100 mt-10 mb-4 pb-2 border-b border-zinc-800">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold text-zinc-100 mb-6">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-zinc-200 font-semibold">$1</strong>')
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-emerald-400 hover:underline">$1</a>')
+    .replace(/\[(.+?)\]\(([^)]+)\)/g, '<a href="$2" class="text-emerald-400 hover:underline">$1</a>')
     .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="list-disc pl-5 space-y-1">$1</ul>')
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="list-disc pl-5 space-y-1 my-3">$1</ul>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="list-decimal">$2</li>')
     .split("\n\n").map((p) => {
       const trimmed = p.trim();
       if (!trimmed) return "";
-      if (trimmed.startsWith("<h") || trimmed.startsWith("<ul") || trimmed.startsWith("<li")) return trimmed;
-      return "<p>" + trimmed.replace(/\n/g, "<br/>") + "</p>";
+      if (trimmed.startsWith("<h") || trimmed.startsWith("<ul") || trimmed.startsWith("<li") ||
+          trimmed.startsWith("<pre") || trimmed.startsWith("<blockquote") || trimmed.startsWith("<table") ||
+          trimmed.startsWith("<div") || trimmed.startsWith("<hr") || trimmed.startsWith("<img") || trimmed.startsWith("<code")) return trimmed;
+      return "<p class='text-zinc-400 leading-relaxed my-3'>" + trimmed.replace(/\n/g, "<br/>") + "</p>";
     }).join("\n");
+
+  return html;
 }
 
 function readingTime(text: string): number {
