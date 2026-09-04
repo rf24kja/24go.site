@@ -259,7 +259,7 @@ export default function AutoRepliesPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3 text-xs text-zinc-500">
-                <span>{ar.mode === "keyword" || ar.mode === "ai_agent" ? `${(ar.keywords || "").split(",").filter(Boolean).length} keywords` : t("autoReplies.mode.rotation")}</span>
+                <span>{ar.mode === "keyword" || ar.mode === "ai_agent" ? `${(ar.keywords || "").split(",").filter(Boolean).length} ${t("autoReplies.keywordsCount")}` : t("autoReplies.mode.rotation")}</span>
                 <span>·</span>
                 <span>{ar.answers_count} {t("autoReplies.answers")}</span>
               </div>

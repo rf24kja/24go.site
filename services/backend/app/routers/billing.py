@@ -457,11 +457,16 @@ async def _extend_subscription(customer_id: str | None, subscription_id: str):
     url = settings.DATABASE_URL.replace("+asyncpg", "")
     conn = await asyncpg.connect(url)
     try:
-        # Find tenant by stripe customer or subscription metadata
+        # Find subscription by id (Stripe subscription_id stored in billing_transactions)
         row = await conn.fetchrow(
-            "SELECT tenant_id FROM subscriptions WHERE stripe_subscription_id = $1 OR id::text = $1 LIMIT 1",
+            """SELECT tenant_id FROM subscriptions WHERE id::text = $1 LIMIT 1""",
             subscription_id,
         )
+        if not row:
+            # Fallback: find most recent active subscription
+            row = await conn.fetchrow(
+                "SELECT tenant_id FROM subscriptions WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
+            )
         if not row:
             log.warning(f"extend_subscription: no subscription found for {subscription_id}")
             return
@@ -484,9 +489,13 @@ async def _deactivate_subscription(customer_id: str | None, subscription_id: str
     conn = await asyncpg.connect(url)
     try:
         row = await conn.fetchrow(
-            "SELECT tenant_id FROM subscriptions WHERE stripe_subscription_id = $1 OR id::text = $1 LIMIT 1",
+            "SELECT tenant_id FROM subscriptions WHERE id::text = $1 LIMIT 1",
             subscription_id,
         )
+        if not row:
+            row = await conn.fetchrow(
+                "SELECT tenant_id FROM subscriptions WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
+            )
         if not row:
             log.warning(f"deactivate_subscription: no subscription found for {subscription_id}")
             return
