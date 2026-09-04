@@ -173,7 +173,7 @@ async def admin_delete_post(
 async def public_list_posts(
     locale: str = Query(default="en", pattern="^(ru|en)$"),
     tag: str | None = None,
-    limit: int = Query(default=20, le=100),
+    limit: int = Query(default=100, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
