@@ -7,7 +7,7 @@ import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
   disconnectTelegram, getTelegramStatus,
-  bulkImportAccounts,
+  bulkImportAccounts, connectVK,
 } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
 import { Spinner } from "@/components/Spinner";
@@ -70,6 +70,7 @@ export default function AccountsPage() {
   // VK connect state
   const [vkModal, setVkModal] = useState<string | null>(null); // accountId
   const [vkToken, setVkToken] = useState("");
+  const [vkGroupId, setVkGroupId] = useState("");
   const [vkBusy, setVkBusy] = useState(false);
   const [vkError, setVkError] = useState("");
 
@@ -203,17 +204,10 @@ export default function AccountsPage() {
     setVkBusy(true);
     setVkError("");
     try {
-      const res = await fetch(`/api/v1/accounts/${vkModal}/connect-vk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
-        body: JSON.stringify({ token: vkToken.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || t("accounts.vkConnectFailed"));
-      }
+      await connectVK(auth.token, vkModal, vkToken.trim(), parseInt(vkGroupId) || 0);
       setVkModal(null);
       setVkToken("");
+      setVkGroupId("");
       load();
     } catch (e: any) {
       setVkError(e.message || t("accounts.vkConnectFailed"));
@@ -572,6 +566,9 @@ export default function AccountsPage() {
             <p className="text-xs text-zinc-500">{t("accounts.vkConnectDesc")}</p>
             <input type="text" placeholder={t("accounts.vkTokenPlaceholder")} value={vkToken}
               onChange={(e) => setVkToken(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
+            <input type="number" placeholder={t("accounts.vkGroupIdPlaceholder") || "VK Group ID"} value={vkGroupId}
+              onChange={(e) => setVkGroupId(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
             {vkError && <p className="text-xs text-rose-400">{vkError}</p>}
             <p className="text-[10px] text-zinc-600">{t("accounts.vkTokenHint")}</p>

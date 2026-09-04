@@ -216,7 +216,7 @@ export default function LeadsPage() {
         <h1 className="text-2xl font-bold">{t("leads.title")}</h1>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1">
-            {[{ key: "ALL", label: t("leads.filterAll") }, { key: "HOT", label: t("leads.filterHot") }, { key: "WARM", label: t("leads.filterWarm") }, { key: "COLD", label: t("leads.filterCold") }, { key: "SPAM", label: "SPAM" }].map((f) => (
+            {[{ key: "ALL", label: t("leads.filterAll") }, { key: "HOT", label: t("leads.filterHot") }, { key: "WARM", label: t("leads.filterWarm") }, { key: "COLD", label: t("leads.filterCold") }, { key: "SPAM", label: t("leads.filterSpam") }].map((f) => (
               <button key={f.key} onClick={() => setFilter(f.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm transition ${filter === f.key ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}>
                 {f.label}

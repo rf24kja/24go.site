@@ -95,7 +95,7 @@ export function OnboardingWizard() {
                       {hasAccount ? "✅" : "⏳"}
                     </span>
                     <span className={`text-sm ${hasAccount ? "text-emerald-400" : "text-zinc-400"}`}>
-                      {hasAccount ? "Account connected" : "⏳ Pending"}
+                      {hasAccount ? t("wizard.accountConnected") : t("wizard.accountPending")}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">

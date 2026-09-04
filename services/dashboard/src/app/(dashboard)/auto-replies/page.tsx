@@ -441,7 +441,7 @@ export default function AutoRepliesPage() {
                 <h3 className="text-xs text-zinc-500 mb-2">{t("autoReplies.promptLabel")}</h3>
                 <div className="bg-zinc-800 rounded-lg p-3 text-sm text-zinc-300 whitespace-pre-wrap">{detail.prompt || "—"}</div>
                 <div className="flex gap-4 mt-2 text-xs text-zinc-500">
-                  <span>Model: {detail.model || "—"}</span>
+                  <span>{t("autoReplies.modelLabelDetail")}: {detail.model || "—"}</span>
                 </div>
               </div>
             )}

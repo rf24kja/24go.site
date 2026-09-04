@@ -1261,5 +1261,19 @@
   "hints.leadRules.intent": "Какую классификацию присвоить",
   "hints.leadRules.confidence": "Насколько уверенное правило (0-100%)",
   "hints.leadRules.priority": "Чем выше — тем раньше проверяется",
-  "hints.leadRules.keywords": "Ключевые слова через запятую"
+  "hints.leadRules.keywords": "Ключевые слова через запятую",
+
+  "campaigns.descriptionLabel": "Описание",
+  "campaigns.descriptionPlaceholder": "Необязательное описание кампании",
+  "campaigns.removeEmoji": "Удалить эмодзи",
+  "campaigns.attachmentsLabel": "Вложения",
+  "campaigns.dropFiles": "Перетащите файлы сюда или нажмите для загрузки",
+  "campaigns.dropFilesHint": "Изображения, видео, документы",
+
+  "accounts.vkGroupIdPlaceholder": "ID группы VK",
+
+  "wizard.accountConnected": "Аккаунт подключён",
+  "wizard.accountPending": "Ожидание",
+  "leads.filterSpam": "SPAM",
+  "autoReplies.modelLabelDetail": "Модель"
 }

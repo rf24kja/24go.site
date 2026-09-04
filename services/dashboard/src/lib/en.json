@@ -1261,5 +1261,19 @@
   "hints.leadRules.intent": "What classification to assign",
   "hints.leadRules.confidence": "How confident this rule is (0-100%)",
   "hints.leadRules.priority": "Higher = checked first",
-  "hints.leadRules.keywords": "Comma-separated trigger words"
+  "hints.leadRules.keywords": "Comma-separated trigger words",
+
+  "campaigns.descriptionLabel": "Description",
+  "campaigns.descriptionPlaceholder": "Optional campaign description",
+  "campaigns.removeEmoji": "Remove emoji",
+  "campaigns.attachmentsLabel": "Attachments",
+  "campaigns.dropFiles": "Drop files here or click to upload",
+  "campaigns.dropFilesHint": "Images, videos, documents",
+
+  "accounts.vkGroupIdPlaceholder": "VK Group ID",
+
+  "wizard.accountConnected": "Account connected",
+  "wizard.accountPending": "Pending",
+  "leads.filterSpam": "SPAM",
+  "autoReplies.modelLabelDetail": "Model"
 }

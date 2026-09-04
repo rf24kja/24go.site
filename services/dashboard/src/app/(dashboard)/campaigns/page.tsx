@@ -307,8 +307,8 @@ export default function CampaignsPage() {
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">Description</label>
-                <textarea placeholder="Optional campaign description" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.descriptionLabel")}</label>
+                <textarea placeholder={t("campaigns.descriptionPlaceholder")} rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 resize-none" />
               </div>
               <div className="flex gap-2 items-center">
@@ -329,7 +329,7 @@ export default function CampaignsPage() {
                       {form.emoji && (
                         <button type="button" onClick={() => setForm({ ...form, emoji: "" })}
                           className="col-span-8 text-center text-xs text-zinc-500 hover:text-zinc-300 py-1 mt-1 border-t border-zinc-700">
-                          Remove emoji
+                          {t("campaigns.removeEmoji")}
                         </button>
                       )}
                     </div>
@@ -344,7 +344,7 @@ export default function CampaignsPage() {
 
               {/* Attachments */}
               <div>
-                <label className="text-xs text-zinc-500 mb-1 block">Attachments</label>
+                <label className="text-xs text-zinc-500 mb-1 block">{t("campaigns.attachmentsLabel")}</label>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
@@ -352,8 +352,8 @@ export default function CampaignsPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${dragOver ? "border-emerald-500 bg-emerald-500/5" : "border-zinc-700 hover:border-zinc-600"}`}>
                   <Upload size={18} className="mx-auto mb-1 text-zinc-500" />
-                  <p className="text-xs text-zinc-500">Drop files here or click to upload</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">Images, videos, documents</p>
+                  <p className="text-xs text-zinc-500">{t("campaigns.dropFiles")}</p>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">{t("campaigns.dropFilesHint")}</p>
                 </div>
                 <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
                   onChange={(e) => handleFiles(e.target.files)} />
