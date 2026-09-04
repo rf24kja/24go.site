@@ -106,6 +106,7 @@ function Section({
   expect,
   tips,
   warnings,
+  extra,
   nextId,
   nextLabel,
 }: {
@@ -117,6 +118,7 @@ function Section({
   expect: string[];
   tips?: string;
   warnings?: string;
+  extra?: React.ReactNode;
   nextId?: SectionId;
   nextLabel?: string;
 }) {
@@ -154,6 +156,7 @@ function Section({
 
         {tips && <Tip text={tips} />}
         {warnings && <Warning text={warnings} />}
+        {extra && <div className="mt-2">{extra}</div>}
 
         {nextId && (
           <div className="pt-4 border-t border-zinc-800 text-right">
@@ -202,6 +205,21 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
       expect={t("wiki.section.accounts.expect").split("\n")}
       tips={t("wiki.section.accounts.tip")}
       warnings={t("wiki.section.accounts.warning")}
+      extra={
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+            {t("wiki.subhead.accountTypes") || "Which accounts to use"}
+          </h4>
+          <ul className="space-y-1.5">
+            {t("wiki.section.accounts.accountTypes").split("\n").map((line, i) => (
+              <li key={i} className="text-sm text-zinc-400 flex items-start gap-2">
+                <span className="text-emerald-500 mt-0.5">•</span>
+                <span>{line.replace(/^•\s*/, "")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      }
       nextId="search"
       nextLabel={t("wiki.nav.search")}
     />

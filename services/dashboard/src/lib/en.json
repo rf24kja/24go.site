@@ -993,6 +993,7 @@
   "wiki.subhead.howTo": "How to use",
   "wiki.subhead.expect": "What to expect",
   "wiki.subhead.roles": "Roles",
+  "wiki.subhead.accountTypes": "Which accounts to use",
 
   "wiki.section.overview.title": "Platform Overview",
   "wiki.section.overview.forWhat": "24GO is a platform for automating customer discovery in Telegram and VK. It helps real estate agents, travel agencies, and any business find potential buyers without manual searching. Without automation, you spend hours monitoring chats and lose hot customers.",
@@ -1004,7 +1005,8 @@
   "wiki.section.accounts.title": "Accounts",
   "wiki.section.accounts.forWhat": "Accounts are working Telegram profiles through which the system monitors and sends messages. Without accounts, the platform cannot work with Telegram. Each account works independently, like a separate employee.",
   "wiki.section.accounts.howTo": "Click \"Add Account\" in the Accounts section\nEnter Telegram phone number (+7...)\nReceive verification code in Telegram\nEnter the code in the system\nWait for warmup (3-7 days, 5-15 messages/day)",
-  "wiki.section.accounts.expect": "1 account = 50-100 messages/day after warmup\nRecommendation: 25 accounts for 5000 mailings\n\"Warmup\" status is normal — Telegram limits new accounts\n\"Banned\" status means you need a new account",
+  "wiki.section.accounts.expect": "1 account = 5-20 messages/day after warmup (depends on account)\nRecommendation: 100 accounts for 1000 mailings/day (gradually increase to 2000)\n\"Warmup\" status is normal — Telegram limits new accounts\n\"Banned\" status means you need a new account",
+  "wiki.section.accounts.accountTypes": "Which accounts to use:\n• Accounts aged 3+ months — lowest ban risk\n• Accounts with profile photo, bio, and history — look human\n• Avoid brand new accounts — high ban risk even after warmup\n• Buy aged accounts from trusted sellers only — check reviews\n• Each account needs its own proxy — sharing IPs = guaranteed ban",
   "wiki.section.accounts.tip": "Add accounts in advance. Warmup takes 3-7 days, and until it's complete, mailing volume is limited.",
   "wiki.section.accounts.warning": "Don't use one account for too many mailings — it will lead to blocking. Follow the recommended limits.",
 
