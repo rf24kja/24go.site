@@ -248,8 +248,8 @@ async def stripe_webhook(request: Request):
     sig = request.headers.get("stripe-signature", "")
 
     if not STRIPE_WEBHOOK_SECRET or not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
-        log.error("STRIPE_WEBHOOK_SECRET not configured — rejecting webhook")
-        raise HTTPException(500, "Webhook not configured")
+        log.warning("STRIPE_WEBHOOK_SECRET not configured — returning 200 to avoid Stripe retry storm")
+        return {"status": "ignored", "reason": "webhook_not_configured"}
 
     stripe.api_key = STRIPE_SECRET_KEY
     try:
@@ -278,6 +278,31 @@ async def stripe_webhook(request: Request):
             provider="stripe",
             provider_tx_id=provider_tx_id,
         )
+
+    elif event_type == "invoice.payment_succeeded":
+        # Subscription renewal — extend period
+        data = event["data"]["object"]
+        subscription_id = data.get("subscription")
+        customer_id = data.get("customer")
+        if subscription_id:
+            await _extend_subscription(customer_id, subscription_id)
+        log.info(f"Stripe invoice.payment_succeeded: sub={subscription_id}")
+
+    elif event_type == "invoice.payment_failed":
+        # Dunning — log warning, let Stripe handle retry
+        data = event["data"]["object"]
+        customer_id = data.get("customer")
+        attempt = data.get("attempt_count", 0)
+        log.warning(f"Stripe payment failed: customer={customer_id} attempt={attempt}")
+
+    elif event_type == "customer.subscription.deleted":
+        # Cancellation — deactivate subscription
+        data = event["data"]["object"]
+        subscription_id = data.get("id")
+        customer_id = data.get("customer")
+        if subscription_id:
+            await _deactivate_subscription(customer_id, subscription_id)
+        log.info(f"Stripe subscription deleted: sub={subscription_id}")
 
     return {"status": "ok"}
 
@@ -423,5 +448,52 @@ async def _process_payment(
         )
 
         log.info(f"Payment processed: tenant={tenant_id} plan={plan_tier} amount=${amount_usd}")
+    finally:
+        await conn.close()
+
+
+async def _extend_subscription(customer_id: str | None, subscription_id: str):
+    """Extend subscription period on successful renewal."""
+    url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(url)
+    try:
+        # Find tenant by stripe customer or subscription metadata
+        row = await conn.fetchrow(
+            "SELECT tenant_id FROM subscriptions WHERE stripe_subscription_id = $1 OR id::text = $1 LIMIT 1",
+            subscription_id,
+        )
+        if not row:
+            log.warning(f"extend_subscription: no subscription found for {subscription_id}")
+            return
+        await conn.execute(
+            """UPDATE subscriptions SET status = 'active',
+                current_period_start = NOW(),
+                current_period_end = NOW() + INTERVAL '1 month',
+                monthly_posts_used = 0
+               WHERE tenant_id = $1""",
+            row["tenant_id"],
+        )
+        log.info(f"Subscription extended: tenant={row['tenant_id']}")
+    finally:
+        await conn.close()
+
+
+async def _deactivate_subscription(customer_id: str | None, subscription_id: str):
+    """Deactivate subscription on cancellation."""
+    url = settings.DATABASE_URL.replace("+asyncpg", "")
+    conn = await asyncpg.connect(url)
+    try:
+        row = await conn.fetchrow(
+            "SELECT tenant_id FROM subscriptions WHERE stripe_subscription_id = $1 OR id::text = $1 LIMIT 1",
+            subscription_id,
+        )
+        if not row:
+            log.warning(f"deactivate_subscription: no subscription found for {subscription_id}")
+            return
+        await conn.execute(
+            "UPDATE subscriptions SET status = 'cancelled' WHERE tenant_id = $1",
+            row["tenant_id"],
+        )
+        log.info(f"Subscription deactivated: tenant={row['tenant_id']}")
     finally:
         await conn.close()

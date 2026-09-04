@@ -272,3 +272,29 @@ class GroupSearchResponse(BaseModel):
     cost_kopeks: int
     cache_hit: bool
     query_type: str  # keyword, tgstat
+
+
+# ── Auto-Replies ──────────────────────────────────────────────────────
+
+class AutoReplyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    mode: str = Field(default="keyword", pattern="^(keyword|ai|rotation)$")
+    keywords: str = ""
+    prompt: str = ""
+    model: str = ""
+    api_key: str = ""
+    answers: list[str] = []
+
+
+class AutoReplyUpdate(BaseModel):
+    name: str | None = None
+    mode: str | None = None
+    keywords: str | None = None
+    prompt: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+    is_active: bool | None = None
+
+
+class AutoReplyAnswerCreate(BaseModel):
+    text: str = Field(..., min_length=1)

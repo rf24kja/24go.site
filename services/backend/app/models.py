@@ -426,3 +426,40 @@ class SearchCache(Base):
     __table_args__ = (
         Index("idx_search_cache_hash", "query_hash", "expires_at"),
     )
+
+
+# ── Auto-Replies ──────────────────────────────────────────────────────
+
+class AutoReply(Base):
+    """Auto-reply rule for incoming messages."""
+    __tablename__ = "auto_replies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    mode = Column(String(20), nullable=False, default="keyword")  # keyword, ai, rotation
+    keywords = Column(Text, default="")  # comma-separated for keyword mode
+    prompt = Column(Text, default="")  # AI prompt for ai mode
+    model = Column(String(100), default="")  # LLM model for ai mode
+    api_key_encrypted = Column(Text, default="")  # encrypted API key for ai mode
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
+
+    answers = relationship("AutoReplyAnswer", back_populates="auto_reply", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_auto_replies_tenant", "tenant_id", "is_active"),
+    )
+
+
+class AutoReplyAnswer(Base):
+    """Individual answer text for an auto-reply rule."""
+    __tablename__ = "auto_reply_answers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    auto_reply_id = Column(UUID(as_uuid=True), ForeignKey("auto_replies.id", ondelete="CASCADE"), nullable=False)
+    text = Column(Text, nullable=False)
+    sort_order = Column(Integer, default=0)
+
+    auto_reply = relationship("AutoReply", back_populates="answers")
