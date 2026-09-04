@@ -46,7 +46,7 @@ export default function ProxiesPage() {
     if (!auth.token) return;
     setLoading(true);
     try {
-      setProxies(await getProxies(auth.token));
+      setProxies(await getProxies(auth.token!));
     } catch (e: any) {
       toast(e.message, "error");
     }
@@ -59,7 +59,7 @@ export default function ProxiesPage() {
     if (!formUrl.trim()) { toast(t("proxies.urlRequired"), "error"); return; }
     setSaving(true);
     try {
-      await createProxy(auth.token, { proxy_url: formUrl.trim(), geo_location: formGeo.trim() || undefined, rotation_api_url: formRotation.trim() || undefined });
+      await createProxy(auth.token!, { proxy_url: formUrl.trim(), geo_location: formGeo.trim() || undefined, rotation_api_url: formRotation.trim() || undefined });
       toast(t("proxies.created"), "success");
       setShowAdd(false);
       setFormUrl(""); setFormGeo(""); setFormRotation("");
@@ -73,7 +73,7 @@ export default function ProxiesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm(t("proxies.confirmDelete"))) return;
     try {
-      await deleteProxy(auth.token, id);
+      await deleteProxy(auth.token!, id);
       toast(t("proxies.deleted"), "success");
       await load();
     } catch (e: any) {
@@ -84,7 +84,7 @@ export default function ProxiesPage() {
   const handleTest = async (id: string) => {
     setTestingId(id);
     try {
-      const res = await testProxy(auth.token, id);
+      const res = await testProxy(auth.token!, id);
       toast(res.message, res.status === "ok" ? "success" : "error");
     } catch (e: any) {
       toast(e.message, "error");
@@ -94,7 +94,7 @@ export default function ProxiesPage() {
 
   const handleToggle = async (p: Proxy) => {
     try {
-      await updateProxy(auth.token, p.id, { is_active: !p.is_active });
+      await updateProxy(auth.token!, p.id, { is_active: !p.is_active });
       await load();
     } catch (e: any) {
       toast(e.message, "error");
@@ -104,7 +104,7 @@ export default function ProxiesPage() {
   const handleSaveEdit = async () => {
     if (!editingId) return;
     try {
-      await updateProxy(auth.token, editingId, { proxy_url: editUrl, geo_location: editGeo });
+      await updateProxy(auth.token!, editingId, { proxy_url: editUrl, geo_location: editGeo });
       toast(t("proxies.updated"), "success");
       setEditingId(null);
       await load();
@@ -119,7 +119,7 @@ export default function ProxiesPage() {
     if (!lines.length) { toast(t("proxies.bulkEmpty"), "error"); return; }
     setBulkSaving(true);
     try {
-      const res = await bulkImportProxies(auth.token, lines, bulkGeo.trim() || undefined);
+      const res = await bulkImportProxies(auth.token!, lines, bulkGeo.trim() || undefined);
       setBulkResult(res);
       toast(`${t("proxies.bulkCreated")}: ${res.created}, ${t("proxies.bulkSkipped")}: ${res.skipped}`, "success");
       if (res.created > 0) await load();
@@ -135,7 +135,7 @@ export default function ProxiesPage() {
     if (!confirm(t("proxies.bulkAssignConfirm"))) return;
     setAssignBusy(true);
     try {
-      const res = await bulkAssignProxies(auth.token, true);
+      const res = await bulkAssignProxies(auth.token!, true);
       toast(`${t("proxies.bulkAssigned")}: ${res.assigned}/${res.total_accounts}`, "success");
       await load();
     } catch (e: any) {
