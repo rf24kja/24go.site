@@ -278,7 +278,7 @@ class GroupSearchResponse(BaseModel):
 
 class AutoReplyCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    mode: str = Field(default="keyword", pattern="^(keyword|ai|rotation)$")
+    mode: str = Field(default="keyword", pattern="^(keyword|ai_agent|rotation)$")
     keywords: str = ""
     prompt: str = ""
     model: str = ""

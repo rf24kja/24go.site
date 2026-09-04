@@ -274,7 +274,7 @@ export default function MailingsPage() {
               }`}>
               <p className="text-zinc-400 text-sm mb-2">{t("mailings.dropCsv")}</p>
               <p className="text-zinc-600 text-xs mb-4">{t("mailings.csvHint")}</p>
-              <input ref={fileRef} type="file" accept=".csv,.json" className="hidden"
+              <input ref={fileRef} type="file" accept=".csv,.txt,.json" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); }} />
               <button onClick={() => fileRef.current?.click()}
                 className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 transition">

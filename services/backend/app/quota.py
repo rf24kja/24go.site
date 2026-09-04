@@ -27,13 +27,13 @@ PLAN_LIMITS = {
         "monthly_posts_limit": 1_500,
         "token_credits_balance": 1_000_000,
         "max_accounts": 999_999_999,  # No limit
-        "max_targets": 100,
+        "max_targets": 50,
     },
     "pro": {
         "monthly_posts_limit": 7_500,
         "token_credits_balance": 5_000_000,
         "max_accounts": 999_999_999,  # No limit
-        "max_targets": 500,
+        "max_targets": 100,
     },
     "enterprise": {
         "monthly_posts_limit": 999_999_999,
