@@ -120,6 +120,7 @@ function Section({
   nextId?: SectionId;
   nextLabel?: string;
 }) {
+  const { t } = useI18n();
   return (
     <section id={id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 scroll-mt-20">
       <div className="flex items-center gap-3 mb-5">
