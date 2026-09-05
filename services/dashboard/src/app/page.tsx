@@ -394,18 +394,20 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {TESTIMONIALS.map((r, i) => (
+              {(showAllReviews ? TESTIMONIALS : TESTIMONIALS.slice(0, 12)).map((r, i) => (
                 <TestimonialCard key={i} {...r} />
               ))}
             </div>
-            <div className="text-center mt-8">
-              <button
-                onClick={() => setShowAllReviews(true)}
-                className="px-6 py-2.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700 transition btn-press"
-              >
-                {t("landing.viewAllReviews").replace("{count}", String(TESTIMONIALS.length))}
-              </button>
-            </div>
+            {!showAllReviews && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => setShowAllReviews(true)}
+                  className="px-6 py-2.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700 transition btn-press"
+                >
+                  {t("landing.viewAllReviews").replace("{count}", String(TESTIMONIALS.length))}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ── All platform features ─────────────────────── */}
