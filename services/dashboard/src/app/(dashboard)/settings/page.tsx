@@ -50,7 +50,7 @@ export default function SettingsPage() {
       const data = await getTenantSettings(auth.token);
       setSettings(data.settings || {});
       setDefaults(data.defaults || {});
-    } catch (e) { console.error("Failed to load settings:", e); }
+    } catch { /* settings load failed — defaults will be shown */ }
     setLoading(false);
   }, [auth?.token]);
 
@@ -76,7 +76,7 @@ export default function SettingsPage() {
     try {
       await resetSettingsSection(auth.token, section);
       await loadSettings();
-    } catch (e) { console.error("Failed to reset settings section:", e); }
+    } catch { /* reset failed */ }
   };
 
   return (
@@ -924,7 +924,7 @@ function AccountSection() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = `backup_${new Date().toISOString().slice(0, 10)}.csv`;
       a.click(); URL.revokeObjectURL(url);
-    } catch (e) { console.error("Failed to backup leads:", e); }
+    } catch { /* backup failed */ }
   };
 
   const handlePassChange = async (e: React.FormEvent) => {

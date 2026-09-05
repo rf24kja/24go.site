@@ -52,13 +52,15 @@ export default function BlogPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [locale, setLocale] = useState<"en" | "ru">("en");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
     setLoading(true);
+    setError(false);
     getPublicBlogPosts(locale)
       .then((res) => setPosts(Array.isArray(res) ? res : res.items || []))
-      .catch(() => setPosts([]))
+      .catch(() => { setPosts([]); setError(true); })
       .finally(() => setLoading(false));
   }, [locale]);
 
@@ -111,7 +113,13 @@ export default function BlogPage() {
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-zinc-500 text-lg">{t("blog.noPosts")}</p>
+            {error ? (
+              <p className="text-zinc-500 text-lg">
+                {locale === "ru" ? "Не удалось загрузить статьи. Попробуйте обновить страницу." : "Failed to load articles. Please refresh the page."}
+              </p>
+            ) : (
+              <p className="text-zinc-500 text-lg">{t("blog.noPosts")}</p>
+            )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-6">

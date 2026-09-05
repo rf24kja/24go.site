@@ -522,7 +522,7 @@ async def connect_telegram(
         return {"status": "code_sent", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"connect_telegram failed: {e}")
-        raise HTTPException(502, f"Telegram connection failed: {str(e)[:200]}")
+        raise HTTPException(502, "Telegram connection failed — check account credentials")
 
 
 @router.post("/{account_id}/confirm")
@@ -682,7 +682,7 @@ async def confirm_telegram(
         return {"status": "connected", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"confirm_telegram failed: {e}")
-        raise HTTPException(502, f"Authorization failed: {str(e)[:200]}")
+        raise HTTPException(502, "Authorization failed — invalid confirmation code")
 
 
 @router.post("/{account_id}/confirm-password")
@@ -809,7 +809,7 @@ async def confirm_password(
         return {"status": "connected", "account_id": str(account_id)}
     except Exception as e:
         log.error(f"confirm_password failed: {e}")
-        raise HTTPException(502, f"2FA authorization failed: {str(e)[:200]}")
+        raise HTTPException(502, "2FA authorization failed — check your authenticator code")
 
 
 @router.post("/{account_id}/disconnect")

@@ -31,14 +31,24 @@ async def test_smtp(
     body: SmtpTestRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Send a test email to verify SMTP configuration."""
+    """Send a test email to verify SMTP configuration. Only sends to the user's own email."""
+    import re
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.to_email):
+        return SmtpTestResponse(status="error", message="Invalid email format")
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.user):
+        return SmtpTestResponse(status="error", message="Invalid SMTP user email format")
+    if not (1 <= body.port <= 65535):
+        return SmtpTestResponse(status="error", message="Port must be between 1 and 65535")
+    # ponytail: restrict to_email to current user's email to prevent SMTP relay abuse
+    if body.to_email != current_user.email:
+        return SmtpTestResponse(status="error", message="Test emails can only be sent to your registered email")
     try:
         msg = MIMEMultipart()
         msg["From"] = body.user
         msg["To"] = body.to_email
-        msg["Subject"] = "✅ SMTP Test — 24go.site"
+        msg["Subject"] = "SMTP Test — 24go.site"
         msg.attach(MIMEText(
-            "This is a test email from LeadGen Control Plane.\n\n"
+            "This is a test email from 24GO.\n\n"
             "If you received this, SMTP is configured correctly.\n"
             f"Sent from: {body.user}\n"
             f"Via: {body.host}:{body.port}",
@@ -52,7 +62,7 @@ async def test_smtp(
 
         return SmtpTestResponse(status="ok", message=f"Test email sent to {body.to_email}")
     except Exception as e:
-        return SmtpTestResponse(status="error", message=str(e)[:200])
+        return SmtpTestResponse(status="error", message="SMTP connection failed — check host, port, and credentials")
 
 
 @router.get("/status")

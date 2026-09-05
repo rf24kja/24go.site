@@ -53,5 +53,5 @@ def decrypt(ciphertext: str) -> str:
     try:
         return f.decrypt(ciphertext.encode()).decode()
     except Exception:
-        # Already plaintext or corrupted
-        return ciphertext
+        log.warning("Decryption failed — data may be corrupted or already plaintext")
+        raise ValueError("Failed to decrypt data: invalid key or corrupted ciphertext")

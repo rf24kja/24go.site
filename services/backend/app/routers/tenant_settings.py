@@ -88,6 +88,22 @@ async def test_webhook(
     current_user: User = Depends(get_current_user),
 ):
     """Send a test webhook to the given URL."""
+    # SSRF protection: block internal/private URLs
+    from urllib.parse import urlparse
+    import ipaddress
+    parsed = urlparse(body.url)
+    hostname = parsed.hostname or ""
+    blocked = ["localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"]
+    if hostname in blocked:
+        raise HTTPException(400, "Internal URLs are not allowed")
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise HTTPException(400, "Private/internal IPs are not allowed")
+    except ValueError:
+        if hostname.endswith(".internal") or hostname.endswith(".local"):
+            raise HTTPException(400, "Internal domains are not allowed")
+
     test_payload = {
         "event": "webhook.test",
         "tenant_id": str(current_user.tenant_id),
@@ -164,10 +180,10 @@ async def export_data(current_user: User = Depends(get_current_user)):
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         tenant_id = current_user.tenant_id
-        accounts = await conn.fetch("SELECT phone, status, proxy_host FROM account_pool WHERE tenant_id = $1", tenant_id)
-        groups = await conn.fetch("SELECT username, title, member_count FROM monitored_groups WHERE tenant_id = $1", tenant_id)
-        leads = await conn.fetch("SELECT username, intent_score, summary, created_at FROM leads WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 10000", tenant_id)
-        campaigns = await conn.fetch("SELECT name, status, created_at FROM campaigns WHERE tenant_id = $1", tenant_id)
+        accounts = await conn.fetch("SELECT account_identifier, status, platform FROM account_pool WHERE tenant_id = $1", tenant_id)
+        groups = await conn.fetch("SELECT group_identifier, title, members_count FROM monitored_groups WHERE tenant_id = $1", tenant_id)
+        leads = await conn.fetch("SELECT user_handle, intent_score, message_text, created_at FROM leads WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 10000", tenant_id)
+        campaigns = await conn.fetch("SELECT name, is_active, created_at FROM campaigns WHERE tenant_id = $1", tenant_id)
         settings_row = await conn.fetchrow("SELECT settings FROM tenant_settings WHERE tenant_id = $1", tenant_id)
         export = {
             "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -203,10 +219,10 @@ async def delete_account(body: DeleteAccountRequest, current_user: User = Depend
         for table in ["leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"]:
             try:
                 await conn.execute(f"DELETE FROM {table} WHERE tenant_id = $1", tenant_id)
-            except:
-                pass
+            except Exception:
+                log.warning(f"Failed to delete from {table} during account deletion")
         await conn.execute("DELETE FROM tenant_settings WHERE tenant_id = $1", tenant_id)
-        await conn.execute("UPDATE tenants SET name = name || ' [DELETED]' WHERE id = $1", tenant_id)
+        await conn.execute("UPDATE tenants SET company_name = company_name || ' [DELETED]' WHERE id = $1", tenant_id)
     finally:
         await conn.close()
     return {"status": "deleted"}

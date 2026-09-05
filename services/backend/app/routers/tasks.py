@@ -74,11 +74,20 @@ async def dispatch_poster(
             _uuid.UUID(body.campaign_id),
             current_user.tenant_id,
         )
+        target = await conn.fetchrow(
+            "SELECT target_id_code FROM targets WHERE id = $1 AND tenant_id = $2",
+            _uuid.UUID(body.target_id),
+            current_user.tenant_id,
+        )
     finally:
         await conn.close()
 
     if not row:
         raise HTTPException(404, "Campaign not found")
+    if not target:
+        raise HTTPException(404, "Target not found")
+
+    utm_url = f"https://t.me/{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={body.campaign_id}"
 
     task = _celery.send_task(
         "app.tasks.poster.publish_post",
@@ -88,7 +97,8 @@ async def dispatch_poster(
             body.target_id,
             body.account_id,
             row["base_text"],
-            "https://example.com",
+            utm_url,
+            f"@{target['target_id_code']}",
         ],
         queue="poster",
     )

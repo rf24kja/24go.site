@@ -109,7 +109,7 @@ export default function LeadsPage() {
         if (sourceFilter !== "all") items = items.filter((l: Lead) => (l.source || "dm") === sourceFilter);
         setLeads(items);
         setTotal(res.total || items.length);
-      }).catch((e) => { console.error("Failed to load leads:", e); setLeads([]); setTotal(0); }).finally(() => setLoading(false));
+      }).catch(() => { setLeads([]); setTotal(0); }).finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
   }, [auth?.token, filter, sourceFilter]);
@@ -119,7 +119,7 @@ export default function LeadsPage() {
     setLoadingMore(true);
     getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: leads.length })
       .then((res) => { setLeads((prev) => [...prev, ...(res.items || res)]); setTotal(res.total || total); })
-      .catch((e) => console.error("Failed to load more leads:", e))
+      .catch(() => {})
       .finally(() => setLoadingMore(false));
   }
 
@@ -138,8 +138,8 @@ export default function LeadsPage() {
     try {
       const detail = await getLead(auth.token, lead.id);
       setSelectedLead(detail);
-    } catch (e) {
-      console.error("Failed to load lead detail:", e);
+    } catch {
+      toast(t("leads.loadDetailFailed"), "error");
     } finally {
       setLoadingDetail(false);
     }
@@ -254,7 +254,7 @@ export default function LeadsPage() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a"); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
                 a.click(); URL.revokeObjectURL(url);
-              } catch (e) { console.error("Failed to export CSV:", e); }
+              } catch { toast(t("leads.exportFailed"), "error"); }
             }}
             className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition">
             {t("leads.exportCsv")}
@@ -270,7 +270,7 @@ export default function LeadsPage() {
                 const msg = t("leads.importResult").replace("{imported}", String(result.imported)).replace("{skipped}", String(result.skipped)) + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
                 toast(msg, result.errors?.length ? "info" : "success");
                 getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
-              } catch (e) { console.error("Failed to import CSV:", e); }
+              } catch { toast(t("leads.importFailed"), "error"); }
               e.target.value = "";
             }} />
           </label>
