@@ -67,6 +67,7 @@ async def add_request_id(request: Request, call_next):
 # ── Middleware ──────────────────────────────────────────────────────────
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "http://localhost:8080",
     "https://24go.site",
     "https://www.24go.site",

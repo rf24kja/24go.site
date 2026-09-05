@@ -23,7 +23,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self' https://api.24go.site wss://api.24go.site ws://localhost:8000 http://localhost:8000",
+              "connect-src 'self' https://api.24go.site wss://api.24go.site ws://localhost:8000 http://localhost:8000 http://localhost:8001",
               "frame-ancestors 'none'",
             ].join("; "),
           },

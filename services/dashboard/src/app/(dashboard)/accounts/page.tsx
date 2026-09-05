@@ -386,12 +386,12 @@ export default function AccountsPage() {
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")} <FieldHint hint={t("hints.accounts.tgStatus")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colPlatform")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colWarmup")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colQuota")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")} <FieldHint hint={t("hints.accounts.status")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colWarmup")} <FieldHint hint={t("hints.accounts.warmup")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colQuota")} <FieldHint hint={t("hints.accounts.quota")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colActions")}</th>
             </tr>
           </thead>

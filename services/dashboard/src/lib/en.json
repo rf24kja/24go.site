@@ -1335,6 +1335,10 @@
   "hints.platform": "Select the social network",
   "hints.phoneNumber": "Telegram phone with country code (e.g., +79001234567)",
   "hints.vkToken": "Token from VK group settings → API usage",
+  "hints.accounts.tgStatus": "Connection status to Telegram. Green = active session, Yellow = needs verification, Red = no session",
+  "hints.accounts.status": "Account lifecycle: Active → Warming Up → Cooldown → Banned. Warming accounts build reputation gradually over 2-5 days",
+  "hints.accounts.warmup": "Warmup progress: Stage 1 (passive reading) → Stage 2 (engagement) → Stage 3 (active). Each stage increases daily action limits",
+  "hints.accounts.quota": "Actions used today vs daily limit. Limits are set per plan and automatically adjusted during warmup stages",
 
   "sidebar.mailings": "Mailings",
 
