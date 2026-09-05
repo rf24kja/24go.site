@@ -3,6 +3,23 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import {
+  Users,
+  Eye,
+  Brain,
+  Reply,
+  Send,
+  Megaphone,
+  Filter,
+  Search,
+  Globe,
+  BarChart3,
+  Plug,
+  UserCog,
+  FileText,
+  Activity,
+  Settings,
+} from "lucide-react";
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -255,14 +272,39 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* ── Feature highlights (compact) ────────────────── */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-16 pt-12 border-t border-zinc-800/50">
-            <CompactFeature title={t("landing.feature1Title")} desc={t("landing.feature1Desc")} href="/blog/parsing-telegram-grupp" />
-            <CompactFeature title={t("landing.feature2Title")} desc={t("landing.feature2Desc")} href="/blog/ii-dlya-lidogeneratsii" />
-            <CompactFeature title={t("landing.feature3Title")} desc={t("landing.feature3Desc")} href="/login" />
-            <CompactFeature title={t("landing.feature4Title")} desc={t("landing.feature4Desc")} href="/blog/progreva-akkauntov-telegram" />
-            <CompactFeature title={t("landing.feature5Title")} desc={t("landing.feature5Desc")} href="/blog/avtomatizatsiya-prodazh-v-telegram" />
-            <CompactFeature title={t("landing.feature6Title")} desc={t("landing.feature6Desc")} href="/login" />
+          {/* ── All platform features ─────────────────────── */}
+          <div className="mt-16 pt-12 border-t border-zinc-800/50">
+            <div className="text-center mb-10">
+              <h3 className="text-2xl lg:text-3xl font-bold mb-3">{t("landing.allFeaturesTitle")}</h3>
+              <p className="text-zinc-400 max-w-xl mx-auto">{t("landing.allFeaturesDesc")}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { icon: Users, titleKey: "landing.feat1Title", descKey: "landing.feat1Desc" },
+                { icon: Eye, titleKey: "landing.feat2Title", descKey: "landing.feat2Desc" },
+                { icon: Brain, titleKey: "landing.feat3Title", descKey: "landing.feat3Desc" },
+                { icon: Reply, titleKey: "landing.feat4Title", descKey: "landing.feat4Desc" },
+                { icon: Send, titleKey: "landing.feat5Title", descKey: "landing.feat5Desc" },
+                { icon: Megaphone, titleKey: "landing.feat6Title", descKey: "landing.feat6Desc" },
+                { icon: Filter, titleKey: "landing.feat7Title", descKey: "landing.feat7Desc" },
+                { icon: Search, titleKey: "landing.feat8Title", descKey: "landing.feat8Desc" },
+                { icon: Globe, titleKey: "landing.feat9Title", descKey: "landing.feat9Desc" },
+                { icon: BarChart3, titleKey: "landing.feat10Title", descKey: "landing.feat10Desc" },
+                { icon: Plug, titleKey: "landing.feat11Title", descKey: "landing.feat11Desc" },
+                { icon: UserCog, titleKey: "landing.feat12Title", descKey: "landing.feat12Desc" },
+                { icon: FileText, titleKey: "landing.feat13Title", descKey: "landing.feat13Desc" },
+                { icon: Activity, titleKey: "landing.feat14Title", descKey: "landing.feat14Desc" },
+                { icon: Settings, titleKey: "landing.feat15Title", descKey: "landing.feat15Desc" },
+              ].map((f, i) => (
+                <div key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 hover:border-emerald-500/30 transition">
+                  <div className="flex items-center gap-3 mb-2">
+                    <f.icon className="w-5 h-5 text-emerald-400" />
+                    <h4 className="font-semibold text-zinc-100">{t(f.titleKey)}</h4>
+                  </div>
+                  <p className="text-sm text-zinc-400">{t(f.descKey)}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -347,12 +389,4 @@ function MockKanbanCol({ title, color, count }: { title: string; color: string; 
   );
 }
 
-function CompactFeature({ title, desc, href }: { title: string; desc: string; href: string }) {
-  return (
-    <Link href={href} className="group bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all duration-200 block">
-      <h4 className="font-semibold text-zinc-100 mb-1.5 group-hover:text-emerald-400 transition">{title}</h4>
-      <p className="text-sm text-zinc-500 leading-relaxed">{desc}</p>
-      <span className="inline-block mt-3 text-xs text-emerald-400 opacity-0 group-hover:opacity-100 transition">→</span>
-    </Link>
-  );
-}
+

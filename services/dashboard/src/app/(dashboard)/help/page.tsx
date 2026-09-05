@@ -18,6 +18,9 @@ import {
   ArrowRight,
   Menu,
   X,
+  MessageSquare,
+  Shield,
+  Settings,
 } from "lucide-react";
 
 type SectionId =
@@ -29,6 +32,9 @@ type SectionId =
   | "leads"
   | "rules"
   | "campaigns"
+  | "autoReplies"
+  | "proxies"
+  | "settings"
   | "billing"
   | "team";
 
@@ -47,6 +53,9 @@ const NAV: NavItem[] = [
   { id: "leads", icon: UserCheck, labelKey: "wiki.nav.leads" },
   { id: "rules", icon: Filter, labelKey: "wiki.nav.rules" },
   { id: "campaigns", icon: Megaphone, labelKey: "wiki.nav.campaigns" },
+  { id: "autoReplies", icon: MessageSquare, labelKey: "wiki.nav.autoReplies" },
+  { id: "proxies", icon: Shield, labelKey: "wiki.nav.proxies" },
+  { id: "settings", icon: Settings, labelKey: "wiki.nav.settings" },
   { id: "billing", icon: CreditCard, labelKey: "wiki.nav.billing" },
   { id: "team", icon: UserCog, labelKey: "wiki.nav.team" },
 ];
@@ -252,6 +261,27 @@ function MonitoringSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.monitoring.howTo").split("\n")}
       expect={t("wiki.section.monitoring.expect").split("\n")}
       tips={t("wiki.section.monitoring.tip")}
+      extra={
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+            {t("wiki.subhead.timeline") || "Expected Timeline"}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="bg-zinc-900/50 rounded-lg p-3">
+              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.first.title")}</p>
+              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.first.desc")}</p>
+            </div>
+            <div className="bg-zinc-900/50 rounded-lg p-3">
+              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.week.title")}</p>
+              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.week.desc")}</p>
+            </div>
+            <div className="bg-zinc-900/50 rounded-lg p-3">
+              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.ongoing.title")}</p>
+              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.ongoing.desc")}</p>
+            </div>
+          </div>
+        </div>
+      }
       nextId="mailings"
       nextLabel={t("wiki.nav.mailings")}
     />
@@ -268,6 +298,36 @@ function MailingsSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.mailings.howTo").split("\n")}
       expect={t("wiki.section.mailings.expect").split("\n")}
       warnings={t("wiki.section.mailings.warning")}
+      extra={
+        <div className="space-y-3">
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+              {t("wiki.subhead.variables") || "Available Variables"}
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              {t("wiki.section.mailings.variables").split("\n").map((line, i) => (
+                <div key={i} className="flex items-center gap-2 text-zinc-400">
+                  <code className="text-emerald-300 bg-zinc-900/50 px-1.5 py-0.5 rounded text-xs">{line.split(" — ")[0]}</code>
+                  <span>{line.split(" — ")[1] || ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
+              {t("wiki.subhead.antiSpam") || "Anti-Spam Tips"}
+            </h4>
+            <ul className="space-y-1.5 text-sm text-zinc-400">
+              {t("wiki.section.mailings.antiSpam").split("\n").map((line, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5">•</span>
+                  <span>{line.replace(/^•\s*/, "")}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      }
       nextId="leads"
       nextLabel={t("wiki.nav.leads")}
     />
@@ -299,6 +359,19 @@ function RulesSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.rules.howTo").split("\n")}
       expect={t("wiki.section.rules.expect").split("\n")}
       tips={t("wiki.section.rules.tip")}
+      extra={
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+            {t("wiki.subhead.scoring") || "Scoring Formula"}
+          </h4>
+          <div className="text-sm text-zinc-400 space-y-2">
+            <p>{t("wiki.section.rules.scoring")}</p>
+            <div className="bg-zinc-900/50 rounded-lg p-3 font-mono text-xs text-zinc-300">
+              {t("wiki.section.rules.scoringFormula")}
+            </div>
+          </div>
+        </div>
+      }
       nextId="campaigns"
       nextLabel={t("wiki.nav.campaigns")}
     />
@@ -314,6 +387,54 @@ function CampaignsSection({ t }: { t: (k: string) => string }) {
       forWhat={t("wiki.section.campaigns.forWhat")}
       howTo={t("wiki.section.campaigns.howTo").split("\n")}
       expect={t("wiki.section.campaigns.expect").split("\n")}
+      nextId="autoReplies"
+      nextLabel={t("wiki.nav.autoReplies")}
+    />
+  );
+}
+
+function AutoRepliesSection({ t }: { t: (k: string) => string }) {
+  return (
+    <Section
+      id="autoReplies"
+      icon={MessageSquare}
+      title={t("wiki.section.autoReplies.title")}
+      forWhat={t("wiki.section.autoReplies.forWhat")}
+      howTo={t("wiki.section.autoReplies.howTo").split("\n")}
+      expect={t("wiki.section.autoReplies.expect").split("\n")}
+      tips={t("wiki.section.autoReplies.tip")}
+      nextId="proxies"
+      nextLabel={t("wiki.nav.proxies")}
+    />
+  );
+}
+
+function ProxiesSection({ t }: { t: (k: string) => string }) {
+  return (
+    <Section
+      id="proxies"
+      icon={Shield}
+      title={t("wiki.section.proxies.title")}
+      forWhat={t("wiki.section.proxies.forWhat")}
+      howTo={t("wiki.section.proxies.howTo").split("\n")}
+      expect={t("wiki.section.proxies.expect").split("\n")}
+      tips={t("wiki.section.proxies.tip")}
+      nextId="settings"
+      nextLabel={t("wiki.nav.settings")}
+    />
+  );
+}
+
+function SettingsSection({ t }: { t: (k: string) => string }) {
+  return (
+    <Section
+      id="settings"
+      icon={Settings}
+      title={t("wiki.section.settings.title")}
+      forWhat={t("wiki.section.settings.forWhat")}
+      howTo={t("wiki.section.settings.howTo").split("\n")}
+      expect={t("wiki.section.settings.expect").split("\n")}
+      tips={t("wiki.section.settings.tip")}
       nextId="billing"
       nextLabel={t("wiki.nav.billing")}
     />
@@ -377,6 +498,9 @@ const SECTION_COMPONENTS: Record<SectionId, React.ComponentType<{ t: (k: string)
   leads: LeadsSection,
   rules: RulesSection,
   campaigns: CampaignsSection,
+  autoReplies: AutoRepliesSection,
+  proxies: ProxiesSection,
+  settings: SettingsSection,
   billing: BillingSection,
   team: TeamSection,
 };
