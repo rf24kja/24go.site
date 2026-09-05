@@ -23,6 +23,8 @@ import {
   Settings,
 } from "lucide-react";
 
+const ACCOUNTS_BUY_LINK = "https://sms-pro.guru/?ref=fc5190d3";
+
 type SectionId =
   | "overview"
   | "accounts"
@@ -264,11 +266,25 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
       id="accounts"
       icon={Users}
       title={t("wiki.section.accounts.title")}
-      forWhat={t("wiki.section.accounts.forWhat")}
+      forWhat={
+        <div className="space-y-3">
+          <p>{t("wiki.section.accounts.forWhat")}</p>
+          <div className="bg-zinc-800/50 border border-emerald-500/20 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Where to Get Accounts</h4>
+            <ul className="space-y-1.5 text-sm text-zinc-400">
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Buy ready-made accounts with sessions — fastest option</span></li>
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Use your own SIM cards (manual registration)</span></li>
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span>
+                <span>Recommended service: <a href={ACCOUNTS_BUY_LINK} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-medium">sms-pro.guru</a> — buy accounts in bulk with .session files</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      }
       howTo={[
         'Click "Add Account" to create a new account entry',
         "Enter phone number and assign a proxy (SOCKS5 recommended)",
-        "For bulk import: upload .json + .session files from Telegram Desktop",
+        "For bulk import: upload .json + .session files from Telegram Desktop or purchased accounts",
         'Click "Connect" — enter the Telegram activation code',
         "If 2FA is enabled: enter your 2FA password in the password field",
         'For VK: click "Connect VK", authorize in the popup',
@@ -282,7 +298,7 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
         "Max 50 accounts per creation, max 10 per bulk connect",
       ]}
       warnings="NEVER change proxy on a connected account — it causes an immediate Telegram ban. Each account must keep its original proxy forever."
-      tips="Use Telegram Desktop to export .session files for bulk import. VK accounts work similarly but use VK API."
+      tips="Buy accounts from sms-pro.guru for fastest setup — you get phone + session file ready to import. Or use your own SIM cards for full control."
       extra={
         <div className="space-y-4">
           <MockBrowser>
@@ -1045,7 +1061,7 @@ function BillingSection({ t }: { t: (k: string) => string }) {
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
             <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Additional Costs (All Plans)</h4>
             <ul className="space-y-1.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">Telegram accounts</strong> — you provide your own SIM cards/numbers</span></li>
+              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">Telegram accounts</strong> — buy ready-made or use your own SIM cards (<a href={ACCOUNTS_BUY_LINK} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">sms-pro.guru</a>)</span></li>
               <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">Proxies</strong> — SOCKS5/HTTP proxies required for each account (~$1-5/proxy/mo)</span></li>
               <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">TgStat API</strong> — balance-based (Pro & Enterprise only), ~1-5 credits/query</span></li>
               <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">LLM API</strong> — OpenRouter/OpenAI keys for AI classification (optional)</span></li>
