@@ -2,5 +2,16 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /leads/
+Disallow: /analytics/
+Disallow: /campaigns/
+Disallow: /settings/
+Disallow: /billing/
+Disallow: /accounts/
+Disallow: /groups/
+Disallow: /auto-replies/
+Disallow: /lead-rules/
+Disallow: /users/
+Disallow: /audit/
+Disallow: /webhooks/
 
 Sitemap: https://www.24go.site/sitemap.xml

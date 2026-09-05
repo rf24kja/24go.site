@@ -37,6 +37,42 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30 grid-bg">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "24GO",
+            url: "https://www.24go.site",
+            description: "AI-Powered Lead Generation from Telegram & VK",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://www.24go.site/blog?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "24GO",
+            url: "https://www.24go.site",
+            logo: "https://www.24go.site/opengraph-image.png",
+            description: "AI-Powered Lead Generation Platform for Telegram and VK",
+            sameAs: [],
+            contactPoint: {
+              "@type": "ContactPoint",
+              contactType: "customer service",
+              email: "rf24krsk@gmail.com",
+            },
+          }),
+        }}
+      />
       {/* ── Nav ──────────────────────────────────────────────────── */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrollY > 50 ? "bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-800/50 shadow-xl shadow-black/20" : ""}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 lg:px-12 py-5">

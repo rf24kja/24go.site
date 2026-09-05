@@ -123,6 +123,14 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         publishedTime: post.created_at,
         tags: post.tags,
       },
+      twitter: {
+        card: "summary_large_image",
+        title: post.title,
+        description: post.excerpt || "",
+      },
+      alternates: {
+        canonical: `https://www.24go.site/blog/${post.slug}`,
+      },
     };
   } catch {
     return { title: "Blog Post — 24GO" };
