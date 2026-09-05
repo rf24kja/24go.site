@@ -101,27 +101,27 @@ export function Sidebar() {
               RU
             </button>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1">
-            <span className="text-xs text-zinc-500 mr-1">{t("sidebar.platform")}</span>
-            <div className="flex bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
-              <button
-                className="flex-1 text-xs py-1 px-3 rounded bg-emerald-500/20 text-emerald-400"
-              >
-                Telegram
-              </button>
-              <button
-                onClick={() => toast(t("sidebar.comingSoon"), "info")}
-                className="flex-1 text-xs py-1 px-3 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed"
-                title={t("sidebar.comingSoon")}
-              >
-                VKontakte
-              </button>
-            </div>
+          {/* Platform toggle */}
+          <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
+            <button
+              className="flex-1 text-xs py-1 rounded bg-emerald-500/20 text-emerald-400"
+            >
+              Telegram
+            </button>
+            <button
+              onClick={() => toast(t("sidebar.comingSoon"), "info")}
+              className="flex-1 text-xs py-1 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed"
+              title={t("sidebar.comingSoon")}
+            >
+              VKontakte
+            </button>
           </div>
-          <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
-          <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5">
-            <LogOut className="w-4 h-4" /> {t("sidebar.signOut")}
-          </button>
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
+            <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5">
+              <LogOut className="w-4 h-4" /> {t("sidebar.signOut")}
+            </button>
+          </div>
         </div>
       </aside>
     </>
