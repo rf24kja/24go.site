@@ -14,21 +14,36 @@ const getPlans = (t: (k: string) => string) => [
     price: t("plans.starterPrice"),
     period: t("plans.perMonth"),
     desc: t("plans.starterDesc"),
-    features: [t("plans.starterPosts"), t("plans.starterTokens"), t("plans.starterAccounts"), t("plans.starterSupport")],
+    features: [
+      "Analytics, Leads & Lead Rules",
+      "Groups & Group Search (Free)",
+      "Accounts & Proxies",
+      "Campaigns, Mailings & Auto-Replies",
+      "Settings, Billing & Help",
+    ],
   },
   {
     name: t("plans.pro"),
     price: t("plans.proPrice"),
     period: t("plans.perMonth"),
     desc: t("plans.proDesc"),
-    features: [t("plans.proPosts"), t("plans.proTokens"), t("plans.proAccounts"), t("plans.proSupport"), t("plans.proApi")],
+    features: [
+      "Everything in Starter",
+      "Group Search (TgStat API)",
+      "Team Management",
+      "Monitoring & Listeners",
+    ],
   },
   {
     name: t("plans.enterprise"),
     price: t("plans.enterprisePrice"),
     period: t("plans.perMonth"),
     desc: t("plans.enterpriseDesc"),
-    features: [t("plans.enterprisePosts"), t("plans.enterpriseTokens"), t("plans.enterpriseAccounts"), t("plans.enterpriseSupport"), t("plans.enterpriseIntegrations"), t("plans.enterpriseSla")],
+    features: [
+      "Everything in Pro",
+      "API Access (REST)",
+      "Webhooks & Custom Integrations",
+    ],
   },
 ];
 

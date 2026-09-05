@@ -943,20 +943,22 @@ function BillingSection({ t }: { t: (k: string) => string }) {
       icon={CreditCard}
       title={t("wiki.section.billing.title")}
       forWhat={
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p>{t("wiki.section.billing.forWhat")}</p>
+
+          {/* Plans comparison */}
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden">
             <div className="grid grid-cols-4 gap-px bg-zinc-700">
-              <div className="bg-zinc-800 p-3 text-xs font-semibold text-zinc-500">Feature</div>
+              <div className="bg-zinc-800 p-3 text-xs font-semibold text-zinc-500">Plan</div>
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-emerald-400 text-center">Starter</div>
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-blue-400 text-center">Pro</div>
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-amber-400 text-center">Enterprise</div>
               {[
                 ["Price", "$75/mo", "$199/mo", "$499/mo"],
-                ["Groups", "50", "100", "Unlimited"],
-                ["Accounts", "3", "10", "Unlimited"],
-                ["Posts/mo", "500", "3,000", "Unlimited"],
-                ["Tokens/mo", "500K", "2M", "Unlimited"],
+                ["Trial", "3 days", "3 days", "3 days"],
+                ["TgStat", "—", "✓", "✓"],
+                ["API Access", "—", "—", "✓"],
+                ["Team Mgmt", "—", "✓", "✓"],
               ].map(([feat, s, p, e]) => (
                 <div key={feat} className="contents">
                   <div className="bg-zinc-900/50 p-2 text-xs text-zinc-400">{feat}</div>
@@ -967,23 +969,68 @@ function BillingSection({ t }: { t: (k: string) => string }) {
               ))}
             </div>
           </div>
+
+          {/* Section access */}
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">Section Access by Plan</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-emerald-400 font-medium mb-2">Starter ($75)</p>
+                <ul className="space-y-1 text-zinc-400">
+                  <li>✓ Analytics</li>
+                  <li>✓ Leads & Lead Rules</li>
+                  <li>✓ Groups & Group Search (Free)</li>
+                  <li>✓ Accounts & Proxies</li>
+                  <li>✓ Campaigns & Mailings</li>
+                  <li>✓ Auto-Replies</li>
+                  <li>✓ Settings & Billing</li>
+                  <li>✓ Help & How to Use</li>
+                </ul>
+              </div>
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-blue-400 font-medium mb-2">Pro ($199)</p>
+                <ul className="space-y-1 text-zinc-400">
+                  <li>✓ Everything in Starter</li>
+                  <li>✓ Group Search (TgStat)</li>
+                  <li>✓ Team Management</li>
+                  <li>✓ Monitoring & Listeners</li>
+                  <li className="text-zinc-600">✗ Blog (owner only)</li>
+                  <li className="text-zinc-600">✗ Audit Log</li>
+                  <li className="text-zinc-600">✗ Health Dashboard</li>
+                </ul>
+              </div>
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-amber-400 font-medium mb-2">Enterprise ($499)</p>
+                <ul className="space-y-1 text-zinc-400">
+                  <li>✓ Everything in Pro</li>
+                  <li>✓ API Access (REST)</li>
+                  <li>✓ Webhooks</li>
+                  <li>✓ Custom Integrations</li>
+                  <li className="text-zinc-600">✗ Blog (owner only)</li>
+                  <li className="text-zinc-600">✗ Audit Log</li>
+                  <li className="text-zinc-600">✗ Health Dashboard</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <Warning text="Blog section is available ONLY to the account owner (role: Owner). Managers and Agents cannot access it regardless of plan." />
         </div>
       }
       howTo={[
         'Go to "Billing" in the sidebar',
-        "Choose a plan that fits your needs (Starter / Pro / Enterprise)",
-        "Start with 3-day free trial — no payment required",
+        "Start with 3-day free trial — full access to your plan features",
+        "Choose a plan: Starter ($75), Pro ($199), or Enterprise ($499)",
         "Enter card details via Stripe or pay via YooKassa",
         "Payment is processed automatically each month",
-        "Track usage in the Billing dashboard",
+        "Track usage and limits in the Billing dashboard",
       ]}
       expect={[
-        "Trial gives full access to all plan features for 3 days",
+        "Trial gives full access to plan features for 3 days (no Blog)",
         "After trial, plan downgrades if no payment",
-        "Usage resets each billing cycle",
         "You can upgrade/downgrade plan anytime",
+        "Usage resets each billing cycle",
       ]}
-      tips="Start with Starter plan to test. Upgrade to Pro when you need more accounts and higher throughput."
       nextId="team"
       nextLabel={t("wiki.nav.team")}
       extra={
@@ -996,15 +1043,23 @@ function BillingSection({ t }: { t: (k: string) => string }) {
             </ul>
           </div>
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">TgStat Balance</h4>
+            <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Additional Costs (All Plans)</h4>
             <ul className="space-y-1.5 text-sm text-zinc-400">
-              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Separate balance for TgStat API searches</span></li>
-              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Top up in Billing → Balance section</span></li>
-              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Search costs ~1-5 credits per query</span></li>
-              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>View history: all searches and charges logged</span></li>
+              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">Telegram accounts</strong> — you provide your own SIM cards/numbers</span></li>
+              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">Proxies</strong> — SOCKS5/HTTP proxies required for each account (~$1-5/proxy/mo)</span></li>
+              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">TgStat API</strong> — balance-based (Pro & Enterprise only), ~1-5 credits/query</span></li>
+              <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span><span><strong className="text-zinc-300">LLM API</strong> — OpenRouter/OpenAI keys for AI classification (optional)</span></li>
             </ul>
           </div>
-          <Warning text="When plan limits are reached: campaigns pause, new groups can't be added. Upgrade or wait for next billing cycle." />
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">TgStat Search</h4>
+            <ul className="space-y-1.5 text-sm text-zinc-400">
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Available on <strong className="text-zinc-300">Pro</strong> and <strong className="text-zinc-300">Enterprise</strong> plans only</span></li>
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Requires API token from TgStat (Settings → TgStat)</span></li>
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Top up balance in Billing → Balance section</span></li>
+              <li className="flex items-start gap-2"><span className="text-emerald-500 mt-0.5">•</span><span>Free search (built-in) available on ALL plans</span></li>
+            </ul>
+          </div>
         </div>
       }
     />
