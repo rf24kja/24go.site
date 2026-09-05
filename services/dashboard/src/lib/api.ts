@@ -77,7 +77,7 @@ export async function getMe(token: string) {
 // ── Leads ─────────────────────────────────────────────────────────────
 
 export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
-  const mapped: any = params ? { ...params } : undefined;
+  const mapped: any = params ? Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")) : undefined;
   if (mapped?.status) { mapped.status_filter = mapped.status; delete mapped.status; }
   const qs = new URLSearchParams(mapped).toString();
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
@@ -560,7 +560,7 @@ export async function stopMailing(token: string, mailingId: string) {
 // ── Auto-replies ─────────────────────────────────────────────────
 
 export async function getAutoReplies(token: string) {
-  return api<any>(`/api/v1/auto-replies`, { token });
+  return api<any>(`/api/v1/auto-replies/`, { token });
 }
 
 export async function getAutoReply(token: string, id: string) {
@@ -568,7 +568,7 @@ export async function getAutoReply(token: string, id: string) {
 }
 
 export async function createAutoReply(token: string, data: any) {
-  return api<any>(`/api/v1/auto-replies`, { method: "POST", body: JSON.stringify(data), token });
+  return api<any>(`/api/v1/auto-replies/`, { method: "POST", body: JSON.stringify(data), token });
 }
 
 export async function updateAutoReply(token: string, id: string, data: any) {
