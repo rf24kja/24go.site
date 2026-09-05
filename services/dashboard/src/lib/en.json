@@ -105,6 +105,9 @@
   "leads.campaignRun": "Campaign run",
   "leads.noEvents": "No events recorded yet",
   "leads.statusUpdateFailed": "Failed to update status",
+  "leads.loadDetailFailed": "Failed to load lead details",
+  "leads.exportFailed": "Failed to export CSV",
+  "leads.importFailed": "Failed to import CSV",
 
   "accounts.title": "Accounts",
   "accounts.bulkImport": "Bulk Import",

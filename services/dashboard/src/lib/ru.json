@@ -105,6 +105,9 @@
   "leads.campaignRun": "Запуск кампании",
   "leads.noEvents": "Событий пока нет",
   "leads.statusUpdateFailed": "Не удалось обновить статус",
+  "leads.loadDetailFailed": "Не удалось загрузить данные лида",
+  "leads.exportFailed": "Не удалось экспортировать CSV",
+  "leads.importFailed": "Не удалось импортировать CSV",
 
   "accounts.title": "Аккаунты",
   "accounts.bulkImport": "Массовый импорт",
