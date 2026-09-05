@@ -127,15 +127,15 @@ export default function TargetsPage() {
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colPlatform")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colTitle")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colGeo")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colNiche")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colAccess")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colMembers")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colLastParsed")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colStatus")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActions")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colPlatform")} <FieldHint hint={t("hints.targets.platform")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colTitle")} <FieldHint hint={t("hints.targets.title")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colGeo")} <FieldHint hint={t("hints.targets.geo")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colNiche")} <FieldHint hint={t("hints.targets.niche")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colAccess")} <FieldHint hint={t("hints.targets.access")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colMembers")} <FieldHint hint={t("hints.targets.members")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colLastParsed")} <FieldHint hint={t("hints.targets.lastParsed")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colStatus")} <FieldHint hint={t("hints.targets.status")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActions")} <FieldHint hint={t("hints.targets.actions")} /></th>
             </tr>
           </thead>
           <tbody>

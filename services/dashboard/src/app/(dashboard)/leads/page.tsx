@@ -8,6 +8,7 @@ import { useWebSocket } from "@/lib/useWebSocket";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Lead = {
   id: string;
@@ -317,12 +318,12 @@ export default function LeadsPage() {
           <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableHandle")}</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableIntent")}</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableMessage")}</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableGeo")}</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableStatus")}</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableCreated")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableHandle")} <FieldHint hint={t("hints.leads.tableHandle")} /></th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableIntent")} <FieldHint hint={t("hints.leads.tableIntent")} /></th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableMessage")} <FieldHint hint={t("hints.leads.tableMessage")} /></th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableGeo")} <FieldHint hint={t("hints.leads.tableGeo")} /></th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableStatus")} <FieldHint hint={t("hints.leads.tableStatus")} /></th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leads.tableCreated")} <FieldHint hint={t("hints.leads.tableCreated")} /></th>
               </tr>
             </thead>
             <tbody>

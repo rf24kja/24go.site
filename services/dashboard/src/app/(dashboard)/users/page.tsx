@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 import { PlanGuard } from "@/components/PlanGuard";
 import { getUsers, inviteUser, updateUserRole, removeUser } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
@@ -105,10 +106,10 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colEmail")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colRole")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colJoined")}</th>
-              {isAdmin && <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colActions")}</th>}
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colEmail")} <FieldHint hint={t("hints.users.email")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colRole")} <FieldHint hint={t("hints.users.role")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colJoined")} <FieldHint hint={t("hints.users.joined")} /></th>
+              {isAdmin && <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("users.colActions")} <FieldHint hint={t("hints.users.actions")} /></th>}
             </tr>
           </thead>
           <tbody>

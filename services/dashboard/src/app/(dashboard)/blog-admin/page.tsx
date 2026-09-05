@@ -7,6 +7,7 @@ import { TableSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import { PlanGuard } from "@/components/PlanGuard";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type BlogPost = {
   id: string;
@@ -155,11 +156,11 @@ export default function BlogAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800 text-left text-zinc-500">
-                <th className="px-4 py-3 font-medium">{t("blogAdmin.colTitle")}</th>
-                <th className="px-4 py-3 font-medium">{t("blogAdmin.colSlug")}</th>
-                <th className="px-4 py-3 font-medium">{t("blogAdmin.colPublished")}</th>
-                <th className="px-4 py-3 font-medium">{t("blogAdmin.colCreated")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t("blogAdmin.colActions")}</th>
+                <th className="px-4 py-3 font-medium">{t("blogAdmin.colTitle")} <FieldHint hint={t("hints.blogAdmin.title")} /></th>
+                <th className="px-4 py-3 font-medium">{t("blogAdmin.colSlug")} <FieldHint hint={t("hints.blogAdmin.slug")} /></th>
+                <th className="px-4 py-3 font-medium">{t("blogAdmin.colPublished")} <FieldHint hint={t("hints.blogAdmin.published")} /></th>
+                <th className="px-4 py-3 font-medium">{t("blogAdmin.colCreated")} <FieldHint hint={t("hints.blogAdmin.created")} /></th>
+                <th className="px-4 py-3 font-medium text-right">{t("blogAdmin.colActions")} <FieldHint hint={t("hints.blogAdmin.actions")} /></th>
               </tr>
             </thead>
             <tbody>

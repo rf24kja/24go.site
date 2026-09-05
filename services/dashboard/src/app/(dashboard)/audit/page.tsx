@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 import { PlanGuard } from "@/components/PlanGuard";
 import { getAuditLog } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
@@ -61,11 +62,11 @@ export default function AuditPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colTime")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colAction")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colEntity")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colDetails")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colIp")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colTime")} <FieldHint hint={t("hints.audit.time")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colAction")} <FieldHint hint={t("hints.audit.action")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colEntity")} <FieldHint hint={t("hints.audit.entity")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colDetails")} <FieldHint hint={t("hints.audit.details")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colIp")} <FieldHint hint={t("hints.audit.ip")} /></th>
             </tr>
           </thead>
           <tbody>

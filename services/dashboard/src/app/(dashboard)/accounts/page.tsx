@@ -387,7 +387,7 @@ export default function AccountsPage() {
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")} <FieldHint hint={t("hints.accounts.tgStatus")} /></th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")} <FieldHint hint={t("hints.accounts.identifier")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")} <FieldHint hint={t("hints.accounts.status")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colWarmup")} <FieldHint hint={t("hints.accounts.warmup")} /></th>

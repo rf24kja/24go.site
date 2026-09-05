@@ -60,6 +60,31 @@ const NAV: NavItem[] = [
   { id: "team", icon: UserCog, labelKey: "wiki.nav.team" },
 ];
 
+function ScreenshotPlaceholder({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="rounded-xl overflow-hidden border border-zinc-700 bg-zinc-800/50">
+      <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border-b border-zinc-700">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+          <div className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+          <div className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+        </div>
+        <div className="flex-1 mx-2">
+          <div className="bg-zinc-900 rounded px-2 py-0.5 text-[10px] text-zinc-500 text-center truncate">
+            24go.site
+          </div>
+        </div>
+      </div>
+      <div className="relative aspect-[16/9] flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
+        <div className="text-center space-y-2 px-6">
+          <div className="text-sm font-medium text-zinc-400">{title}</div>
+          {hint && <div className="text-xs text-zinc-600">{hint}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StepList({ items }: { items: string[] }) {
   return (
     <ol className="space-y-3">
@@ -118,6 +143,8 @@ function Section({
   extra,
   nextId,
   nextLabel,
+  screenshot,
+  screenshotHint,
 }: {
   id: SectionId;
   icon: React.ElementType;
@@ -130,6 +157,8 @@ function Section({
   extra?: React.ReactNode;
   nextId?: SectionId;
   nextLabel?: string;
+  screenshot?: string;
+  screenshotHint?: string;
 }) {
   const { t } = useI18n();
   return (
@@ -140,6 +169,12 @@ function Section({
         </div>
         <h2 className="text-xl font-bold text-zinc-100">{title}</h2>
       </div>
+
+      {screenshot && (
+        <div className="mb-6">
+          <ScreenshotPlaceholder title={screenshot} hint={screenshotHint} />
+        </div>
+      )}
 
       <div className="space-y-6">
         <div>
@@ -199,6 +234,8 @@ function OverviewSection({ t }: { t: (k: string) => string }) {
       tips={t("wiki.section.overview.tip")}
       nextId="accounts"
       nextLabel={t("wiki.nav.accounts")}
+      screenshot="Platform Dashboard Overview"
+      screenshotHint="Main dashboard with analytics, leads, and campaign stats"
     />
   );
 }
@@ -215,18 +252,21 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
       tips={t("wiki.section.accounts.tip")}
       warnings={t("wiki.section.accounts.warning")}
       extra={
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
-            {t("wiki.subhead.accountTypes") || "Which accounts to use"}
-          </h4>
-          <ul className="space-y-1.5">
-            {t("wiki.section.accounts.accountTypes").split("\n").map((line, i) => (
-              <li key={i} className="text-sm text-zinc-400 flex items-start gap-2">
-                <span className="text-emerald-500 mt-0.5">•</span>
-                <span>{line.replace(/^•\s*/, "")}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-4">
+          <ScreenshotPlaceholder title="Accounts Management" hint="Add, connect, and manage Telegram accounts" />
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+              {t("wiki.subhead.accountTypes") || "Which accounts to use"}
+            </h4>
+            <ul className="space-y-1.5">
+              {t("wiki.section.accounts.accountTypes").split("\n").map((line, i) => (
+                <li key={i} className="text-sm text-zinc-400 flex items-start gap-2">
+                  <span className="text-emerald-500 mt-0.5">•</span>
+                  <span>{line.replace(/^•\s*/, "")}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       }
       nextId="search"
@@ -245,6 +285,8 @@ function SearchSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.search.howTo").split("\n")}
       expect={t("wiki.section.search.expect").split("\n")}
       tips={t("wiki.section.search.tip")}
+      screenshot="Group Search Interface"
+      screenshotHint="Search Telegram groups by keyword, geo, and niche"
       nextId="monitoring"
       nextLabel={t("wiki.nav.monitoring")}
     />
@@ -261,6 +303,8 @@ function MonitoringSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.monitoring.howTo").split("\n")}
       expect={t("wiki.section.monitoring.expect").split("\n")}
       tips={t("wiki.section.monitoring.tip")}
+      screenshot="Group Monitoring Dashboard"
+      screenshotHint="Track scanning status, leads found, and group activity"
       extra={
         <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
           <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
@@ -298,6 +342,8 @@ function MailingsSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.mailings.howTo").split("\n")}
       expect={t("wiki.section.mailings.expect").split("\n")}
       warnings={t("wiki.section.mailings.warning")}
+      screenshot="Mailing Campaign Manager"
+      screenshotHint="Create, send, and track bulk message campaigns"
       extra={
         <div className="space-y-3">
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -343,6 +389,8 @@ function LeadsSection({ t }: { t: (k: string) => string }) {
       forWhat={t("wiki.section.leads.forWhat")}
       howTo={t("wiki.section.leads.howTo").split("\n")}
       expect={t("wiki.section.leads.expect").split("\n")}
+      screenshot="Lead Management Pipeline"
+      screenshotHint="View, filter, and qualify leads by intent score"
       nextId="rules"
       nextLabel={t("wiki.nav.rules")}
     />
@@ -359,6 +407,8 @@ function RulesSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.rules.howTo").split("\n")}
       expect={t("wiki.section.rules.expect").split("\n")}
       tips={t("wiki.section.rules.tip")}
+      screenshot="Lead Scoring Rules"
+      screenshotHint="Configure keyword-based rules for automatic lead classification"
       extra={
         <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
           <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">

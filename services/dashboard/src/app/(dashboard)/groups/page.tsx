@@ -466,13 +466,13 @@ export default function GroupsPage() {
         <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colPlatform")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colGroup")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colMembers")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colAccount")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colStatus")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colLastScan")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colActions")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colPlatform")} <FieldHint hint={t("hints.groups.platform")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colGroup")} <FieldHint hint={t("hints.groups.group")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colMembers")} <FieldHint hint={t("hints.groups.members")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colAccount")} <FieldHint hint={t("hints.groups.account")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colStatus")} <FieldHint hint={t("hints.groups.status")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("groups.colLastScan")} <FieldHint hint={t("hints.groups.lastScan")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("groups.colActions")} <FieldHint hint={t("hints.groups.actions")} /></th>
             </tr>
           </thead>
           <tbody>

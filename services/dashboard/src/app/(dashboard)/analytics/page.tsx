@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 import { getAnalytics, getLeaderboard } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -253,13 +254,13 @@ export default function AnalyticsPage() {
               <thead>
                 <tr className="border-b border-zinc-800">
                   <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">#</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.campaign")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colPosts")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colLeads")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colHot")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colWarm")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.conversion")}</th>
-                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.schedule")}</th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.campaign")} <FieldHint hint={t("hints.analytics.campaign")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colPosts")} <FieldHint hint={t("hints.analytics.posts")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colLeads")} <FieldHint hint={t("hints.analytics.leads")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colHot")} <FieldHint hint={t("hints.analytics.hot")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.colWarm")} <FieldHint hint={t("hints.analytics.warm")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.conversion")} <FieldHint hint={t("hints.analytics.conversion")} /></th>
+                  <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">{t("analytics.schedule")} <FieldHint hint={t("hints.analytics.schedule")} /></th>
                 </tr>
               </thead>
               <tbody>

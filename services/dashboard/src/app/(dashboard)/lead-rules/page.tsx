@@ -95,11 +95,11 @@ export default function ScoringPage() {
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colPriority")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colName")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colIntent")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colKeywords")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colConfidence")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colPriority")} <FieldHint hint={t("hints.scoring.priority")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colName")} <FieldHint hint={t("hints.scoring.ruleName")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colIntent")} <FieldHint hint={t("hints.scoring.intent")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colKeywords")} <FieldHint hint={t("hints.scoring.keywords")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("leadRules.colConfidence")} <FieldHint hint={t("hints.scoring.confidence")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium"></th>
             </tr>
           </thead>

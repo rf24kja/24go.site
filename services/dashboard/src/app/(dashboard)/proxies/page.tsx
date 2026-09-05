@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { getProxies, createProxy, deleteProxy, testProxy, updateProxy, bulkImportProxies, bulkAssignProxies } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 
 type Proxy = {
   id: string;
@@ -259,11 +260,11 @@ export default function ProxiesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800 text-zinc-400">
-              <th className="text-left px-4 py-3 font-medium">{t("proxies.colUrl")}</th>
-              <th className="text-left px-4 py-3 font-medium">{t("proxies.colGeo")}</th>
-              <th className="text-center px-4 py-3 font-medium">{t("proxies.colAccounts")}</th>
-              <th className="text-center px-4 py-3 font-medium">{t("proxies.colStatus")}</th>
-              <th className="text-right px-4 py-3 font-medium">{t("proxies.colActions")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("proxies.colUrl")} <FieldHint hint={t("hints.proxies.url")} /></th>
+              <th className="text-left px-4 py-3 font-medium">{t("proxies.colGeo")} <FieldHint hint={t("hints.proxies.geo")} /></th>
+              <th className="text-center px-4 py-3 font-medium">{t("proxies.colAccounts")} <FieldHint hint={t("hints.proxies.accounts")} /></th>
+              <th className="text-center px-4 py-3 font-medium">{t("proxies.colStatus")} <FieldHint hint={t("hints.proxies.status")} /></th>
+              <th className="text-right px-4 py-3 font-medium">{t("proxies.colActions")} <FieldHint hint={t("hints.proxies.actions")} /></th>
             </tr>
           </thead>
           <tbody>

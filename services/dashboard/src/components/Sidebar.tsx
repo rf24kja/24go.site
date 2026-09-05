@@ -101,18 +101,22 @@ export function Sidebar() {
               RU
             </button>
           </div>
-          <div className="flex items-center gap-1 px-3 py-1">
+          <div className="flex items-center gap-2 px-3 py-1">
             <span className="text-xs text-zinc-500 mr-1">{t("sidebar.platform")}</span>
-            <button className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              TG
-            </button>
-            <button
-              onClick={() => toast(t("sidebar.comingSoon"), "info")}
-              className="px-2 py-1 text-xs rounded bg-zinc-800 text-zinc-500 border border-zinc-700 opacity-50 cursor-not-allowed"
-              title={t("sidebar.comingSoon")}
-            >
-              VK
-            </button>
+            <div className="flex bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
+              <button
+                className="flex-1 text-xs py-1 px-3 rounded bg-emerald-500/20 text-emerald-400"
+              >
+                Telegram
+              </button>
+              <button
+                onClick={() => toast(t("sidebar.comingSoon"), "info")}
+                className="flex-1 text-xs py-1 px-3 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed"
+                title={t("sidebar.comingSoon")}
+              >
+                VKontakte
+              </button>
+            </div>
           </div>
           <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
           <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5">

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { FieldHint } from "@/components/FieldHint";
 import { useToast } from "@/components/Toast";
 import { PlanGuard } from "@/components/PlanGuard";
 import { Spinner } from "@/components/Spinner";
