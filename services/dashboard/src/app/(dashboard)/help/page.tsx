@@ -60,7 +60,7 @@ const NAV: NavItem[] = [
   { id: "team", icon: UserCog, labelKey: "wiki.nav.team" },
 ];
 
-function ScreenshotPlaceholder({ title, hint }: { title: string; hint?: string }) {
+function MockBrowser({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-xl overflow-hidden border border-zinc-700 bg-zinc-800/50">
       <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border-b border-zinc-700">
@@ -75,11 +75,20 @@ function ScreenshotPlaceholder({ title, hint }: { title: string; hint?: string }
           </div>
         </div>
       </div>
-      <div className="relative aspect-[16/9] flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
-        <div className="text-center space-y-2 px-6">
-          <div className="text-sm font-medium text-zinc-400">{title}</div>
-          {hint && <div className="text-xs text-zinc-600">{hint}</div>}
-        </div>
+      <div className="p-4 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MockRow({ left, right, status }: { left: string; right: string; status?: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 px-2 rounded bg-zinc-900/50 text-xs">
+      <span className="text-zinc-300">{left}</span>
+      <div className="flex items-center gap-2">
+        {status && <span className="text-zinc-500">{status}</span>}
+        <span className="text-zinc-500">{right}</span>
       </div>
     </div>
   );
@@ -143,8 +152,6 @@ function Section({
   extra,
   nextId,
   nextLabel,
-  screenshot,
-  screenshotHint,
 }: {
   id: SectionId;
   icon: React.ElementType;
@@ -157,8 +164,6 @@ function Section({
   extra?: React.ReactNode;
   nextId?: SectionId;
   nextLabel?: string;
-  screenshot?: string;
-  screenshotHint?: string;
 }) {
   const { t } = useI18n();
   return (
@@ -169,12 +174,6 @@ function Section({
         </div>
         <h2 className="text-xl font-bold text-zinc-100">{title}</h2>
       </div>
-
-      {screenshot && (
-        <div className="mb-6">
-          <ScreenshotPlaceholder title={screenshot} hint={screenshotHint} />
-        </div>
-      )}
 
       <div className="space-y-6">
         <div>
@@ -234,8 +233,27 @@ function OverviewSection({ t }: { t: (k: string) => string }) {
       tips={t("wiki.section.overview.tip")}
       nextId="accounts"
       nextLabel={t("wiki.nav.accounts")}
-      screenshot="Platform Dashboard Overview"
-      screenshotHint="Main dashboard with analytics, leads, and campaign stats"
+      extra={
+        <MockBrowser>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {[
+              { label: "Leads This Month", value: "1,247", color: "text-emerald-400" },
+              { label: "Hot Leads", value: "89", color: "text-amber-400" },
+              { label: "Accounts Active", value: "12", color: "text-blue-400" },
+            ].map((s) => (
+              <div key={s.label} className="bg-zinc-900/50 rounded-lg p-2 text-center">
+                <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
+                <div className="text-[10px] text-zinc-500">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <MockRow left="@marketing_tips" right="HOT • 2 min ago" status="scanning" />
+            <MockRow left="@saas_founders" right="WARM • 15 min ago" status="scanning" />
+            <MockRow left="@b2b_leads" right="COLD • 1 hr ago" status="idle" />
+          </div>
+        </MockBrowser>
+      }
     />
   );
 }
@@ -253,7 +271,17 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
       warnings={t("wiki.section.accounts.warning")}
       extra={
         <div className="space-y-4">
-          <ScreenshotPlaceholder title="Accounts Management" hint="Add, connect, and manage Telegram accounts" />
+          <MockBrowser>
+            <div className="space-y-1">
+              <MockRow left="+7 900 *** 1234" right="socks5://***active" status="active" />
+              <MockRow left="+44 77 *** 5678" right="socks5://***warming" status="warming" />
+              <MockRow left="+1 212 *** 9012" right="http://***active" status="active" />
+            </div>
+            <div className="mt-2 flex gap-2">
+              <div className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] rounded">+ Add Account</div>
+              <div className="px-2 py-1 bg-zinc-700 text-zinc-400 text-[10px] rounded">Bulk Import</div>
+            </div>
+          </MockBrowser>
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
             <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
               {t("wiki.subhead.accountTypes") || "Which accounts to use"}
@@ -285,10 +313,23 @@ function SearchSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.search.howTo").split("\n")}
       expect={t("wiki.section.search.expect").split("\n")}
       tips={t("wiki.section.search.tip")}
-      screenshot="Group Search Interface"
-      screenshotHint="Search Telegram groups by keyword, geo, and niche"
       nextId="monitoring"
       nextLabel={t("wiki.nav.monitoring")}
+      extra={
+        <MockBrowser>
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 bg-zinc-900/50 rounded px-2 py-1 text-xs text-zinc-300">Moscow</div>
+            <div className="flex-1 bg-zinc-900/50 rounded px-2 py-1 text-xs text-zinc-300">real estate</div>
+            <div className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded font-medium">Scan</div>
+          </div>
+          <div className="space-y-1">
+            <MockRow left="@phuket_rentals" right="12.4K members" status="found" />
+            <MockRow left="@moscow_realestate" right="8.2K members" status="found" />
+            <MockRow left="@b2b_leads_moscow" right="34.1K members" status="found" />
+          </div>
+          <div className="mt-2 text-[10px] text-zinc-600 text-center">3 groups found — click to add for monitoring</div>
+        </MockBrowser>
+      }
     />
   );
 }
@@ -303,31 +344,46 @@ function MonitoringSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.monitoring.howTo").split("\n")}
       expect={t("wiki.section.monitoring.expect").split("\n")}
       tips={t("wiki.section.monitoring.tip")}
-      screenshot="Group Monitoring Dashboard"
-      screenshotHint="Track scanning status, leads found, and group activity"
+      nextId="mailings"
+      nextLabel={t("wiki.nav.mailings")}
       extra={
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
-            {t("wiki.subhead.timeline") || "Expected Timeline"}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div className="bg-zinc-900/50 rounded-lg p-3">
-              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.first.title")}</p>
-              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.first.desc")}</p>
+        <div className="space-y-4">
+          <MockBrowser>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-zinc-400">Scanning 2 groups, 847 messages/hour</span>
+              <span className="text-[10px] text-emerald-400">● Live</span>
             </div>
-            <div className="bg-zinc-900/50 rounded-lg p-3">
-              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.week.title")}</p>
-              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.week.desc")}</p>
+            <div className="space-y-1">
+              <MockRow left="@marketing_tips" right="12.4K • 234 msg/hr" status="scanning" />
+              <MockRow left="@saas_founders" right="8.2K • 89 msg/hr" status="scanning" />
             </div>
-            <div className="bg-zinc-900/50 rounded-lg p-3">
-              <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.ongoing.title")}</p>
-              <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.ongoing.desc")}</p>
+            <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+              <div className="bg-emerald-500/10 rounded py-1 text-[10px] text-emerald-400">HOT: 12</div>
+              <div className="bg-amber-500/10 rounded py-1 text-[10px] text-amber-400">WARM: 34</div>
+              <div className="bg-zinc-700/50 rounded py-1 text-[10px] text-zinc-400">COLD: 89</div>
+            </div>
+          </MockBrowser>
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+              {t("wiki.subhead.timeline") || "Expected Timeline"}
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.first.title")}</p>
+                <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.first.desc")}</p>
+              </div>
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.week.title")}</p>
+                <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.week.desc")}</p>
+              </div>
+              <div className="bg-zinc-900/50 rounded-lg p-3">
+                <p className="text-emerald-400 font-medium mb-1">{t("wiki.section.monitoring.timeline.ongoing.title")}</p>
+                <p className="text-zinc-400">{t("wiki.section.monitoring.timeline.ongoing.desc")}</p>
+              </div>
             </div>
           </div>
         </div>
       }
-      nextId="mailings"
-      nextLabel={t("wiki.nav.mailings")}
     />
   );
 }
@@ -342,40 +398,50 @@ function MailingsSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.mailings.howTo").split("\n")}
       expect={t("wiki.section.mailings.expect").split("\n")}
       warnings={t("wiki.section.mailings.warning")}
-      screenshot="Mailing Campaign Manager"
-      screenshotHint="Create, send, and track bulk message campaigns"
+      nextId="leads"
+      nextLabel={t("wiki.nav.leads")}
       extra={
-        <div className="space-y-3">
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
-              {t("wiki.subhead.variables") || "Available Variables"}
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {t("wiki.section.mailings.variables").split("\n").map((line, i) => (
-                <div key={i} className="flex items-center gap-2 text-zinc-400">
-                  <code className="text-emerald-300 bg-zinc-900/50 px-1.5 py-0.5 rounded text-xs">{line.split(" — ")[0]}</code>
-                  <span>{line.split(" — ")[1] || ""}</span>
-                </div>
-              ))}
+        <div className="space-y-4">
+          <MockBrowser>
+            <div className="space-y-1">
+              <MockRow left="Welcome to {group}" right="1,247 sent • 89% delivered" status="active" />
+              <MockRow left="Special offer for {name}" right="534 sent • 76% delivered" status="paused" />
             </div>
-          </div>
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
-              {t("wiki.subhead.antiSpam") || "Anti-Spam Tips"}
-            </h4>
-            <ul className="space-y-1.5 text-sm text-zinc-400">
-              {t("wiki.section.mailings.antiSpam").split("\n").map((line, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
-                  <span>{line.replace(/^•\s*/, "")}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2 flex gap-2 text-[10px]">
+              <div className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded">+ New Mailing</div>
+              <div className="px-2 py-1 bg-zinc-700 text-zinc-400 rounded">Import Contacts</div>
+            </div>
+          </MockBrowser>
+          <div className="space-y-3">
+            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+              <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
+                {t("wiki.subhead.variables") || "Available Variables"}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {t("wiki.section.mailings.variables").split("\n").map((line, i) => (
+                  <div key={i} className="flex items-center gap-2 text-zinc-400">
+                    <code className="text-emerald-300 bg-zinc-900/50 px-1.5 py-0.5 rounded text-xs">{line.split(" — ")[0]}</code>
+                    <span>{line.split(" — ")[1] || ""}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+              <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
+                {t("wiki.subhead.antiSpam") || "Anti-Spam Tips"}
+              </h4>
+              <ul className="space-y-1.5 text-sm text-zinc-400">
+                {t("wiki.section.mailings.antiSpam").split("\n").map((line, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-amber-500 mt-0.5">•</span>
+                    <span>{line.replace(/^•\s*/, "")}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       }
-      nextId="leads"
-      nextLabel={t("wiki.nav.leads")}
     />
   );
 }
@@ -389,10 +455,22 @@ function LeadsSection({ t }: { t: (k: string) => string }) {
       forWhat={t("wiki.section.leads.forWhat")}
       howTo={t("wiki.section.leads.howTo").split("\n")}
       expect={t("wiki.section.leads.expect").split("\n")}
-      screenshot="Lead Management Pipeline"
-      screenshotHint="View, filter, and qualify leads by intent score"
       nextId="rules"
       nextLabel={t("wiki.nav.rules")}
+      extra={
+        <MockBrowser>
+          <div className="flex gap-2 mb-2">
+            <div className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] rounded font-medium">HOT (12)</div>
+            <div className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded">WARM (34)</div>
+            <div className="px-2 py-0.5 bg-zinc-700 text-zinc-400 text-[10px] rounded">COLD (89)</div>
+          </div>
+          <div className="space-y-1">
+            <MockRow left="@alex_buyer" right="HOT • wants to rent" status="new" />
+            <MockRow left="@maria_invest" right="HOT • asking about price" status="in_progress" />
+            <MockRow left="@dmitry_seeker" right="WARM • comparing options" status="new" />
+          </div>
+        </MockBrowser>
+      }
     />
   );
 }
@@ -407,23 +485,30 @@ function RulesSection({ t }: { t: (k: string) => string }) {
       howTo={t("wiki.section.rules.howTo").split("\n")}
       expect={t("wiki.section.rules.expect").split("\n")}
       tips={t("wiki.section.rules.tip")}
-      screenshot="Lead Scoring Rules"
-      screenshotHint="Configure keyword-based rules for automatic lead classification"
+      nextId="campaigns"
+      nextLabel={t("wiki.nav.campaigns")}
       extra={
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
-            {t("wiki.subhead.scoring") || "Scoring Formula"}
-          </h4>
-          <div className="text-sm text-zinc-400 space-y-2">
-            <p>{t("wiki.section.rules.scoring")}</p>
-            <div className="bg-zinc-900/50 rounded-lg p-3 font-mono text-xs text-zinc-300">
-              {t("wiki.section.rules.scoringFormula")}
+        <div className="space-y-4">
+          <MockBrowser>
+            <div className="space-y-1">
+              <MockRow left="Buy/rent keyword match" right="Score: +50 → HOT" status="active" />
+              <MockRow left="Price inquiry detected" right="Score: +30 → WARM" status="active" />
+              <MockRow left="Spam/link filter" right="Score: -100 → SPAM" status="active" />
+            </div>
+          </MockBrowser>
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+              {t("wiki.subhead.scoring") || "Scoring Formula"}
+            </h4>
+            <div className="text-sm text-zinc-400 space-y-2">
+              <p>{t("wiki.section.rules.scoring")}</p>
+              <div className="bg-zinc-900/50 rounded-lg p-3 font-mono text-xs text-zinc-300">
+                {t("wiki.section.rules.scoringFormula")}
+              </div>
             </div>
           </div>
         </div>
       }
-      nextId="campaigns"
-      nextLabel={t("wiki.nav.campaigns")}
     />
   );
 }

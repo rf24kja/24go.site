@@ -125,13 +125,13 @@ async def add_group(
     plan = await get_subscription_plan(str(current_user.tenant_id))
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
     from sqlalchemy import func as _func
-    count = (await db.execute(
-        _func.count()).select_from(
+    count_q = select(_func.count()).select_from(
         select(MonitoredGroup).where(
             MonitoredGroup.tenant_id == current_user.tenant_id,
             MonitoredGroup.is_active == True,
         ).subquery()
-    )).scalar() or 0
+    )
+    count = (await db.execute(count_q)).scalar() or 0
     if count >= limits["max_targets"]:
         raise HTTPException(403, f"Target limit reached ({limits['max_targets']}) for {plan} plan")
 
@@ -277,14 +277,13 @@ async def bulk_import_groups(
     plan = await get_subscription_plan(str(current_user.tenant_id))
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
 
-    count = (await db.execute(
-        func.count()
-    ).select_from(
+    count_q = select(func.count()).select_from(
         select(MonitoredGroup).where(
             MonitoredGroup.tenant_id == current_user.tenant_id,
             MonitoredGroup.is_active == True,
         ).subquery()
-    )).scalar() or 0
+    )
+    count = (await db.execute(count_q)).scalar() or 0
 
     for item in body.groups:
         if count >= limits["max_targets"]:
@@ -599,21 +598,16 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
         try:
             for query in queries:
                 try:
-                    # Search user's dialogs (groups/channels they already joined)
-                    # Telegram API doesn't support discovering unknown public groups
-                    result = await client.get_dialogs(limit=50, search=query)
-                    for dialog in result:
-                        entity = dialog.entity
+                    # search_global discovers public groups/channels, not just joined ones
+                    async for entity in client.search_global(query, limit=20):
                         name = getattr(entity, 'title', '').lower()
                         username = getattr(entity, 'username', '') or ''
 
-                        # Filter: must be a group/channel, not already seen
                         if not username or username in seen:
                             continue
                         if not getattr(entity, 'megagroup', False) and not getattr(entity, 'broadcast', False):
                             continue
 
-                        # Score relevance
                         relevance = 0
                         geo_lower = geo_tag.lower()
                         niche_lower = niche.lower().replace("_", " ")
@@ -623,18 +617,22 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                         if niche_lower in name or niche_lower in username.lower():
                             relevance += 10
 
-                        # Partial matches
                         for word in niche_lower.split():
                             if word in name:
                                 relevance += 3
 
                         if relevance > 0:
                             seen.add(username)
+                            try:
+                                full = await client.get_entity(entity)
+                                members = getattr(full, 'participants_count', 0) or 0
+                            except Exception:
+                                members = 0
                             results.append({
                                 "platform": "telegram",
                                 "group_identifier": f"@{username}",
                                 "title": getattr(entity, 'title', username),
-                                "members_count": getattr(entity, 'participants_count', 0) or 0,
+                                "members_count": members,
                                 "relevance": relevance,
                             })
                 except Exception as e:
