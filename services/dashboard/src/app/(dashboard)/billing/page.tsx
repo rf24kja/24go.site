@@ -13,18 +13,21 @@ const getPlans = (t: (k: string) => string) => [
     name: t("plans.starter"),
     price: t("plans.starterPrice"),
     period: t("plans.perMonth"),
+    desc: t("plans.starterDesc"),
     features: [t("plans.starterPosts"), t("plans.starterTokens"), t("plans.starterAccounts"), t("plans.starterSupport")],
   },
   {
     name: t("plans.pro"),
     price: t("plans.proPrice"),
     period: t("plans.perMonth"),
+    desc: t("plans.proDesc"),
     features: [t("plans.proPosts"), t("plans.proTokens"), t("plans.proAccounts"), t("plans.proSupport"), t("plans.proApi")],
   },
   {
     name: t("plans.enterprise"),
     price: t("plans.enterprisePrice"),
     period: t("plans.perMonth"),
+    desc: t("plans.enterpriseDesc"),
     features: [t("plans.enterprisePosts"), t("plans.enterpriseTokens"), t("plans.enterpriseAccounts"), t("plans.enterpriseSupport"), t("plans.enterpriseIntegrations"), t("plans.enterpriseSla")],
   },
 ];
@@ -219,6 +222,7 @@ export default function BillingPage() {
                   <h3 className="text-zinc-100 font-medium text-lg">{p.name}</h3>
                   {isCurrent && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">{t("billing.current")}</span>}
                 </div>
+                <p className="text-xs text-zinc-500 mt-1">{p.desc}</p>
                 <div className="mt-2 mb-4">
                   <span className="text-3xl font-bold text-zinc-100">{p.price}</span>
                   <span className="text-zinc-400 text-sm">{p.period}</span>

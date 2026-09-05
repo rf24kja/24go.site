@@ -271,3 +271,74 @@ export const Database = (p: IconProps) => (
     <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
   </S>
 );
+
+// ── Additional icons ────────────────────────────────────────────
+
+export const Telegram = (p: IconProps) => (
+  <S {...p}>
+    <path d="M22 2L11 13" />
+    <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+  </S>
+);
+
+export const Vk = (p: IconProps) => (
+  <S {...p}>
+    <path d="M3 7h4l2 7-3 8" />
+    <path d="M21 7c0 0-4 5-6 7" />
+    <path d="M15 7c0 0 2 7 0 7" />
+  </S>
+);
+
+export const Upload = (p: IconProps) => (
+  <S {...p}>
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </S>
+);
+
+export const Star = (p: IconProps) => (
+  <S {...p}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </S>
+);
+
+export const ExternalLink = (p: IconProps) => (
+  <S {...p}>
+    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </S>
+);
+
+export const X = (p: IconProps) => (
+  <S {...p}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </S>
+);
+
+export const Building = (p: IconProps) => (
+  <S {...p}>
+    <rect x="4" y="2" width="16" height="20" rx="2" />
+    <line x1="9" y1="22" x2="9" y2="2" />
+    <line x1="15" y1="22" x2="15" y2="2" />
+    <line x1="4" y1="7" x2="20" y2="7" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="17" x2="20" y2="17" />
+  </S>
+);
+
+export const Code = (p: IconProps) => (
+  <S {...p}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </S>
+);
+
+export const TrendingUp = (p: IconProps) => (
+  <S {...p}>
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </S>
+);

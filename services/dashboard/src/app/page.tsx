@@ -19,10 +19,14 @@ import {
   FileText,
   Activity,
   Settings,
+  Building,
+  Code,
+  TrendingUp,
 } from "lucide-react";
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
@@ -272,6 +276,29 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* ── Registered users hint ───────────────────────────── */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col md:flex-row items-center gap-4 mt-8">
+            <div className="flex-1">
+              <p className="text-sm text-zinc-400">
+                {t("landing.registeredHint")}{" "}
+                <a href="https://www.24go.site/help" target="_blank" rel="noopener noreferrer"
+                  className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2">
+                  {t("landing.registeredLink")}
+                </a>
+              </p>
+            </div>
+            <div className="w-full md:w-56 bg-zinc-800 rounded-lg p-3 border border-zinc-700 shrink-0">
+              <div className="text-[10px] text-zinc-500 mb-2">{t("landing.guideScreenshot")}</div>
+              <div className="space-y-1.5">
+                <div className="h-2 bg-zinc-700 rounded w-full" />
+                <div className="h-2 bg-zinc-700 rounded w-4/5" />
+                <div className="h-2 bg-emerald-500/30 rounded w-3/5" />
+                <div className="h-2 bg-zinc-700 rounded w-full" />
+                <div className="h-2 bg-zinc-700 rounded w-2/3" />
+              </div>
+            </div>
+          </div>
+
           {/* ── Real Results ──────────────────────────────────── */}
           <div className="mt-20 pt-12 border-t border-zinc-800/50">
             <div className="text-center mb-12">
@@ -281,9 +308,9 @@ export default function LandingPage() {
 
             {/* Case study cards */}
             <div className="grid md:grid-cols-3 gap-6 mb-12">
-              <CaseStudyCard titleKey="landing.case1Title" resultKey="landing.case1Result" roiKey="landing.case1Roi" icon="🏠" />
-              <CaseStudyCard titleKey="landing.case2Title" resultKey="landing.case2Result" roiKey="landing.case2Roi" icon="💻" />
-              <CaseStudyCard titleKey="landing.case3Title" resultKey="landing.case3Result" roiKey="landing.case3Roi" icon="📈" />
+              <CaseStudyCard titleKey="landing.case1Title" resultKey="landing.case1Result" roiKey="landing.case1Roi" icon={Building} />
+              <CaseStudyCard titleKey="landing.case2Title" resultKey="landing.case2Result" roiKey="landing.case2Roi" icon={Code} />
+              <CaseStudyCard titleKey="landing.case3Title" resultKey="landing.case3Result" roiKey="landing.case3Roi" icon={TrendingUp} />
             </div>
 
             {/* Metrics bar */}
@@ -334,6 +361,14 @@ export default function LandingPage() {
               {TESTIMONIALS.map((r, i) => (
                 <TestimonialCard key={i} {...r} />
               ))}
+            </div>
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setShowAllReviews(true)}
+                className="px-6 py-2.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700 transition btn-press"
+              >
+                {t("landing.viewAllReviews").replace("{count}", "16")}
+              </button>
             </div>
           </div>
 
@@ -399,11 +434,76 @@ export default function LandingPage() {
           <span className="text-xs text-zinc-600">{t("landing.copyright", { year: new Date().getFullYear() })}</span>
         </div>
       </footer>
+
+      {/* Full-screen reviews overlay */}
+      {showAllReviews && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto animate-fade-slide-in"
+          onClick={() => setShowAllReviews(false)}>
+          <div className="min-h-screen p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-zinc-100">{t("landing.testimonialsTitle")}</h2>
+                  <p className="text-sm text-zinc-400 mt-1">{t("landing.testimonialsCount")}</p>
+                </div>
+                <button onClick={() => setShowAllReviews(false)}
+                  className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 transition border border-zinc-700">
+                  {t("landing.closeReviews")}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {TESTIMONIALS.map((testimonial, i) => (
+                  <div key={i}
+                    className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-all duration-300"
+                    style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${getColorClass(testimonial.color)}`}>
+                        {testimonial.initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-100">{t(testimonial.nameKey)}</p>
+                        <p className="text-xs text-zinc-500">{t(testimonial.roleKey)} · {t(testimonial.companyKey)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 mb-2">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <span key={j} className={`text-xs ${j < parseInt(t(testimonial.ratingKey)) ? "text-amber-400" : "text-zinc-700"}`}>★</span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{t(testimonial.textKey)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Mockup Components ────────────────────────────────────────────
+
+function getColorClass(color: string): string {
+  const map: Record<string, string> = {
+    emerald: "bg-emerald-500/20 text-emerald-400",
+    blue: "bg-blue-500/20 text-blue-400",
+    amber: "bg-amber-500/20 text-amber-400",
+    rose: "bg-rose-500/20 text-rose-400",
+    violet: "bg-violet-500/20 text-violet-400",
+    cyan: "bg-cyan-500/20 text-cyan-400",
+    orange: "bg-orange-500/20 text-orange-400",
+    teal: "bg-teal-500/20 text-teal-400",
+    indigo: "bg-indigo-500/20 text-indigo-400",
+    pink: "bg-pink-500/20 text-pink-400",
+    lime: "bg-lime-500/20 text-lime-400",
+    fuchsia: "bg-fuchsia-500/20 text-fuchsia-400",
+    red: "bg-red-500/20 text-red-400",
+    yellow: "bg-yellow-500/20 text-yellow-400",
+    sky: "bg-sky-500/20 text-sky-400",
+  };
+  return map[color] || map.emerald;
+}
 
 function MockRow({ phone, status, statusColor, proxy }: { phone: string; status: string; statusColor: string; proxy: string }) {
   const colors: Record<string, string> = { emerald: "bg-emerald-400", amber: "bg-amber-400" };
@@ -454,11 +554,11 @@ function MockKanbanCol({ title, color, count }: { title: string; color: string; 
   );
 }
 
-function CaseStudyCard({ titleKey, resultKey, roiKey, icon }: { titleKey: string; resultKey: string; roiKey: string; icon: string }) {
+function CaseStudyCard({ titleKey, resultKey, roiKey, icon: Icon }: { titleKey: string; resultKey: string; roiKey: string; icon: React.ComponentType<{ className?: string }> }) {
   const { t } = useI18n();
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition">
-      <div className="text-3xl mb-3">{icon}</div>
+      <div className="mb-3"><Icon className="w-8 h-8 text-emerald-400" /></div>
       <h4 className="font-semibold text-zinc-100 mb-2">{t(titleKey)}</h4>
       <p className="text-sm text-zinc-400 mb-3">{t(resultKey)}</p>
       <div className="text-emerald-400 font-bold text-lg">{t(roiKey)}</div>

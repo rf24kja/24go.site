@@ -24,9 +24,9 @@ type Target = {
 };
 
 const PLATFORM_ICONS: Record<string, string> = {
-  telegram: "✈️",
-  vkontakte: "🔵",
-  forum: "💬",
+  telegram: "TG",
+  vkontakte: "VK",
+  forum: "FM",
 };
 
 export default function TargetsPage() {

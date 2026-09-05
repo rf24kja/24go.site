@@ -419,13 +419,35 @@ export default function GroupsPage() {
               placeholder={"@group1\n@group2\nhttps://t.me/group3\n12345678"}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono resize-none"
             />
+            <div className="relative">
+              <input
+                type="file"
+                accept=".txt"
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const text = ev.target?.result as string;
+                    setBulkInput(text);
+                    setBulkPreview(parseBulkInput(text));
+                  };
+                  reader.readAsText(file);
+                }}
+              />
+              <div className="border-2 border-dashed border-zinc-700 rounded-lg p-3 text-center text-xs text-zinc-500 hover:border-zinc-500 transition">
+                <p>{t("groups.uploadTxtDrop")}</p>
+                <p className="text-zinc-600 mt-1">{t("groups.uploadTxtHint")}</p>
+              </div>
+            </div>
             {bulkPreview.length > 0 && !bulkResult && (
               <div className="space-y-2">
                 <p className="text-xs text-zinc-400">{t("groups.bulkImportPreview")}: {bulkPreview.length}</p>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {bulkPreview.map((g, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-zinc-300 bg-zinc-800 rounded px-2 py-1">
-                      <span>{g.platform === "telegram" ? "✈️" : "🔵"}</span>
+                      <span className="text-zinc-500">{g.platform === "telegram" ? "TG" : "VK"}</span>
                       <span className="font-mono">{g.identifier}</span>
                     </div>
                   ))}
