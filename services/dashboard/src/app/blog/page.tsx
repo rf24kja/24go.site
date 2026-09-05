@@ -6,6 +6,34 @@ import { getPublicBlogPosts } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { ArrowLeft, Clock, Tag } from "lucide-react";
 
+const TAG_MAP: Record<string, { en: string; ru: string }> = {
+  "инструкция": { en: "guide", ru: "инструкция" },
+  "тарифы": { en: "pricing", ru: "тарифы" },
+  "парсинг": { en: "scraping", ru: "парсинг" },
+  "telegram": { en: "Telegram", ru: "Telegram" },
+  "вконтакте": { en: "VKontakte", ru: "ВКонтакте" },
+  "b2b": { en: "B2B", ru: "B2B" },
+  "сравнение": { en: "comparison", ru: "сравнение" },
+  "лидогенерация": { en: "lead generation", ru: "лидогенерация" },
+  "маркетинг": { en: "marketing", ru: "маркетинг" },
+  "автоматизация": { en: "automation", ru: "автоматизация" },
+  "ии": { en: "AI", ru: "ИИ" },
+  "прогрев": { en: "warming", ru: "прогрев" },
+  "рассылка": { en: "mailings", ru: "рассылка" },
+  "crm": { en: "CRM", ru: "CRM" },
+  "аналитика": { en: "analytics", ru: "аналитика" },
+  "кампании": { en: "campaigns", ru: "кампании" },
+  "прокси": { en: "proxies", ru: "прокси" },
+  "автоответы": { en: "auto-replies", ru: "автоответы" },
+  "правила лидов": { en: "lead rules", ru: "правила лидов" },
+  "поиск групп": { en: "group discovery", ru: "поиск групп" },
+};
+
+function tTag(tag: string, locale: string): string {
+  const key = tag.toLowerCase();
+  return TAG_MAP[key]?.[locale as "en" | "ru"] || tag;
+}
+
 type Post = {
   id: string;
   slug: string;
@@ -97,7 +125,7 @@ export default function BlogPage() {
                 {post.tags?.[0] && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20 mb-3">
                     <Tag className="w-3 h-3" />
-                    {post.tags[0]}
+                    {tTag(post.tags[0], locale)}
                   </span>
                 )}
 

@@ -321,6 +321,22 @@ class BlogPost(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "slug"),)
 
 
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(255), nullable=False, unique=True)
+    key_preview = Column(String(20), nullable=False)
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    tenant = relationship("Tenant")
+
+
 # ── Mailing / Broadcasting ────────────────────────────────────────
 class MailingStatus(str, enum.Enum):
     draft = "draft"

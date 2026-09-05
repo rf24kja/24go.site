@@ -100,3 +100,113 @@ async def test_webhook(
             return {"status_code": resp.status_code, "success": 200 <= resp.status_code < 300}
     except Exception as e:
         return {"status_code": 0, "success": False, "error": str(e)}
+
+
+# ── API Keys ────────────────────────────────────────────────────────
+
+import hashlib
+import secrets as _secrets
+
+class ApiKeyCreate(BaseModel):
+    name: str
+
+@router.get("/api-keys")
+async def list_api_keys(current_user: User = Depends(get_current_user)):
+    import asyncpg
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        rows = await conn.fetch(
+            "SELECT id, name, key_preview, created_at, last_used_at, is_active FROM api_keys WHERE tenant_id = $1 AND is_active = true ORDER BY created_at DESC",
+            current_user.tenant_id,
+        )
+        return {"keys": [dict(r) for r in rows]}
+    finally:
+        await conn.close()
+
+@router.post("/api-keys")
+async def create_api_key(body: ApiKeyCreate, current_user: User = Depends(get_current_user)):
+    import asyncpg
+    raw_key = f"24go_{_secrets.token_hex(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_preview = raw_key[-8:]
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        await conn.execute(
+            "INSERT INTO api_keys (id, tenant_id, user_id, name, key_hash, key_preview) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)",
+            current_user.tenant_id, current_user.id, body.name, key_hash, key_preview,
+        )
+    finally:
+        await conn.close()
+    return {"key": raw_key, "preview": key_preview, "name": body.name}
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(key_id: str, current_user: User = Depends(get_current_user)):
+    import asyncpg
+    import uuid
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        await conn.execute(
+            "UPDATE api_keys SET is_active = false WHERE id = $1 AND tenant_id = $2",
+            uuid.UUID(key_id), current_user.tenant_id,
+        )
+    finally:
+        await conn.close()
+    return {"status": "revoked"}
+
+
+# ── Data Export ──────────────────────────────────────────────────────
+
+@router.get("/export")
+async def export_data(current_user: User = Depends(get_current_user)):
+    import asyncpg
+    import json as _json
+    from fastapi.responses import Response
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        tenant_id = current_user.tenant_id
+        accounts = await conn.fetch("SELECT phone, status, proxy_host FROM account_pool WHERE tenant_id = $1", tenant_id)
+        groups = await conn.fetch("SELECT username, title, member_count FROM monitored_groups WHERE tenant_id = $1", tenant_id)
+        leads = await conn.fetch("SELECT username, intent_score, summary, created_at FROM leads WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 10000", tenant_id)
+        campaigns = await conn.fetch("SELECT name, status, created_at FROM campaigns WHERE tenant_id = $1", tenant_id)
+        settings_row = await conn.fetchrow("SELECT settings FROM tenant_settings WHERE tenant_id = $1", tenant_id)
+        export = {
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "tenant_id": str(tenant_id),
+            "accounts": [dict(r) for r in accounts],
+            "groups": [dict(r) for r in groups],
+            "leads": [dict(r) for r in leads],
+            "campaigns": [dict(r) for r in campaigns],
+            "settings": _json.loads(settings_row["settings"]) if settings_row else {},
+        }
+        return Response(
+            content=_json.dumps(export, default=str, ensure_ascii=False),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=24go_export_{datetime.now().strftime('%Y%m%d')}.json"},
+        )
+    finally:
+        await conn.close()
+
+
+# ── Delete Account ──────────────────────────────────────────────────
+
+class DeleteAccountRequest(BaseModel):
+    confirm: bool
+
+@router.post("/delete-account")
+async def delete_account(body: DeleteAccountRequest, current_user: User = Depends(get_current_user)):
+    if not body.confirm:
+        return {"error": "Confirmation required"}
+    import asyncpg
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        tenant_id = current_user.tenant_id
+        for table in ["leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"]:
+            try:
+                await conn.execute(f"DELETE FROM {table} WHERE tenant_id = $1", tenant_id)
+            except:
+                pass
+        await conn.execute("DELETE FROM tenant_settings WHERE tenant_id = $1", tenant_id)
+        await conn.execute("UPDATE tenants SET name = name || ' [DELETED]' WHERE id = $1", tenant_id)
+    finally:
+        await conn.close()
+    return {"status": "deleted"}

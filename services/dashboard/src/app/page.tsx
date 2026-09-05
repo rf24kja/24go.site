@@ -272,6 +272,71 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* ── Real Results ──────────────────────────────────── */}
+          <div className="mt-20 pt-12 border-t border-zinc-800/50">
+            <div className="text-center mb-12">
+              <h3 className="text-2xl lg:text-3xl font-bold mb-3">{t("landing.resultsTitle")}</h3>
+              <p className="text-zinc-400 max-w-xl mx-auto">{t("landing.resultsDesc")}</p>
+            </div>
+
+            {/* Case study cards */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <CaseStudyCard titleKey="landing.case1Title" resultKey="landing.case1Result" roiKey="landing.case1Roi" icon="🏠" />
+              <CaseStudyCard titleKey="landing.case2Title" resultKey="landing.case2Result" roiKey="landing.case2Roi" icon="💻" />
+              <CaseStudyCard titleKey="landing.case3Title" resultKey="landing.case3Result" roiKey="landing.case3Roi" icon="📈" />
+            </div>
+
+            {/* Metrics bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+              <MetricCard valueKey="landing.metric1Value" labelKey="landing.metric1Label" />
+              <MetricCard valueKey="landing.metric2Value" labelKey="landing.metric2Label" />
+              <MetricCard valueKey="landing.metric3Value" labelKey="landing.metric3Label" />
+              <MetricCard valueKey="landing.metric4Value" labelKey="landing.metric4Label" />
+            </div>
+
+            {/* Conversion funnel */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 md:p-8">
+              <h4 className="text-lg font-bold text-center mb-6">{t("landing.funnelTitle")}</h4>
+              <div className="flex flex-col items-center gap-2">
+                <FunnelBar width="100%" text={t("landing.funnelStep1")} color="zinc" />
+                <FunnelBar width="75%" text={t("landing.funnelStep2")} color="emerald" />
+                <FunnelBar width="55%" text={t("landing.funnelStep3")} color="emerald" />
+                <FunnelBar width="38%" text={t("landing.funnelStep4")} color="amber" />
+                <FunnelBar width="22%" text={t("landing.funnelStep5")} color="rose" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Testimonials ──────────────────────────────────── */}
+          <div className="mt-20 pt-12 border-t border-zinc-800/50">
+            <div className="text-center mb-12">
+              <h3 className="text-2xl lg:text-3xl font-bold mb-3">{t("landing.testimonialsTitle")}</h3>
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <span className="text-3xl font-bold text-emerald-400">{t("landing.testimonialsRating")}</span>
+                <div className="flex text-amber-400 text-xl">{"★★★★★"}</div>
+              </div>
+              <p className="text-sm text-zinc-500">{t("landing.testimonialsCount")}</p>
+            </div>
+
+            <div className="flex items-center justify-center gap-6 mb-10 text-sm">
+              {[5,4,3,2,1].map((n) => (
+                <div key={n} className="flex items-center gap-2">
+                  <span className="text-zinc-400">{n}★</span>
+                  <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-400 rounded-full" style={{ width: t(`landing.star${n}Percent`) }} />
+                  </div>
+                  <span className="text-zinc-500 w-8 text-right">{t(`landing.star${n}Percent`)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {TESTIMONIALS.map((r, i) => (
+                <TestimonialCard key={i} {...r} />
+              ))}
+            </div>
+          </div>
+
           {/* ── All platform features ─────────────────────── */}
           <div className="mt-16 pt-12 border-t border-zinc-800/50">
             <div className="text-center mb-10">
@@ -385,6 +450,99 @@ function MockKanbanCol({ title, color, count }: { title: string; color: string; 
           <div className="text-center text-[9px] text-zinc-600">+{parseInt(count) - 3}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function CaseStudyCard({ titleKey, resultKey, roiKey, icon }: { titleKey: string; resultKey: string; roiKey: string; icon: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition">
+      <div className="text-3xl mb-3">{icon}</div>
+      <h4 className="font-semibold text-zinc-100 mb-2">{t(titleKey)}</h4>
+      <p className="text-sm text-zinc-400 mb-3">{t(resultKey)}</p>
+      <div className="text-emerald-400 font-bold text-lg">{t(roiKey)}</div>
+    </div>
+  );
+}
+
+function MetricCard({ valueKey, labelKey }: { valueKey: string; labelKey: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
+      <div className="text-2xl font-bold text-emerald-400">{t(valueKey)}</div>
+      <div className="text-xs text-zinc-500 mt-1">{t(labelKey)}</div>
+    </div>
+  );
+}
+
+function FunnelBar({ width, text, color }: { width: string; text: string; color: string }) {
+  const colors: Record<string, string> = {
+    zinc: "bg-zinc-700",
+    emerald: "bg-emerald-500/30 border-emerald-500/40",
+    amber: "bg-amber-500/30 border-amber-500/40",
+    rose: "bg-rose-500/30 border-rose-500/40",
+  };
+  return (
+    <div className={`rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 text-center ${colors[color] || colors.zinc}`}
+      style={{ width }}>
+      {text}
+    </div>
+  );
+}
+
+const TESTIMONIALS = [
+  { nameKey: "landing.t1Name", companyKey: "landing.t1Company", roleKey: "landing.t1Role", textKey: "landing.t1Text", ratingKey: "landing.t1Rating", initials: "AP", color: "emerald" },
+  { nameKey: "landing.t2Name", companyKey: "landing.t2Company", roleKey: "landing.t2Role", textKey: "landing.t2Text", ratingKey: "landing.t2Rating", initials: "SC", color: "blue" },
+  { nameKey: "landing.t3Name", companyKey: "landing.t3Company", roleKey: "landing.t3Role", textKey: "landing.t3Text", ratingKey: "landing.t3Rating", initials: "DV", color: "amber" },
+  { nameKey: "landing.t4Name", companyKey: "landing.t4Company", roleKey: "landing.t4Role", textKey: "landing.t4Text", ratingKey: "landing.t4Rating", initials: "MI", color: "rose" },
+  { nameKey: "landing.t5Name", companyKey: "landing.t5Company", roleKey: "landing.t5Role", textKey: "landing.t5Text", ratingKey: "landing.t5Rating", initials: "JW", color: "violet" },
+  { nameKey: "landing.t6Name", companyKey: "landing.t6Company", roleKey: "landing.t6Role", textKey: "landing.t6Text", ratingKey: "landing.t6Rating", initials: "EK", color: "cyan" },
+  { nameKey: "landing.t7Name", companyKey: "landing.t7Company", roleKey: "landing.t7Role", textKey: "landing.t7Text", ratingKey: "landing.t7Rating", initials: "AH", color: "orange" },
+  { nameKey: "landing.t8Name", companyKey: "landing.t8Company", roleKey: "landing.t8Role", textKey: "landing.t8Text", ratingKey: "landing.t8Rating", initials: "AS", color: "teal" },
+  { nameKey: "landing.t9Name", companyKey: "landing.t9Company", roleKey: "landing.t9Role", textKey: "landing.t9Text", ratingKey: "landing.t9Rating", initials: "TB", color: "indigo" },
+  { nameKey: "landing.t10Name", companyKey: "landing.t10Company", roleKey: "landing.t10Role", textKey: "landing.t10Text", ratingKey: "landing.t10Rating", initials: "OP", color: "pink" },
+  { nameKey: "landing.t11Name", companyKey: "landing.t11Company", roleKey: "landing.t11Role", textKey: "landing.t11Text", ratingKey: "landing.t11Rating", initials: "KT", color: "lime" },
+  { nameKey: "landing.t12Name", companyKey: "landing.t12Company", roleKey: "landing.t12Role", textKey: "landing.t12Text", ratingKey: "landing.t12Rating", initials: "NF", color: "fuchsia" },
+  { nameKey: "landing.t13Name", companyKey: "landing.t13Company", roleKey: "landing.t13Role", textKey: "landing.t13Text", ratingKey: "landing.t13Rating", initials: "MB", color: "red" },
+  { nameKey: "landing.t14Name", companyKey: "landing.t14Company", roleKey: "landing.t14Role", textKey: "landing.t14Text", ratingKey: "landing.t14Rating", initials: "IV", color: "yellow" },
+  { nameKey: "landing.t15Name", companyKey: "landing.t15Company", roleKey: "landing.t15Role", textKey: "landing.t15Text", ratingKey: "landing.t15Rating", initials: "DK", color: "sky" },
+  { nameKey: "landing.t16Name", companyKey: "landing.t16Company", roleKey: "landing.t16Role", textKey: "landing.t16Text", ratingKey: "landing.t16Rating", initials: "TS", color: "violet" },
+];
+
+function TestimonialCard({ nameKey, companyKey, roleKey, textKey, ratingKey, initials, color }: any) {
+  const { t } = useI18n();
+  const rating = parseInt(t(ratingKey));
+  const colorMap: Record<string, string> = {
+    emerald: "bg-emerald-500/20 text-emerald-400",
+    blue: "bg-blue-500/20 text-blue-400",
+    amber: "bg-amber-500/20 text-amber-400",
+    rose: "bg-rose-500/20 text-rose-400",
+    violet: "bg-violet-500/20 text-violet-400",
+    cyan: "bg-cyan-500/20 text-cyan-400",
+    orange: "bg-orange-500/20 text-orange-400",
+    teal: "bg-teal-500/20 text-teal-400",
+    indigo: "bg-indigo-500/20 text-indigo-400",
+    pink: "bg-pink-500/20 text-pink-400",
+    lime: "bg-lime-500/20 text-lime-400",
+    fuchsia: "bg-fuchsia-500/20 text-fuchsia-400",
+    red: "bg-red-500/20 text-red-400",
+    yellow: "bg-yellow-500/20 text-yellow-400",
+    sky: "bg-sky-500/20 text-sky-400",
+  };
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition flex flex-col">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${colorMap[color] || colorMap.emerald}`}>
+          {initials}
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-zinc-100 truncate">{t(nameKey)}</div>
+          <div className="text-xs text-zinc-500 truncate">{t(roleKey)} · {t(companyKey)}</div>
+        </div>
+      </div>
+      <div className="flex text-amber-400 text-xs mb-2">{"★".repeat(rating)}{"☆".repeat(5 - rating)}</div>
+      <p className="text-sm text-zinc-400 leading-relaxed flex-1">{t(textKey)}</p>
     </div>
   );
 }

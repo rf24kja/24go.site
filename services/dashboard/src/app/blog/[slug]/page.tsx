@@ -3,6 +3,34 @@ import { getPublicBlogPost, getBlogSlugs, getPublicBlogPosts } from "@/lib/api";
 import type { Metadata } from "next";
 import { ArrowLeft, Clock, Tag } from "lucide-react";
 
+const TAG_MAP: Record<string, { en: string; ru: string }> = {
+  "инструкция": { en: "guide", ru: "инструкция" },
+  "тарифы": { en: "pricing", ru: "тарифы" },
+  "парсинг": { en: "scraping", ru: "парсинг" },
+  "telegram": { en: "Telegram", ru: "Telegram" },
+  "вконтакте": { en: "VKontakte", ru: "ВКонтакте" },
+  "b2b": { en: "B2B", ru: "B2B" },
+  "сравнение": { en: "comparison", ru: "сравнение" },
+  "лидогенерация": { en: "lead generation", ru: "лидогенерация" },
+  "маркетинг": { en: "marketing", ru: "маркетинг" },
+  "автоматизация": { en: "automation", ru: "автоматизация" },
+  "ии": { en: "AI", ru: "ИИ" },
+  "прогрев": { en: "warming", ru: "прогрев" },
+  "рассылка": { en: "mailings", ru: "рассылка" },
+  "crm": { en: "CRM", ru: "CRM" },
+  "аналитика": { en: "analytics", ru: "аналитика" },
+  "кампании": { en: "campaigns", ru: "кампании" },
+  "прокси": { en: "proxies", ru: "прокси" },
+  "автоответы": { en: "auto-replies", ru: "автоответы" },
+  "правила лидов": { en: "lead rules", ru: "правила лидов" },
+  "поиск групп": { en: "group discovery", ru: "поиск групп" },
+};
+
+function tTag(tag: string, locale: string): string {
+  const key = tag.toLowerCase();
+  return TAG_MAP[key]?.[locale as "en" | "ru"] || tag;
+}
+
 // ponytail: minimal markdown→HTML, no dependency. Supports tables, images, code, blockquotes.
 function md(text: string): string {
   if (!text) return "";
@@ -149,10 +177,18 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
-          <Link href="/blog" className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5">
-            <ArrowLeft className="w-4 h-4" />
-            {labels.back}
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex gap-0.5 bg-zinc-800 rounded-lg p-0.5">
+              <a href={`/blog/${params.slug}?locale=en`}
+                className={`px-2 py-1 rounded text-xs font-medium transition ${locale === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>EN</a>
+              <a href={`/blog/${params.slug}?locale=ru`}
+                className={`px-2 py-1 rounded text-xs font-medium transition ${locale === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>RU</a>
+            </div>
+            <Link href="/blog" className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" />
+              {labels.back}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -176,7 +212,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
               {post.tags.map((tag: string) => (
                 <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20">
                   <Tag className="w-3 h-3" />
-                  {tag}
+                  {tTag(tag, locale)}
                 </span>
               ))}
             </div>
@@ -214,7 +250,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
                   className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition group"
                 >
                   {rp.tags?.[0] && (
-                    <span className="text-xs text-emerald-400 font-medium">{rp.tags[0]}</span>
+                    <span className="text-xs text-emerald-400 font-medium">{tTag(rp.tags[0], locale)}</span>
                   )}
                   <h4 className="text-sm font-semibold text-zinc-200 group-hover:text-emerald-400 transition mt-1 line-clamp-2">{rp.title}</h4>
                   <time className="text-xs text-zinc-600 mt-2 block">

@@ -111,6 +111,17 @@ DEFAULTS = {
         "url": "",
         "secret": "",
     },
+    "security": {
+        "two_factor_enabled": False,
+        "session_timeout": "30min",
+        "ip_whitelist": "",
+        "login_notifications": True,
+    },
+    "data": {
+        "data_retention_days": "90",
+        "auto_delete_old_leads": False,
+        "gdpr_mode": False,
+    },
 }
 
 

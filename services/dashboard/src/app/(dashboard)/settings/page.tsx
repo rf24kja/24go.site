@@ -9,13 +9,13 @@ import {
   getNotificationStatus, testSmtp, testWebhook,
 } from "@/lib/api";
 import {
-  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap,
+  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap, Shield, Database,
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
 import { FieldHint } from "@/components/FieldHint";
 
-type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "account";
+type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "security" | "data" | "account";
 
 const getSections = (t: (k: string) => string): { key: Section; label: string; Icon: React.FC<IconProps> }[] => [
   { key: "llm", label: t("settings.section.ai"), Icon: BrainCircuit },
@@ -25,6 +25,8 @@ const getSections = (t: (k: string) => string): { key: Section; label: string; I
   { key: "auto_reply", label: t("settings.autoReply"), Icon: Send },
   { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
   { key: "webhooks", label: t("settings.n8nIntegration"), Icon: Zap },
+  { key: "security", label: t("settings.section.security"), Icon: Shield },
+  { key: "data", label: t("settings.section.data"), Icon: Database },
   { key: "account", label: t("settings.section.account"), Icon: Cog },
 ];
 
@@ -122,6 +124,8 @@ export default function SettingsPage() {
             {activeSection === "auto_reply" && <AutoReplySection settings={settings.auto_reply || {}} defaults={defaults.auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("auto_reply", v)} onReset={() => handleResetSection("auto_reply")} saving={saving} />}
             {activeSection === "groups" && <GroupsSection settings={settings.groups || {}} defaults={defaults.groups || {}} onSave={(v: Record<string, any>) => handleSaveSection("groups", v)} onReset={() => handleResetSection("groups")} saving={saving} />}
             {activeSection === "webhooks" && <WebhooksSection settings={settings.webhooks || {}} defaults={defaults.webhooks || {}} onSave={(v: Record<string, any>) => handleSaveSection("webhooks", v)} onReset={() => handleResetSection("webhooks")} saving={saving} />}
+            {activeSection === "security" && <SecuritySection settings={settings.security || {}} defaults={defaults.security || {}} onSave={(v: Record<string, any>) => handleSaveSection("security", v)} onReset={() => handleResetSection("security")} saving={saving} />}
+            {activeSection === "data" && <DataSection settings={settings.data || {}} defaults={defaults.data || {}} onSave={(v: Record<string, any>) => handleSaveSection("data", v)} onReset={() => handleResetSection("data")} saving={saving} />}
             {activeSection === "account" && <AccountSection />}
           </>
         )}
@@ -270,6 +274,20 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
         </div>
       </Card>
 
+      <Card title={t("settings.llmAdvanced")}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label={t("settings.temperature")} hint={t("settings.temperatureHint")}>
+            <NumberInput value={cfg.temperature || 0.3} onChange={(v) => set("temperature", v)} min={0} max={1} step={0.05} />
+          </Field>
+          <Field label={t("settings.maxTokens")}>
+            <NumberInput value={cfg.max_tokens || 500} onChange={(v) => set("max_tokens", v)} min={100} max={4000} step={100} />
+          </Field>
+          <Field label={t("settings.fallbackModel")}>
+            <Input value={cfg.fallback_model || ""} onChange={(v) => set("fallback_model", v)} placeholder="deepseek-chat" />
+          </Field>
+        </div>
+      </Card>
+
       <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
@@ -329,6 +347,37 @@ function WarmupSection({ settings, defaults, onSave, onReset, saving }: any) {
           <Field label={t("settings.maxDelay")}>
             <NumberInput value={cfg.random_delay_max_sec || 8} onChange={(v) => set("random_delay_max_sec", v)} min={2} max={60} />
           </Field>
+        </div>
+      </Card>
+
+      <Card title={t("settings.warmupAdvanced")}>
+        <div className="space-y-4">
+          <Field label={t("settings.activityVariety")}>
+            <div className="flex flex-wrap gap-3">
+              {["reactions", "replies", "dms", "posts"].map((act) => {
+                const active = (cfg.activity_types || ["reactions", "replies"]).includes(act);
+                return (
+                  <button key={act} onClick={() => {
+                    const current = cfg.activity_types || ["reactions", "replies"];
+                    set("activity_types", active ? current.filter((a: string) => a !== act) : [...current, act]);
+                  }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition capitalize ${active ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-zinc-800 border-zinc-700 text-zinc-500"}`}>{act}</button>
+                );
+              })}
+            </div>
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.quietHoursStart")} hint={t("settings.quietHoursHint")}>
+              <NumberInput value={cfg.quiet_hours_start || 23} onChange={(v) => set("quiet_hours_start", v)} min={0} max={23} />
+            </Field>
+            <Field label={t("settings.quietHoursEnd")}>
+              <NumberInput value={cfg.quiet_hours_end || 7} onChange={(v) => set("quiet_hours_end", v)} min={0} max={23} />
+            </Field>
+          </div>
+          <div className="flex items-center justify-between">
+            <Field label={t("settings.weekendMode")}><p className="text-xs text-zinc-500">{t("settings.weekendModeHint")}</p></Field>
+            <Toggle value={cfg.reduced_weekend || false} onChange={(v) => set("reduced_weekend", v)} />
+          </div>
         </div>
       </Card>
 
@@ -448,6 +497,23 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
         </div>
       </Card>
 
+      <Card title={t("settings.notifAdvanced")}>
+        <div className="space-y-4">
+          <Field label={t("settings.digestFrequency")}>
+            <Select value={cfg.digest_frequency || "realtime"} onChange={(v) => set("digest_frequency", v)}
+              options={[{ value: "realtime", label: t("settings.digestRealtime") }, { value: "hourly", label: t("settings.digestHourly") }, { value: "daily", label: t("settings.digestDaily") }]} />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.notifQuietStart")} hint={t("settings.notifQuietHint")}>
+              <NumberInput value={cfg.notif_quiet_start || 22} onChange={(v) => set("notif_quiet_start", v)} min={0} max={23} />
+            </Field>
+            <Field label={t("settings.notifQuietEnd")}>
+              <NumberInput value={cfg.notif_quiet_end || 8} onChange={(v) => set("notif_quiet_end", v)} min={0} max={23} />
+            </Field>
+          </div>
+        </div>
+      </Card>
+
       <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
@@ -521,6 +587,22 @@ function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) 
             </Field>
             <Field label={t("settings.autoReplyMaxPerHour")} hint={t("settings.autoReplyMaxPerHourHint")}>
               <NumberInput value={cfg.max_replies_per_hour || 10} onChange={(v) => set("max_replies_per_hour", v)} min={1} max={100} />
+            </Field>
+          </div>
+        </div>
+      </Card>
+
+      <Card title={t("settings.autoReplyAdvanced")}>
+        <div className="space-y-4">
+          <Field label={t("settings.blacklistUsers")} hint={t("settings.blacklistHint")}>
+            <Input value={cfg.blacklist_usernames || ""} onChange={(v) => set("blacklist_usernames", v)} placeholder="user1, user2, user3" />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.workHoursStart")} hint={t("settings.workHoursHint")}>
+              <NumberInput value={cfg.work_hours_start || 9} onChange={(v) => set("work_hours_start", v)} min={0} max={23} />
+            </Field>
+            <Field label={t("settings.workHoursEnd")}>
+              <NumberInput value={cfg.work_hours_end || 18} onChange={(v) => set("work_hours_end", v)} min={0} max={23} />
             </Field>
           </div>
         </div>
@@ -619,6 +701,173 @@ function WebhooksSection({ settings, defaults, onSave, onReset, saving }: any) {
         </div>
       </Card>
 
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
+    </div>
+  );
+}
+
+// ── Section: Security & Access ─────────────────────────────────
+function SecuritySection({ settings, defaults, onSave, onReset, saving }: any) {
+  const [cfg, setCfg] = useState(settings);
+  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
+  const { auth } = useAuth();
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [generatedKey, setGeneratedKey] = useState("");
+
+  useEffect(() => {
+    if (!auth?.token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/api-keys`, {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    }).then(r => r.json()).then(d => setApiKeys(d.keys || [])).catch(() => {});
+  }, [auth?.token]);
+
+  const generateKey = async () => {
+    if (!auth?.token || !newKeyName.trim()) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/api-keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+        body: JSON.stringify({ name: newKeyName.trim() }),
+      });
+      const data = await res.json();
+      setGeneratedKey(data.key || "");
+      setNewKeyName("");
+      const list = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/api-keys`, {
+        headers: { Authorization: `Bearer ${auth.token}` }
+      }).then(r => r.json());
+      setApiKeys(list.keys || []);
+    } catch {}
+  };
+
+  const revokeKey = async (id: string) => {
+    if (!auth?.token || !confirm(t("settings.confirmRevoke"))) return;
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/api-keys/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    setApiKeys(apiKeys.filter((k: any) => k.id !== id));
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader Icon={Shield} title={t("settings.security.title")} desc={t("settings.security.desc")} />
+      <Card title={t("settings.security.auth")}>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Field label={t("settings.security.2fa")}><p className="text-xs text-zinc-500">{t("settings.security.2faHint")}</p></Field>
+            <Toggle value={cfg.two_factor_enabled || false} onChange={(v) => set("two_factor_enabled", v)} />
+          </div>
+          <Field label={t("settings.security.sessionTimeout")}>
+            <Select value={cfg.session_timeout || "30min"} onChange={(v) => set("session_timeout", v)}
+              options={[{ value: "15min", label: "15 minutes" }, { value: "30min", label: "30 minutes" }, { value: "1hr", label: "1 hour" }, { value: "4hr", label: "4 hours" }, { value: "24hr", label: "24 hours" }]} />
+          </Field>
+          <div className="flex items-center justify-between">
+            <Field label={t("settings.security.loginNotif")}><p className="text-xs text-zinc-500">{t("settings.security.loginNotifHint")}</p></Field>
+            <Toggle value={cfg.login_notifications !== false} onChange={(v) => set("login_notifications", v)} />
+          </div>
+        </div>
+      </Card>
+      <Card title={t("settings.security.ipWhitelist")}>
+        <Field label={t("settings.security.ipWhitelist")} hint={t("settings.security.ipWhitelistHint")}>
+          <textarea value={cfg.ip_whitelist || ""} onChange={(e) => set("ip_whitelist", e.target.value)} rows={3} placeholder={"192.168.1.1\n10.0.0.1"}
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
+        </Field>
+      </Card>
+      <Card title={t("settings.security.apiKeys")}>
+        <div className="space-y-3">
+          {apiKeys.map((k: any) => (
+            <div key={k.id} className="flex items-center justify-between bg-zinc-800 rounded-lg px-3 py-2">
+              <div>
+                <span className="text-sm text-zinc-200">{k.name}</span>
+                <span className="text-xs text-zinc-500 ml-2">{k.key_preview}</span>
+                <span className="text-xs text-zinc-600 ml-2">{k.created_at?.slice(0,10)}</span>
+              </div>
+              <button onClick={() => revokeKey(k.id)} className="text-xs text-rose-400 hover:text-rose-300">{t("settings.revoke")}</button>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <Input value={newKeyName} onChange={setNewKeyName} placeholder={t("settings.security.keyName")} />
+            <button onClick={generateKey} disabled={!newKeyName.trim()} className="px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 disabled:opacity-50 whitespace-nowrap">{t("settings.security.generateKey")}</button>
+          </div>
+          {generatedKey && (
+            <div className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-400 font-mono break-all">
+              {t("settings.security.copyKey")}: {generatedKey}
+            </div>
+          )}
+        </div>
+      </Card>
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
+    </div>
+  );
+}
+
+// ── Section: Data & Privacy ────────────────────────────────────
+function DataSection({ settings, defaults, onSave, onReset, saving }: any) {
+  const [cfg, setCfg] = useState(settings);
+  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
+  const { auth } = useAuth();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!auth?.token) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/export`, { headers: { Authorization: `Bearer ${auth.token}` } });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `24go_export_${new Date().toISOString().slice(0,10)}.json`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch {}
+    setExporting(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!auth?.token) return;
+    if (!confirm(t("settings.data.deleteConfirm1"))) return;
+    if (!confirm(t("settings.data.deleteConfirm2"))) return;
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/settings/delete-account`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+        body: JSON.stringify({ confirm: true }),
+      });
+      window.location.href = "/login";
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader Icon={Database} title={t("settings.data.title")} desc={t("settings.data.desc")} />
+      <Card title={t("settings.data.retention")}>
+        <div className="space-y-4">
+          <Field label={t("settings.data.retentionPeriod")} hint={t("settings.data.retentionHint")}>
+            <Select value={cfg.data_retention_days || "90"} onChange={(v) => set("data_retention_days", v)}
+              options={[{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "90", label: "90 days" }, { value: "180", label: "180 days" }, { value: "365", label: "365 days" }]} />
+          </Field>
+          <div className="flex items-center justify-between">
+            <Field label={t("settings.data.autoDelete")}><p className="text-xs text-zinc-500">{t("settings.data.autoDeleteHint")}</p></Field>
+            <Toggle value={cfg.auto_delete_old_leads || false} onChange={(v) => set("auto_delete_old_leads", v)} />
+          </div>
+          <div className="flex items-center justify-between">
+            <Field label={t("settings.data.gdpr")}><p className="text-xs text-zinc-500">{t("settings.data.gdprHint")}</p></Field>
+            <Toggle value={cfg.gdpr_mode || false} onChange={(v) => set("gdpr_mode", v)} />
+          </div>
+        </div>
+      </Card>
+      <Card title={t("settings.data.export")}>
+        <p className="text-sm text-zinc-400 mb-3">{t("settings.data.exportDesc")}</p>
+        <button onClick={handleExport} disabled={exporting} className="px-4 py-2 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50">
+          {exporting ? t("settings.exporting") : t("settings.data.exportBtn")}
+        </button>
+      </Card>
+      <Card title={t("settings.data.dangerZone")}>
+        <p className="text-sm text-zinc-400 mb-3">{t("settings.data.deleteDesc")}</p>
+        <button onClick={handleDeleteAccount} className="px-4 py-2 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-sm font-medium hover:bg-rose-500/20">
+          {t("settings.data.deleteBtn")}
+        </button>
+      </Card>
       <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
     </div>
   );
