@@ -37,7 +37,7 @@ class ProxyAssign(BaseModel):
 @router.get("/")
 async def list_proxies(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     result = await db.execute(
-        select(Proxy).where(Proxy.tenant_id == user.tenant_id).order_by(Proxy.created_at.desc())
+        select(Proxy).where(Proxy.tenant_id == user.tenant_id).order_by(Proxy.id.desc())
     )
     proxies = result.scalars().all()
 
