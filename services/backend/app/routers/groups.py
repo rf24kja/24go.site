@@ -487,11 +487,15 @@ async def discover_groups(
     # Apply tenant filters
     filtered = []
     for r in results:
-        if r.get("members_count", 0) < min_members:
+        members = r.get("members_count", 0)
+        if members > 0 and members < min_members:
+            log.info(f"Filtering out {r.get('group_identifier')}: {members} < {min_members} members")
             continue
         if prefer_open and r.get("access") == "closed":
+            log.info(f"Filtering out {r.get('group_identifier')}: closed access")
             continue
         filtered.append(r)
+    log.info(f"Filter results: {len(results)} → {len(filtered)} (min_members={min_members}, prefer_open={prefer_open})")
 
     # Persist discovered results as targets so the frontend can list them
     from app.models import Target
