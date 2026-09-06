@@ -605,39 +605,38 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
 
         try:
             from telethon.tl.functions.messages import SearchGlobalRequest
+            from telethon.tl.functions.contacts import SearchRequest as ContactsSearchRequest
             from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
 
             for query in queries:
                 try:
                     log.info(f"Searching Telegram for query: {query!r}")
                     entity_count = 0
-                    result = await client(SearchGlobalRequest(
-                        q=query,
-                        filter=InputMessagesFilterEmpty(),
-                        min_date=None,
-                        max_date=None,
-                        offset_rate=0,
-                        offset_peer=InputPeerEmpty(),
-                        offset_id=0,
-                        limit=20,
-                    ))
-                    messages = getattr(result, 'messages', []) or []
-                    for msg in messages:
-                        # We only care about channels/groups from peer_id
-                        if not hasattr(msg, 'peer_id') or not hasattr(msg.peer_id, 'channel_id'):
-                            continue
-                        entity_count += 1
-                        try:
-                            entity = await client.get_entity(msg.peer_id.channel_id)
-                        except Exception:
-                            continue
+
+                    # contacts.search returns users, chats, and channels globally
+                    result = await client(ContactsSearchRequest(q=query, limit=50))
+                    chats = getattr(result, 'chats', []) or []
+
+                    for entity in chats:
                         username = getattr(entity, 'username', '') or ''
                         name = getattr(entity, 'title', '').lower()
 
                         if not username or username in seen:
                             continue
-                        if not getattr(entity, 'megagroup', False) and not getattr(entity, 'broadcast', False):
+
+                        is_channel = getattr(entity, 'megagroup', False) or getattr(entity, 'broadcast', False)
+                        if not is_channel:
                             continue
+
+                        entity_count += 1
+
+                        # Filter out very small channels (likely spam)
+                        try:
+                            from telethon.tl.functions.channels import GetFullChannelRequest
+                            full = await client(GetFullChannelRequest(entity))
+                            members = getattr(full.full_chat, 'participants_count', 0) or 0
+                        except Exception:
+                            members = 0
 
                         relevance = 0
                         geo_lower = geo_tag.lower()
@@ -653,13 +652,6 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                                 relevance += 3
 
                         seen.add(username)
-                        # get_full_channel returns participants_count
-                        try:
-                            from telethon.tl.functions.channels import GetFullChannelRequest
-                            full = await client(GetFullChannelRequest(entity))
-                            members = getattr(full.full_chat, 'participants_count', 0) or 0
-                        except Exception:
-                            members = 0
                         results.append({
                             "platform": "telegram",
                             "group_identifier": f"@{username}",
@@ -667,7 +659,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                             "members_count": members,
                             "relevance": relevance,
                         })
-                    log.info(f"Query {query!r}: found {entity_count} entities, {len(results)} total results")
+                    log.info(f"Query {query!r}: found {entity_count} channels, {len(results)} total results")
                 except Exception as e:
                     log.warning(f"Search query '{query}' failed: {e}")
                     continue
