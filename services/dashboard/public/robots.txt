@@ -13,5 +13,13 @@ Disallow: /lead-rules/
 Disallow: /users/
 Disallow: /audit/
 Disallow: /webhooks/
+Disallow: /proxies/
+Disallow: /mailings/
+Disallow: /targets/
+Disallow: /blog-admin/
+Disallow: /health/
+Disallow: /monitoring/
+Disallow: /reset-password/
+Disallow: /forgot-password/
 
 Sitemap: https://www.24go.site/sitemap.xml
