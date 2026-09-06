@@ -26,6 +26,7 @@ app = FastAPI(
     title="LeadGen Control Plane",
     description="Multi-tenant B2B SaaS platform for automated lead generation in Telegram/VK social networks.",
     version="0.3.3",
+    redirect_slashes=False,
     docs_url="/docs" if not _is_production else None,
     redoc_url="/redoc" if not _is_production else None,
     openapi_tags=[
