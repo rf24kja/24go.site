@@ -97,10 +97,10 @@ export default function SettingsPage() {
         <h1 className="text-lg font-bold mb-4">{t("settings.title")}</h1>
         {SECTIONS.map((s) => (
           <button key={s.key} onClick={() => { setActiveSection(s.key); setSaved(false); setError(""); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 whitespace-nowrap transition ${
               activeSection === s.key ? "bg-zinc-800 text-zinc-100 font-medium" : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
             }`}>
-            <span className="mr-2"><s.Icon className="w-4 h-4" /></span>{s.label}
+            <s.Icon className="w-4 h-4 shrink-0" />{s.label}
           </button>
         ))}
       </nav>
