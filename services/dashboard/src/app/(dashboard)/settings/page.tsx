@@ -33,7 +33,7 @@ const getSections = (t: (k: string) => string): { key: Section; label: string; I
 export default function SettingsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
-  const [activeSection, setActiveSection] = useState<Section>("llm");
+  const [activeSection, setActiveSection] = useState<Section>("ai_auto_reply");
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [defaults, setDefaults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
