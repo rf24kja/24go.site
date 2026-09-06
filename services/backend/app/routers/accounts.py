@@ -805,6 +805,52 @@ async def confirm_password(
         raise HTTPException(502, "2FA authorization failed — check your authenticator code")
 
 
+@router.delete("/{account_id}")
+async def delete_account(
+    account_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete account and all associated data."""
+    result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.id == account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    # Stop listener if running
+    from app.celery_app import celery
+    celery.control.revoke(f"listener-{account_id}", terminate=True, signal="SIGTERM")
+
+    # Delete session and proxy from DB
+    import uuid as _uuid
+    import asyncpg
+    conn = await asyncpg.connect(settings.DATABASE_URL.replace("+asyncpg", ""))
+    try:
+        await conn.execute(
+            "DELETE FROM account_sessions WHERE account_id = $1",
+            _uuid.UUID(str(account_id)),
+        )
+        await conn.execute(
+            "DELETE FROM account_proxies WHERE account_id = $1",
+            _uuid.UUID(str(account_id)),
+        )
+    finally:
+        await conn.close()
+
+    # Delete account record
+    await db.delete(account)
+    await db.commit()
+
+    log.info(f"Account {account_id} deleted")
+    return {"status": "deleted", "account_id": str(account_id)}
+
+
 @router.post("/{account_id}/disconnect")
 async def disconnect_telegram(
     account_id: UUID,
@@ -889,13 +935,70 @@ async def telegram_status(
     raw = r.get(f"tg_status:{account_id}")
     tg_status = json.loads(raw) if raw else {"status": "unknown"}
 
+    # If Redis has no status but DB has session, consider connected
+    connected = tg_status.get("status") == "online" or (has_session and tg_status.get("status") == "unknown")
+
     return {
         "account_id": str(account_id),
         "has_session": has_session,
-        "connected": tg_status.get("status") == "online",
-        "tg_status": tg_status.get("status", "unknown"),
+        "connected": connected,
+        "tg_status": tg_status.get("status", "unknown") if has_session else "no_session",
         "updated_at": tg_status.get("updated_at", 0),
     }
+
+
+# ── Reconnect Account ───────────────────────────────────────────────────
+
+@router.post("/{account_id}/reconnect")
+async def reconnect_account(
+    account_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reconnect a paused account — restarts listener task."""
+    result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.id == account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    # Check session exists
+    import uuid as _uuid
+    import asyncpg
+    conn = await asyncpg.connect(settings.DATABASE_URL.replace("+asyncpg", ""))
+    try:
+        row = await conn.fetchrow(
+            "SELECT id FROM account_sessions WHERE account_id = $1",
+            _uuid.UUID(str(account_id)),
+        )
+        if not row:
+            raise HTTPException(400, "No session found — connect first")
+    finally:
+        await conn.close()
+
+    # Resume status
+    if account.status in ("paused", "banned"):
+        account.status = "active"
+        await db.commit()
+
+    # Start listener
+    from app.tasks import start_listener_task
+    from app.celery_app import celery
+    celery.control.revoke(f"listener-{account_id}", terminate=True)
+    task = start_listener_task.delay(str(account_id))
+
+    # Set Redis status
+    import redis as _redis, json
+    r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+    r.set(f"tg_status:{account_id}", json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
+
+    log.info(f"Account {account_id} reconnected (task={task.id})")
+    return {"status": "reconnected", "account_id": str(account_id), "task_id": task.id}
 
 
 # ── VKontakte Connection ───────────────────────────────────────────────

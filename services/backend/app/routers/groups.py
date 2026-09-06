@@ -598,8 +598,11 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
         try:
             for query in queries:
                 try:
+                    log.info(f"Searching Telegram for query: {query!r}")
+                    entity_count = 0
                     # search_global discovers public groups/channels, not just joined ones
                     async for entity in client.search_global(query, limit=20):
+                        entity_count += 1
                         name = getattr(entity, 'title', '').lower()
                         username = getattr(entity, 'username', '') or ''
 
@@ -634,8 +637,9 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                             "members_count": members,
                             "relevance": relevance,
                         })
+                    log.info(f"Query {query!r}: found {entity_count} entities, {len(results)} total results")
                 except Exception as e:
-                    log.debug(f"Search query '{query}' failed: {e}")
+                    log.warning(f"Search query '{query}' failed: {e}")
                     continue
         finally:
             await client.disconnect()

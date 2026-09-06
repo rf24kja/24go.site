@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
-  disconnectTelegram, getTelegramStatus,
+  disconnectTelegram, deleteTelegram, reconnectTelegram, getTelegramStatus,
   bulkImportAccounts, connectVK,
   getProxies, assignAccountProxy,
 } from "@/lib/api";
@@ -213,6 +213,24 @@ export default function AccountsPage() {
       await disconnectTelegram(auth.token, accountId);
       load();
     } catch (e: any) { setConnectError(e?.message || t("accounts.disconnectFailed")); } finally { setActionBusy(null); }
+  };
+
+  const handleDelete = async (accountId: string) => {
+    if (!auth?.token || !confirm(t("accounts.deleteConfirm"))) return;
+    setActionBusy(accountId);
+    try {
+      await deleteTelegram(auth.token, accountId);
+      load();
+    } catch (e: any) { setConnectError(e?.message || t("accounts.deleteFailed")); } finally { setActionBusy(null); }
+  };
+
+  const handleReconnect = async (accountId: string) => {
+    if (!auth?.token) return;
+    setActionBusy(accountId);
+    try {
+      await reconnectTelegram(auth.token, accountId);
+      load();
+    } catch (e: any) { setConnectError(e?.message || t("accounts.reconnectFailed")); } finally { setActionBusy(null); }
   };
 
   // ── VK Connect Flow ──────────────────────────────────────────────
@@ -490,11 +508,25 @@ export default function AccountsPage() {
                               } disabled:opacity-40`}>
                               {actionBusy === acct.id ? "..." : listenerActive ? t("accounts.stop") : t("accounts.listen")}
                             </button>
+                            {!tgConnected && (
+                              <button onClick={() => handleReconnect(acct.id)}
+                                disabled={actionBusy === acct.id}
+                                className="px-2.5 py-1 text-xs text-zinc-500 hover:text-emerald-400 border border-zinc-700 rounded hover:border-emerald-500/30 transition disabled:opacity-40"
+                                title={t("accounts.reconnect")}>
+                                {t("accounts.reconnect")}
+                              </button>
+                            )}
                             <button onClick={() => handleDisconnect(acct.id)}
                               disabled={actionBusy === acct.id || listenerActive}
                               className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
                               title={t("accounts.disconnect")}>
                               {t("accounts.disconnect")}
+                            </button>
+                            <button onClick={() => handleDelete(acct.id)}
+                              disabled={actionBusy === acct.id || listenerActive}
+                              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
+                              title={t("accounts.delete")}>
+                              {t("accounts.delete")}
                             </button>
                           </>
                         )}

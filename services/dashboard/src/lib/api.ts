@@ -127,6 +127,14 @@ export async function disconnectTelegram(token: string, accountId: string) {
   return api<any>(`/api/v1/accounts/${accountId}/disconnect`, { method: "POST", token });
 }
 
+export async function deleteTelegram(token: string, accountId: string) {
+  return api<any>(`/api/v1/accounts/${accountId}`, { method: "DELETE", token });
+}
+
+export async function reconnectTelegram(token: string, accountId: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/reconnect`, { method: "POST", token });
+}
+
 export async function getTelegramStatus(token: string, accountId: string) {
   return api<any>(`/api/v1/accounts/${accountId}/tg-status`, { token });
 }
