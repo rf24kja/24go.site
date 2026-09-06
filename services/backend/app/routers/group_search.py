@@ -96,7 +96,13 @@ async def search_groups(
                 "Top up at /api/v1/balance/topup",
             )
 
-    # Call TgStat API
+    # Call TgStat API — read token from tenant settings
+    from app.tenant_settings import get_section
+    from app.config import settings as app_settings
+    db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")
+    tgstat_cfg = await get_section(db_url, str(current_user.tenant_id), "tgstat")
+    tgstat_token = tgstat_cfg.get("api_token", "")
+
     raw = await search_tgstat(
         query=body.query,
         country=body.country,
@@ -104,6 +110,7 @@ async def search_groups(
         peer_type=body.peer_type,
         category=body.category,
         limit=body.limit,
+        token=tgstat_token,
     )
 
     if raw.get("error"):

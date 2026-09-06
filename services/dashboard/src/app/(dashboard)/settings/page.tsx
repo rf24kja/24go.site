@@ -9,13 +9,13 @@ import {
   getNotificationStatus, testSmtp, testWebhook,
 } from "@/lib/api";
 import {
-  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap, Shield, Database,
+  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap, Shield, Database, Search,
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
 import { FieldHint } from "@/components/FieldHint";
 
-type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "security" | "data" | "account";
+type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "security" | "data" | "account" | "tgstat";
 
 const getSections = (t: (k: string) => string): { key: Section; label: string; Icon: React.FC<IconProps> }[] => [
   { key: "llm", label: t("settings.section.ai"), Icon: BrainCircuit },
@@ -24,6 +24,7 @@ const getSections = (t: (k: string) => string): { key: Section; label: string; I
   { key: "notifications", label: t("settings.section.notifications"), Icon: Bell },
   { key: "auto_reply", label: t("settings.autoReply"), Icon: Send },
   { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
+  { key: "tgstat", label: t("settings.section.tgstat"), Icon: Search },
   { key: "webhooks", label: t("settings.n8nIntegration"), Icon: Zap },
   { key: "security", label: t("settings.section.security"), Icon: Shield },
   { key: "data", label: t("settings.section.data"), Icon: Database },
@@ -123,6 +124,7 @@ export default function SettingsPage() {
             {activeSection === "notifications" && <NotificationsSection settings={settings.notifications || {}} defaults={defaults.notifications || {}} onSave={(v: Record<string, any>) => handleSaveSection("notifications", v)} onReset={() => handleResetSection("notifications")} saving={saving} />}
             {activeSection === "auto_reply" && <AutoReplySection settings={settings.auto_reply || {}} defaults={defaults.auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("auto_reply", v)} onReset={() => handleResetSection("auto_reply")} saving={saving} />}
             {activeSection === "groups" && <GroupsSection settings={settings.groups || {}} defaults={defaults.groups || {}} onSave={(v: Record<string, any>) => handleSaveSection("groups", v)} onReset={() => handleResetSection("groups")} saving={saving} />}
+            {activeSection === "tgstat" && <TgStatSection settings={settings.tgstat || {}} defaults={defaults.tgstat || {}} onSave={(v: Record<string, any>) => handleSaveSection("tgstat", v)} onReset={() => handleResetSection("tgstat")} saving={saving} />}
             {activeSection === "webhooks" && <WebhooksSection settings={settings.webhooks || {}} defaults={defaults.webhooks || {}} onSave={(v: Record<string, any>) => handleSaveSection("webhooks", v)} onReset={() => handleResetSection("webhooks")} saving={saving} />}
             {activeSection === "security" && <SecuritySection settings={settings.security || {}} defaults={defaults.security || {}} onSave={(v: Record<string, any>) => handleSaveSection("security", v)} onReset={() => handleResetSection("security")} saving={saving} />}
             {activeSection === "data" && <DataSection settings={settings.data || {}} defaults={defaults.data || {}} onSave={(v: Record<string, any>) => handleSaveSection("data", v)} onReset={() => handleResetSection("data")} saving={saving} />}
@@ -646,6 +648,56 @@ function GroupsSection({ settings, defaults, onSave, onReset, saving }: any) {
             </Field>
           </div>
           <Toggle value={cfg.prefer_open_comments !== false} onChange={(v) => set("prefer_open_comments", v)} label={t("settings.preferOpenComments")} />
+        </div>
+      </Card>
+
+      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
+    </div>
+  );
+}
+
+// ── Section: TgStat Search ──────────────────────────────────────
+function TgStatSection({ settings, defaults, onSave, onReset, saving }: any) {
+  const [cfg, setCfg] = useState(settings);
+  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
+  const { t } = useI18n();
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader Icon={Search} title={t("settings.tgstatTitle")} desc={t("settings.tgstatDesc")} />
+
+      <Card title={t("settings.tgstatApiKey")}>
+        <div className="space-y-4">
+          <Field label={t("settings.tgstatTokenLabel")} hint={t("hints.tgstatToken")}>
+            <Input value={cfg.api_token || ""} onChange={(v) => set("api_token", v)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" type="password" />
+          </Field>
+          <p className="text-xs text-zinc-500">
+            {t("settings.tgstatHowToGet")}{" "}
+            <a href="https://tgstat.ru/ru/account/api" target="_blank" rel="noopener noreferrer"
+              className="text-emerald-400 hover:underline">tgstat.ru/ru/account/api</a>
+          </p>
+        </div>
+      </Card>
+
+      <Card title={t("settings.tgstatSearchSettings")}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label={t("settings.tgstatDefaultCountry")}>
+            <Select value={cfg.default_country || "ru"} onChange={(v) => set("default_country", v)}
+              options={[
+                { value: "ru", label: "Россия" },
+                { value: "all", label: "All" },
+                { value: "th", label: "Thailand" },
+                { value: "kz", label: "Kazakhstan" },
+              ]} />
+          </Field>
+          <Field label={t("settings.tgstatDefaultLanguage")}>
+            <Select value={cfg.default_language || "russian"} onChange={(v) => set("default_language", v)}
+              options={[
+                { value: "russian", label: "Русский" },
+                { value: "english", label: "English" },
+                { value: "thai", label: "Thai" },
+              ]} />
+          </Field>
         </div>
       </Card>
 

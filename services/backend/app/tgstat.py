@@ -115,13 +115,15 @@ async def search_tgstat(
     peer_type: str = "all",
     category: str = "",
     limit: int = 20,
+    token: str = "",
 ) -> dict:
     """Search TgStat API for channels/chats."""
-    if not TGSTAT_TOKEN:
-        return {"error": "TGStat API token not configured", "items": []}
+    api_token = token or TGSTAT_TOKEN
+    if not api_token:
+        return {"error": "TGStat API token not configured. Add your token in Settings > TgStat.", "items": []}
 
     params = {
-        "token": TGSTAT_TOKEN,
+        "token": api_token,
         "q": query,
         "country": country,
         "language": language,
