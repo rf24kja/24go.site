@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat } from "@/lib/api";
+import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
@@ -87,6 +87,12 @@ export default function TargetsPage() {
   const [scrapeModal, setScrapeModal] = useState<string | null>(null);
   const [scrapePostId, setScrapePostId] = useState("");
   const [scraping, setScraping] = useState(false);
+  const [recentPosts, setRecentPosts] = useState<{ id: number; text: string; date: string; views: number; comments: number }[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsOffset, setPostsOffset] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [countMode, setCountMode] = useState<"list" | "manual">("list");
 
   const [tgstatResults, setTgstatResults] = useState<any[]>([]);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -164,18 +170,53 @@ export default function TargetsPage() {
   const handleScan = searchMode === "free" ? handleFreeSearch : handleTgstatSearch;
 
   const handleScrape = async () => {
-    if (!auth?.token || !scrapeModal || !scrapePostId.trim()) return;
+    if (!auth?.token || !scrapeModal) return;
+    const postId = selectedPostId || scrapePostId.trim();
+    if (!postId) return;
     setScraping(true);
     try {
-      await scrapeTargetComments(auth.token, scrapeModal, scrapePostId.trim());
+      await scrapeTargetComments(auth.token, scrapeModal, postId);
       toast(t("targets.scrapeStarted"), "success");
       setScrapeModal(null);
       setScrapePostId("");
+      setSelectedPostId(null);
+      setRecentPosts([]);
+      setPostsOffset(0);
     } catch (e: any) {
       toast(e.message || t("targets.scrapeFailed"), "error");
     } finally {
       setScraping(false);
     }
+  };
+
+  const loadRecentPosts = async (targetId: string, offset: number = 0) => {
+    if (!auth?.token) return;
+    setPostsLoading(true);
+    try {
+      const res = await getRecentPosts(auth.token, targetId, 50, offset);
+      if (offset === 0) {
+        setRecentPosts(res.posts);
+      } else {
+        setRecentPosts((prev) => [...prev, ...res.posts]);
+      }
+      setHasMorePosts(res.posts.length === 50);
+      setPostsOffset(offset + 50);
+    } catch (e: any) {
+      toast(e.message || "Failed to load posts", "error");
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const openScrapeModal = (targetId: string) => {
+    setScrapeModal(targetId);
+    setSelectedPostId(null);
+    setScrapePostId("");
+    setRecentPosts([]);
+    setPostsOffset(0);
+    setHasMorePosts(true);
+    setCountMode("list");
+    loadRecentPosts(targetId, 0);
   };
 
   return (
@@ -420,7 +461,7 @@ export default function TargetsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setScrapeModal(target.id)}
+                    <button onClick={() => openScrapeModal(target.id)}
                       className="px-2.5 py-1 text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 rounded hover:bg-zinc-700 transition">
                       {t("targets.scrapeComments")}
                     </button>
@@ -435,15 +476,70 @@ export default function TargetsPage() {
       {/* Scrape Comments Modal */}
       {scrapeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setScrapeModal(null)}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-zinc-100">{t("targets.scrapeTitle")}</h2>
-            <p className="text-xs text-zinc-500">{t("targets.scrapeDesc")}</p>
-            <input type="text" placeholder={t("targets.scrapePlaceholder")} value={scrapePostId}
-              onChange={(e) => setScrapePostId(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
-            <p className="text-[10px] text-zinc-600">{t("targets.scrapeHint")}</p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-zinc-100">{t("targets.scrapeTitle")}</h2>
+              <div className="flex gap-1 bg-zinc-800 rounded-lg p-0.5">
+                <button onClick={() => setCountMode("list")}
+                  className={`px-3 py-1 text-xs rounded-md transition ${countMode === "list" ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}>
+                  Recent Posts
+                </button>
+                <button onClick={() => setCountMode("manual")}
+                  className={`px-3 py-1 text-xs rounded-md transition ${countMode === "manual" ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}>
+                  Manual ID
+                </button>
+              </div>
+            </div>
+
+            {countMode === "list" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-500">Select a post to scrape comments from:</p>
+                <div className="max-h-80 overflow-y-auto space-y-1 border border-zinc-800 rounded-lg p-2">
+                  {recentPosts.length === 0 && !postsLoading && (
+                    <p className="text-xs text-zinc-600 text-center py-4">No posts found</p>
+                  )}
+                  {recentPosts.map((post) => (
+                    <button key={post.id}
+                      onClick={() => setSelectedPostId(String(post.id))}
+                      className={`w-full text-left p-2 rounded-lg text-xs transition border ${
+                        selectedPostId === String(post.id)
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                          : "bg-zinc-800/50 border-transparent text-zinc-400 hover:bg-zinc-800"
+                      }`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate flex-1">{post.text || `(no text) — #${post.id}`}</span>
+                        <span className="text-zinc-600 shrink-0">{post.views.toLocaleString()} views</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-zinc-600">
+                        <span>#{post.id}</span>
+                        {post.date && <span>{new Date(post.date).toLocaleDateString()}</span>}
+                        {post.comments > 0 && <span>{post.comments} comments</span>}
+                      </div>
+                    </button>
+                  ))}
+                  {postsLoading && (
+                    <p className="text-xs text-zinc-600 text-center py-2">Loading...</p>
+                  )}
+                </div>
+                {hasMorePosts && !postsLoading && recentPosts.length > 0 && (
+                  <button onClick={() => loadRecentPosts(scrapeModal, postsOffset)}
+                    className="w-full py-1.5 text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-800 rounded-lg transition">
+                    Load more
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-500">Enter the Telegram post message ID:</p>
+                <input type="text" placeholder="e.g. 12345" value={scrapePostId}
+                  onChange={(e) => setScrapePostId(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
+                <p className="text-[10px] text-zinc-600">Find the message ID from the post URL: t.me/channel/12345</p>
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <button onClick={handleScrape} disabled={scraping || !scrapePostId.trim()}
+              <button onClick={handleScrape} disabled={scraping || (countMode === "list" ? !selectedPostId : !scrapePostId.trim())}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {scraping ? t("targets.scraping") : t("targets.startScraping")}
               </button>

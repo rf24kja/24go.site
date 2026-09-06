@@ -237,6 +237,12 @@ export async function scrapeTargetComments(token: string, targetId: string, post
   });
 }
 
+export async function getRecentPosts(token: string, targetId: string, limit: number = 50, offset: number = 0) {
+  return api<{ posts: { id: number; text: string; date: string; views: number; comments: number }[]; total: number }>(
+    `/api/v1/targets/${targetId}/recent-posts?limit=${limit}&offset=${offset}`, { token }
+  );
+}
+
 // ── Groups (Monitored) ────────────────────────────────────────────────
 
 export async function getGroups(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
