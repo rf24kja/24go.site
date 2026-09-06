@@ -243,7 +243,7 @@ export default function TargetsPage() {
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
             </div>
             <button onClick={handleScan} disabled={scanning}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-400 disabled:opacity-50 whitespace-nowrap btn-press transition">
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium hover:bg-emerald-500/20 disabled:opacity-50 whitespace-nowrap btn-press transition">
               <Search className="w-4 h-4" />
               {scanning ? t("targets.scanning") : t("targets.scan")}
             </button>

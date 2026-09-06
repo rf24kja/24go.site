@@ -82,6 +82,13 @@ export default function GroupsPage() {
 
   useEffect(() => { load(); }, [auth?.token]);
 
+  // Poll every 5s to keep scanner status fresh
+  useEffect(() => {
+    if (!auth?.token) return;
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [auth?.token]);
+
   const handleDiscover = async () => {
     if (!auth?.token || !discoverGeo.trim() || !discoverNiche.trim()) return;
     setDiscoverLoading(true);

@@ -18,8 +18,28 @@ from app.security import get_current_user
 router = APIRouter(prefix="/api/v1/groups", tags=["groups"])
 log = logging.getLogger(__name__)
 
-# Track active scanner task IDs per group
-_active_scanners: dict[str, str] = {}  # group_id -> task_id
+
+def _get_redis():
+    import redis as _redis
+    return _redis.Redis.from_url(
+        settings.REDIS_URL.replace("rediss://", "redis://"),
+        decode_responses=True,
+    )
+
+
+def _scanner_running(group_id: str) -> bool:
+    r = _get_redis()
+    return r.get(f"scanner:{group_id}") is not None
+
+
+def _set_scanner(group_id: str, task_id: str):
+    r = _get_redis()
+    r.set(f"scanner:{group_id}", task_id, ex=86400)
+
+
+def _del_scanner(group_id: str):
+    r = _get_redis()
+    r.delete(f"scanner:{group_id}")
 
 
 # ── Proxy helpers ────────────────────────────────────────────────────
@@ -104,7 +124,7 @@ async def list_groups(
             "group_identifier": g.group_identifier,
             "title": g.title or g.group_identifier,
             "members_count": g.members_count or 0,
-            "status": _active_scanners.get(str(g.id), g.status),
+            "status": "scanning" if _scanner_running(str(g.id)) else g.status,
             "account_id": str(g.account_id) if g.account_id else None,
             "last_scan_at": g.last_scan_at.isoformat() if g.last_scan_at else None,
             "created_at": g.created_at.isoformat() if g.created_at else None,
@@ -338,7 +358,7 @@ async def start_group_scanner(
     if not group:
         raise HTTPException(404, "Group not found")
 
-    if str(group_id) in _active_scanners:
+    if _scanner_running(str(group_id)):
         return {"status": "already_running", "group_id": str(group_id)}
 
     # Dispatch scanner task
@@ -371,7 +391,7 @@ async def start_group_scanner(
     else:
         raise HTTPException(400, f"Unsupported platform: {group.platform}")
 
-    _active_scanners[str(group_id)] = task.id
+    _set_scanner(str(group_id), task.id)
     group.status = "scanning"
     group.last_scan_at = datetime.now(timezone.utc)
     await db.commit()
@@ -397,7 +417,12 @@ async def stop_group_scanner(
     if not group:
         raise HTTPException(404, "Group not found")
 
-    task_id = _active_scanners.pop(str(group_id), None)
+    task_id = None
+    r = _get_redis()
+    raw = r.get(f"scanner:{group_id}")
+    if raw:
+        task_id = raw
+        _del_scanner(str(group_id))
 
     from app.celery_app import celery
     if task_id:

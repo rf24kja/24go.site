@@ -63,6 +63,19 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
     if client is None:
         log.error(f"No session for account {account_id} — cannot start group scanner")
         _set_status(account_id, "error")
+        if monitor_group_id:
+            try:
+                db_url = DATABASE_URL.replace("+asyncpg", "")
+                conn = await asyncpg.connect(db_url)
+                try:
+                    await conn.execute(
+                        "UPDATE monitored_groups SET status = 'error' WHERE id = $1",
+                        __import__('uuid').UUID(monitor_group_id),
+                    )
+                finally:
+                    await conn.close()
+            except Exception:
+                pass
         return
 
     from telethon import events
@@ -75,6 +88,19 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
     except Exception as e:
         log.error(f"Cannot find group {group_username}: {e}")
         _set_status(account_id, "error")
+        if monitor_group_id:
+            try:
+                db_url = DATABASE_URL.replace("+asyncpg", "")
+                conn = await asyncpg.connect(db_url)
+                try:
+                    await conn.execute(
+                        "UPDATE monitored_groups SET status = 'error' WHERE id = $1",
+                        __import__('uuid').UUID(monitor_group_id),
+                    )
+                finally:
+                    await conn.close()
+            except Exception:
+                pass
         return
 
     # Update monitored_groups status in DB
