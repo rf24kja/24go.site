@@ -516,13 +516,17 @@ async def discover_groups(
                     r.get("title", ""), r.get("members_count", 0), existing,
                 )
             else:
-                await conn.execute(
-                    """INSERT INTO targets (id, tenant_id, platform, target_id_code, title, geo_tag, niche, access, members_count)
-                       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)""",
-                    current_user.tenant_id, body.platform, target_code,
-                    r.get("title", target_code), body.geo_tag, body.niche,
-                    r.get("access", "public"), r.get("members_count", 0),
-                )
+                    # Map search access to DB enum: open_wall|open_comments|suggested_news|admin_dm_only
+                    raw_access = r.get("access", "public")
+                    access_map = {"public": "open_wall", "open": "open_wall", "closed": "admin_dm_only", "private": "admin_dm_only"}
+                    db_access = access_map.get(raw_access, "open_wall")
+                    await conn.execute(
+                        """INSERT INTO targets (id, tenant_id, platform, target_id_code, title, geo_tag, niche, access, members_count)
+                           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)""",
+                        current_user.tenant_id, body.platform, target_code,
+                        r.get("title", target_code), body.geo_tag, body.niche,
+                        db_access, r.get("members_count", 0),
+                    )
     finally:
         await conn.close()
 
