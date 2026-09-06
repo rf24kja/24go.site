@@ -866,19 +866,19 @@ function BillingSection({ t }: { t: (k: string) => string }) {
           <p>{t("wiki.section.billing.forWhat")}</p>
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden">
             <div className="grid grid-cols-4 gap-px bg-zinc-700">
-              <div className="bg-zinc-800 p-3 text-xs font-semibold text-zinc-500">Plan</div>
-              <div className="bg-zinc-800 p-3 text-xs font-semibold text-emerald-400 text-center">Starter</div>
-              <div className="bg-zinc-800 p-3 text-xs font-semibold text-blue-400 text-center">Pro</div>
-              <div className="bg-zinc-800 p-3 text-xs font-semibold text-amber-400 text-center">Enterprise</div>
+              <div className="bg-zinc-800 p-3 text-xs font-semibold text-zinc-500">{t("wiki.section.billing.tablePlan")}</div>
+              <div className="bg-zinc-800 p-3 text-xs font-semibold text-emerald-400 text-center">{t("wiki.section.billing.tableStarter")}</div>
+              <div className="bg-zinc-800 p-3 text-xs font-semibold text-blue-400 text-center">{t("wiki.section.billing.tablePro")}</div>
+              <div className="bg-zinc-800 p-3 text-xs font-semibold text-amber-400 text-center">{t("wiki.section.billing.tableEnterprise")}</div>
               {[
-                ["Price", "$75/mo", "$199/mo", "$499/mo"],
-                ["Trial", "3 days", "3 days", "3 days"],
-                ["TgStat", "-", "Yes", "Yes"],
-                ["API", "-", "-", "Yes"],
-                ["Team", "-", "Yes", "Yes"],
+                ["price", t("wiki.section.billing.tablePrice75"), t("wiki.section.billing.tablePrice199"), t("wiki.section.billing.tablePrice499")],
+                ["trial", t("wiki.section.billing.table3days"), t("wiki.section.billing.table3days"), t("wiki.section.billing.table3days")],
+                ["tgstat", t("wiki.section.billing.tableNo"), t("wiki.section.billing.tableYes"), t("wiki.section.billing.tableYes")],
+                ["api", t("wiki.section.billing.tableNo"), t("wiki.section.billing.tableNo"), t("wiki.section.billing.tableYes")],
+                ["team", t("wiki.section.billing.tableNo"), t("wiki.section.billing.tableYes"), t("wiki.section.billing.tableYes")],
               ].map(([feat, s, p, e]) => (
                 <div key={feat} className="contents">
-                  <div className="bg-zinc-900/50 p-2 text-xs text-zinc-400">{feat}</div>
+                  <div className="bg-zinc-900/50 p-2 text-xs text-zinc-400">{t(`wiki.section.billing.table${String(feat).charAt(0).toUpperCase()}${String(feat).slice(1)}`)}</div>
                   <div className="bg-zinc-900/50 p-2 text-xs text-zinc-300 text-center">{s}</div>
                   <div className="bg-zinc-900/50 p-2 text-xs text-zinc-300 text-center">{p}</div>
                   <div className="bg-zinc-900/50 p-2 text-xs text-zinc-300 text-center">{e}</div>
