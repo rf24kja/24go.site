@@ -606,6 +606,8 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                     result = await client(SearchGlobalRequest(
                         q=query,
                         filter=InputMessagesFilterEmpty(),
+                        min_date=None,
+                        max_date=None,
                         offset_rate=0,
                         offset_peer=InputPeerEmpty(),
                         offset_id=0,
