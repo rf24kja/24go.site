@@ -577,6 +577,10 @@ export async function stopMailing(token: string, mailingId: string) {
   return api<any>(`/api/v1/mailings/${mailingId}/stop`, { method: "POST", token });
 }
 
+export async function deleteMailing(token: string, mailingId: string) {
+  return api<any>(`/api/v1/mailings/${mailingId}`, { method: "DELETE", token });
+}
+
 // ── Auto-replies ─────────────────────────────────────────────────
 
 export async function getAutoReplies(token: string) {

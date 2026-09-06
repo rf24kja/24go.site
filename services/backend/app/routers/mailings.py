@@ -225,6 +225,29 @@ async def stop_mailing(
     return {"status": "completed"}
 
 
+@router.delete("/{mailing_id}")
+async def delete_mailing(
+    mailing_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = select(Mailing).where(
+        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.tenant_id == current_user.tenant_id,
+    )
+    result = await db.execute(q)
+    mailing = result.scalar_one_or_none()
+    if not mailing:
+        raise HTTPException(404, "Mailing not found")
+
+    # Delete recipients first
+    from sqlalchemy import delete as sa_delete
+    await db.execute(sa_delete(MailingRecipient).where(MailingRecipient.mailing_id == mailing.id))
+    await db.delete(mailing)
+    await db.commit()
+    return {"status": "deleted"}
+
+
 def _mailing_to_dict(m: Mailing) -> dict:
     return {
         "id": str(m.id),

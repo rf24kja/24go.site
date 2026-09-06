@@ -10,7 +10,7 @@ import { Spinner } from "@/components/Spinner";
 import { CardSkeleton } from "@/components/Skeleton";
 import {
   getMailings, createMailing, getMailing, importMailingRecipients,
-  startMailing, pauseMailing, stopMailing,
+  startMailing, pauseMailing, stopMailing, deleteMailing,
 } from "@/lib/api";
 
 type Mailing = {
@@ -112,6 +112,11 @@ export default function MailingsPage() {
     try { await stopMailing(auth.token, id); toast(t("mailings.stopped"), "success"); load(); } catch (e: any) { toast(e.message, "error"); }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!auth?.token || !confirm(t("mailings.deleteConfirm"))) return;
+    try { await deleteMailing(auth.token, id); toast(t("mailings.deleted"), "success"); load(); setDetail(null); } catch (e: any) { toast(e.message, "error"); }
+  };
+
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -202,6 +207,11 @@ export default function MailingsPage() {
                 {(m.status === "running" || m.status === "paused") && (
                   <button onClick={() => handleStop(m.id)} className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded text-xs hover:bg-rose-500/20 transition">
                     ⏹ {t("mailings.stop")}
+                  </button>
+                )}
+                {(m.status === "draft" || m.status === "completed") && (
+                  <button onClick={() => handleDelete(m.id)} className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded text-xs hover:bg-rose-500/20 transition">
+                    🗑 {t("mailings.delete")}
                   </button>
                 )}
                 <button onClick={() => { setShowImport(true); setImportMailId(m.id); }}
