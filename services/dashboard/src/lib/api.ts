@@ -634,11 +634,11 @@ export async function getGroupSearchStats(token: string) {
 // ── Proxies ─────────────────────────────────────────────────────
 
 export async function getProxies(token: string) {
-  return api<any[]>(`/api/v1/proxies`, { token });
+  return api<any[]>(`/api/v1/proxies/`, { token });
 }
 
 export async function createProxy(token: string, data: { proxy_url: string; geo_location?: string; rotation_api_url?: string }) {
-  return api<any>(`/api/v1/proxies`, { method: "POST", body: JSON.stringify(data), token });
+  return api<any>(`/api/v1/proxies/`, { method: "POST", body: JSON.stringify(data), token });
 }
 
 export async function updateProxy(token: string, id: string, data: any) {
