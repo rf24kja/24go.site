@@ -596,15 +596,33 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             return []
 
         try:
+            from telethon.tl.functions.messages import SearchGlobalRequest
+            from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
+
             for query in queries:
                 try:
                     log.info(f"Searching Telegram for query: {query!r}")
                     entity_count = 0
-                    # search_global discovers public groups/channels, not just joined ones
-                    async for entity in client.search_global(query, limit=20):
+                    result = await client(SearchGlobalRequest(
+                        q=query,
+                        filter=InputMessagesFilterEmpty(),
+                        offset_rate=0,
+                        offset_peer=InputPeerEmpty(),
+                        offset_id=0,
+                        limit=20,
+                    ))
+                    messages = getattr(result, 'messages', []) or []
+                    for msg in messages:
+                        # We only care about channels/groups from peer_id
+                        if not hasattr(msg, 'peer_id') or not hasattr(msg.peer_id, 'channel_id'):
+                            continue
                         entity_count += 1
-                        name = getattr(entity, 'title', '').lower()
+                        try:
+                            entity = await client.get_entity(msg.peer_id.channel_id)
+                        except Exception:
+                            continue
                         username = getattr(entity, 'username', '') or ''
+                        name = getattr(entity, 'title', '').lower()
 
                         if not username or username in seen:
                             continue
@@ -625,11 +643,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                                 relevance += 3
 
                         seen.add(username)
-                        try:
-                            full = await client.get_entity(entity)
-                            members = getattr(full, 'participants_count', 0) or 0
-                        except Exception:
-                            members = 0
+                        members = getattr(entity, 'participants_count', 0) or 0
                         results.append({
                             "platform": "telegram",
                             "group_identifier": f"@{username}",
