@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, discoverGroups, scrapeTargetComments } from "@/lib/api";
+import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
 import { FieldHint } from "@/components/FieldHint";
+import { Search, Telegram, Vk } from "@/components/Icons";
 
 type Target = {
   id: string;
@@ -23,11 +24,47 @@ type Target = {
   created_at: string;
 };
 
-const PLATFORM_ICONS: Record<string, string> = {
-  telegram: "TG",
-  vkontakte: "VK",
-  forum: "FM",
-};
+type SearchMode = "free" | "tgstat";
+
+const COUNTRIES = [
+  { value: "ru", label: "Россия" },
+  { value: "all", label: "All" },
+  { value: "th", label: "Thailand" },
+  { value: "kz", label: "Kazakhstan" },
+  { value: "uz", label: "Uzbekistan" },
+  { value: "by", label: "Belarus" },
+  { value: "ua", label: "Ukraine" },
+  { value: "tr", label: "Turkey" },
+];
+
+const LANGUAGES = [
+  { value: "ru", label: "Русский" },
+  { value: "en", label: "English" },
+  { value: "th", label: "Thai" },
+  { value: "uk", label: "Українська" },
+  { value: "kk", label: "Қазақ" },
+];
+
+const CATEGORIES = [
+  { value: "", label: "All" },
+  { value: "business", label: "Business" },
+  { value: "finance", label: "Finance" },
+  { value: "realestate", label: "Real Estate" },
+  { value: "marketing", label: "Marketing" },
+  { value: "it", label: "IT" },
+  { value: "education", label: "Education" },
+  { value: "travel", label: "Travel" },
+  { value: "shopping", label: "Shopping" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "news", label: "News" },
+  { value: "sports", label: "Sports" },
+];
+
+function PlatformIcon({ platform }: { platform: string }) {
+  if (platform === "telegram") return <Telegram className="w-4 h-4 text-blue-400" />;
+  if (platform === "vkontakte") return <Vk className="w-4 h-4 text-blue-500" />;
+  return <span className="text-zinc-500 text-xs">❓</span>;
+}
 
 export default function TargetsPage() {
   const { auth } = useAuth();
@@ -35,12 +72,24 @@ export default function TargetsPage() {
   const { t } = useI18n();
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchMode, setSearchMode] = useState<SearchMode>("free");
   const [scanning, setScanning] = useState(false);
+
   const [scanGeo, setScanGeo] = useState("Moscow");
   const [scanNiche, setScanNiche] = useState("thailand_travel");
-  const [scrapeModal, setScrapeModal] = useState<string | null>(null); // target_id
+
+  const [tgstatQuery, setTgstatQuery] = useState("");
+  const [tgstatCountry, setTgstatCountry] = useState("ru");
+  const [tgstatLanguage, setTgstatLanguage] = useState("ru");
+  const [tgstatCategory, setTgstatCategory] = useState("");
+  const [tgstatBalance, setTgstatBalance] = useState<number | null>(null);
+
+  const [scrapeModal, setScrapeModal] = useState<string | null>(null);
   const [scrapePostId, setScrapePostId] = useState("");
   const [scraping, setScraping] = useState(false);
+
+  const [tgstatResults, setTgstatResults] = useState<any[]>([]);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   const load = () => {
     if (!auth?.token) return;
@@ -50,7 +99,7 @@ export default function TargetsPage() {
 
   useEffect(() => { load(); }, [auth?.token]);
 
-  const handleScan = async () => {
+  const handleFreeSearch = async () => {
     if (!auth?.token) return;
     setScanning(true);
     try {
@@ -70,6 +119,50 @@ export default function TargetsPage() {
     }
   };
 
+  const handleTgstatSearch = async () => {
+    if (!auth?.token || !tgstatQuery.trim()) return;
+    setScanning(true);
+    setTgstatResults([]);
+    try {
+      const res = await searchGroupsTgstat(auth.token, {
+        query: tgstatQuery.trim(),
+        country: tgstatCountry,
+        language: tgstatLanguage,
+        category: tgstatCategory || undefined,
+        limit: 20,
+      });
+      setTgstatResults(res.results || []);
+      setTgstatBalance(res.balance ?? null);
+      if ((res.results || []).length > 0) {
+        toast(`Found ${res.results.length} channels`, "success");
+      } else {
+        toast(t("targets.noneFound"), "info");
+      }
+    } catch (e: any) {
+      toast(e.message || t("targets.scanFailed"), "error");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleAddTarget = async (result: any) => {
+    if (!auth?.token) return;
+    try {
+      await discoverGroups(auth.token, {
+        geo_tag: tgstatCountry,
+        niche: tgstatQuery.trim(),
+        platform: "telegram",
+      });
+      setAddedIds((prev) => new Set(prev).add(result.username));
+      toast(t("targets.added"), "success");
+      load();
+    } catch (e: any) {
+      toast(e.message || "Failed to add", "error");
+    }
+  };
+
+  const handleScan = searchMode === "free" ? handleFreeSearch : handleTgstatSearch;
+
   const handleScrape = async () => {
     if (!auth?.token || !scrapeModal || !scrapePostId.trim()) return;
     setScraping(true);
@@ -86,7 +179,7 @@ export default function TargetsPage() {
   };
 
   return (
-    <div className={`space-y-6 animate-fade-slide-in`}>
+    <div className="space-y-6 animate-fade-slide-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("targets.title")}</h1>
       </div>
@@ -101,26 +194,163 @@ export default function TargetsPage() {
         </p>
       </div>
 
-      {/* Scan controls */}
+      {/* Search mode toggle + form */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("targets.discoverNew")}</h2>
-        <div className="flex flex-col md:flex-row gap-3 items-end">
-          <div className="flex-1 w-full">
-            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")} <FieldHint hint={t("targets.hint.geos")} /></label>
-            <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
+        <div className="flex items-center gap-4 mb-4">
+          <h2 className="text-sm font-medium text-zinc-400">{t("targets.discoverNew")}</h2>
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5 border border-zinc-700">
+            <button
+              onClick={() => setSearchMode("free")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                searchMode === "free"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              {t("targets.modeFree")}
+            </button>
+            <button
+              onClick={() => setSearchMode("tgstat")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                searchMode === "tgstat"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              TgStat
+            </button>
           </div>
-          <div className="flex-1 w-full">
-            <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")} <FieldHint hint={t("targets.hint.niches")} /></label>
-            <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
-          </div>
-          <button onClick={handleScan} disabled={scanning}
-            className="px-5 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 whitespace-nowrap btn-press">
-            {scanning ? t("targets.scanning") : t("targets.scan")}
-          </button>
+          <span className="text-[10px] text-zinc-600">
+            {searchMode === "free" ? t("targets.freeDesc") : t("targets.tgstatDesc")}
+          </span>
+          {searchMode === "tgstat" && tgstatBalance !== null && (
+            <span className="text-[10px] text-zinc-500 ml-auto">
+              {t("targets.tgstatBalance")}: {tgstatBalance.toLocaleString()} ₽
+            </span>
+          )}
         </div>
+
+        {searchMode === "free" ? (
+          <div className="flex flex-col md:flex-row gap-3 items-end">
+            <div className="flex-1 w-full">
+              <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")} <FieldHint hint={t("targets.hint.geos")} /></label>
+              <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
+            </div>
+            <div className="flex-1 w-full">
+              <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")} <FieldHint hint={t("targets.hint.niches")} /></label>
+              <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
+            </div>
+            <button onClick={handleScan} disabled={scanning}
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-400 disabled:opacity-50 whitespace-nowrap btn-press transition">
+              <Search className="w-4 h-4" />
+              {scanning ? t("targets.scanning") : t("targets.scan")}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col md:flex-row gap-3 items-end">
+              <div className="flex-[2] w-full">
+                <label className="text-xs text-zinc-500 mb-1 block">{t("targets.keywordLabel")}</label>
+                <input type="text" value={tgstatQuery} onChange={(e) => setTgstatQuery(e.target.value)}
+                  placeholder="недвижимость Москва"
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
+              </div>
+              <div className="flex-1 w-full">
+                <label className="text-xs text-zinc-500 mb-1 block">{t("targets.countryLabel")}</label>
+                <select value={tgstatCountry} onChange={(e) => setTgstatCountry(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition">
+                  {COUNTRIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="flex-1 w-full">
+                <label className="text-xs text-zinc-500 mb-1 block">{t("targets.languageLabel")}</label>
+                <select value={tgstatLanguage} onChange={(e) => setTgstatLanguage(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition">
+                  {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div className="flex-1 w-full">
+                <label className="text-xs text-zinc-500 mb-1 block">{t("targets.categoryLabel")}</label>
+                <select value={tgstatCategory} onChange={(e) => setTgstatCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition">
+                  {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <button onClick={handleScan} disabled={scanning || !tgstatQuery.trim()}
+                className="flex items-center gap-2 px-5 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-400 disabled:opacity-50 whitespace-nowrap btn-press transition">
+                <Search className="w-4 h-4" />
+                {scanning ? t("targets.searching") : t("targets.find")}
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-600">{t("targets.tgstatCost")}</p>
+          </div>
+        )}
       </div>
+
+      {/* TgStat results (when in tgstat mode and have results) */}
+      {searchMode === "tgstat" && tgstatResults.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Channel</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">Subscribers</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">ER</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">Country</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tgstatResults.map((r, i) => (
+                <tr key={r.username || i} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Telegram className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-zinc-100 text-sm font-medium">{r.title || r.username}</p>
+                        <p className="text-zinc-500 text-xs">@{r.username}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">
+                    {(r.members_count || 0).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {r.engagement_rate != null ? (
+                      <span className="text-emerald-400 text-xs">{(r.engagement_rate * 100).toFixed(1)}%</span>
+                    ) : (
+                      <span className="text-zinc-600 text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">{r.country || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      {addedIds.has(r.username) ? (
+                        <span className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+                          {t("targets.added")}
+                        </span>
+                      ) : (
+                        <button onClick={() => handleAddTarget(r)}
+                          className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
+                          {t("targets.addToList")}
+                        </button>
+                      )}
+                      {r.username && (
+                        <a href={`https://t.me/${r.username}`} target="_blank" rel="noopener noreferrer"
+                          className="px-2.5 py-1 text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 rounded hover:bg-zinc-700 transition">
+                          {t("targets.viewOnTgstat")}
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Targets table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
@@ -166,7 +396,12 @@ export default function TargetsPage() {
             ) : (
               targets.map((target) => (
                 <tr key={target.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
-                  <td className="px-4 py-3">{PLATFORM_ICONS[target.platform] ?? "❓"} {target.platform}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <PlatformIcon platform={target.platform} />
+                      <span className="text-zinc-400 text-xs">{target.platform}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-zinc-100 truncate max-w-[200px]">{target.title}</td>
                   <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{target.geo_tag}</td>
                   <td className="px-4 py-3 hidden md:table-cell">
