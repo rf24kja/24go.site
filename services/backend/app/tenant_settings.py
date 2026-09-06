@@ -3,7 +3,7 @@
 Usage:
     from app.tenant_settings import get_settings, DEFAULTS
     cfg = await get_settings(db_url, tenant_id)
-    prompt = cfg["llm"]["system_prompt"]
+    prompt = cfg["ai_auto_reply"]["classification_prompt"]
 """
 import json
 import logging
@@ -15,10 +15,14 @@ log = logging.getLogger(__name__)
 
 # ── Default settings for every section ──────────────────────────────
 DEFAULTS = {
-    "llm": {
-        "provider": "auto",              # auto | openrouter | deepseek | openai | keyword_only
-        "model": "deepseek-chat",         # model name
-        "system_prompt": (
+    "ai_auto_reply": {
+        # LLM Provider (shared for classification + reply generation)
+        "llm_provider": "auto",
+        "llm_api_key": "",
+        "llm_model": "deepseek-chat",
+
+        # Classification
+        "classification_prompt": (
             "You are an expert sales analyst for a B2B lead generation system.\n\n"
             "Analyze an incoming message and extract qualification parameters.\n\n"
             "Return strictly a valid JSON object:\n"
@@ -47,9 +51,37 @@ DEFAULTS = {
             "casino", "crypto", "earn money", "заработать",
             "бесплатно", "free", "click here", "нажми",
         ],
-        "hot_threshold": 2,        # keyword matches needed for HOT
-        "warm_threshold": 1,       # keyword matches needed for WARM
-        "confidence_threshold": 0.5,  # min confidence to accept LLM result
+        "hot_threshold": 2,
+        "warm_threshold": 1,
+        "confidence_threshold": 0.5,
+
+        # AI Reply Generation
+        "reply_prompt": (
+            "Ты — вежливый менеджер по продажам B2B. "
+            "Отвечай на русском языке кратко и по делу. "
+            "Используй информацию из сообщения клиента. "
+            "Не используй шаблонные фразы. Будь конкретным."
+        ),
+        "reply_temperature": 0.7,
+        "reply_max_tokens": 500,
+
+        # Reply Rules
+        "reply_enabled": False,
+        "ai_reply_for": "HOT",          # HOT | WARM | OFF
+        "template_reply_for": "WARM",   # WARM | OFF
+        "reply_mode": "random",         # random | cyclic
+        "templates": [
+            "Спасибо за интерес! Менеджер свяжется с вами. 🙏",
+            "Здравствуйте! Мы скоро ответим. 😊",
+        ],
+
+        # Schedule & Limits
+        "channels": {"telegram": True, "vkontakte": True},
+        "reply_delay_seconds": 5,
+        "max_replies_per_hour": 10,
+        "work_hours_start": 9,
+        "work_hours_end": 21,
+        "blacklist_usernames": "",
     },
     "warmup": {
         "channels": [
@@ -58,9 +90,9 @@ DEFAULTS = {
             "https://t.me/s/born2chat",
         ],
         "reactions": ["👍", "❤️", "🔥", "😊", "👀"],
-        "stage1_days": 3,         # passive: read feeds + reactions
-        "stage2_days": 4,         # soft: join groups, non-commercial
-        "stage3_daily_limit": 20, # production: max posts/day
+        "stage1_days": 3,
+        "stage2_days": 4,
+        "stage3_daily_limit": 20,
         "stage1_actions_per_day": 5,
         "stage2_actions_per_day": 10,
         "random_delay_min_sec": 2,
@@ -72,19 +104,19 @@ DEFAULTS = {
         "utm_campaign": "auto",
         "delay_between_posts_sec": 30,
         "max_comment_replies_per_post": 10,
-        "comment_scrape_delay_sec": 120,  # delay before scraping comments
+        "comment_scrape_delay_sec": 120,
         "spintax_max_depth": 10,
     },
     "notifications": {
-        "notify_on": ["HOT", "WARM"],       # intent scores that trigger email
+        "notify_on": ["HOT", "WARM"],
         "daily_summary": True,
-        "daily_summary_hour": 9,            # UTC
+        "daily_summary_hour": 9,
         "email_subject_prefix": "[LeadGen]",
         "lead_created_sound": False,
-        "telegram_bot_token": "",           # User's own bot token
-        "telegram_chat_id": "",             # Chat/group ID to send notifications
-        "slack_webhook_url": "",            # Slack incoming webhook URL
-        "notify_min_intent": "WARM",        # Minimum intent to notify (HOT, WARM)
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "slack_webhook_url": "",
+        "notify_min_intent": "WARM",
     },
     "groups": {
         "scan_interval_min": 30,
@@ -94,17 +126,10 @@ DEFAULTS = {
         "min_members_count": 100,
         "prefer_open_comments": True,
     },
-    "auto_reply": {
-        "enabled": False,
-        "min_intent": "HOT",
-        "reply_mode": "random",
-        "replies": [
-            "Thank you for your interest! Our manager will contact you shortly. 🙏",
-            "Hi there! Thanks for reaching out. We'll get back to you soon! 😊",
-            "Great to hear from you! Our team will follow up shortly. ✨"
-        ],
-        "reply_delay_seconds": 5,
-        "max_replies_per_hour": 10,
+    "tgstat": {
+        "api_token": "",
+        "default_country": "ru",
+        "default_language": "russian",
     },
     "webhooks": {
         "enabled": False,
@@ -123,6 +148,51 @@ DEFAULTS = {
         "gdpr_mode": False,
     },
 }
+
+# Ponytail: migration — merge old llm+auto_reply into ai_auto_reply on first load
+_MIGRATION_DONE: set[str] = set()
+
+
+def _migrate_old_sections(raw: dict) -> dict:
+    """Merge legacy llm + auto_reply sections into ai_auto_reply. Idempotent."""
+    ai = raw.get("ai_auto_reply", {})
+    changed = False
+
+    llm = raw.pop("llm", None)
+    if llm:
+        ai.setdefault("llm_provider", llm.get("provider", "auto"))
+        ai.setdefault("llm_model", llm.get("model", "deepseek-chat"))
+        ai.setdefault("llm_api_key", llm.get("api_key", ""))
+        ai.setdefault("classification_prompt", llm.get("system_prompt", ""))
+        ai.setdefault("hot_keywords", llm.get("hot_keywords", []))
+        ai.setdefault("warm_keywords", llm.get("warm_keywords", []))
+        ai.setdefault("spam_keywords", llm.get("spam_keywords", []))
+        ai.setdefault("hot_threshold", llm.get("hot_threshold", 2))
+        ai.setdefault("warm_threshold", llm.get("warm_threshold", 1))
+        ai.setdefault("confidence_threshold", llm.get("confidence_threshold", 0.5))
+        changed = True
+
+    ar = raw.pop("auto_reply", None)
+    if ar:
+        ai.setdefault("reply_enabled", ar.get("enabled", False))
+        min_intent = ar.get("min_intent", "HOT")
+        if min_intent == "HOT":
+            ai.setdefault("ai_reply_for", "HOT")
+            ai.setdefault("template_reply_for", "WARM")
+        else:
+            ai.setdefault("ai_reply_for", "WARM")
+            ai.setdefault("template_reply_for", "OFF")
+        ai.setdefault("reply_mode", ar.get("reply_mode", "random"))
+        ai.setdefault("templates", ar.get("replies", []))
+        ai.setdefault("reply_delay_seconds", ar.get("reply_delay_seconds", 5))
+        ai.setdefault("max_replies_per_hour", ar.get("max_replies_per_hour", 10))
+        ai.setdefault("work_hours_start", ar.get("work_hours_start", 9))
+        ai.setdefault("work_hours_end", ar.get("work_hours_end", 21))
+        changed = True
+
+    if changed:
+        raw["ai_auto_reply"] = ai
+    return raw
 
 
 def _ensure_dict(val):
@@ -161,7 +231,33 @@ async def get_settings(url: str, tenant_id: str) -> dict:
             await conn.close()
 
         if row and row["settings"]:
-            return _deep_merge(DEFAULTS, row["settings"])
+            raw = row["settings"]
+            if isinstance(raw, str):
+                raw = json.loads(raw)
+
+            # Migration: merge old llm+auto_reply into ai_auto_reply
+            if tenant_id not in _MIGRATION_DONE:
+                migrated = _migrate_old_sections(raw)
+                if migrated is not raw:
+                    _MIGRATION_DONE.add(tenant_id)
+                    try:
+                        conn2 = await asyncpg.connect(url)
+                        try:
+                            await conn2.execute(
+                                """INSERT INTO tenant_settings (id, tenant_id, settings, created_at, updated_at)
+                                   VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())
+                                   ON CONFLICT (tenant_id) DO UPDATE
+                                   SET settings = $2, updated_at = NOW()""",
+                                uuid.UUID(tenant_id),
+                                json.dumps(migrated),
+                            )
+                        finally:
+                            await conn2.close()
+                    except Exception as e:
+                        log.warning(f"Migration save failed for {tenant_id}: {e}")
+                    raw = migrated
+
+            return _deep_merge(DEFAULTS, raw)
         return DEFAULTS.copy()
     except Exception as e:
         log.warning(f"Failed to load tenant settings, using defaults: {e}")

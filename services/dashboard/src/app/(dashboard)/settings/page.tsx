@@ -9,20 +9,19 @@ import {
   getNotificationStatus, testSmtp, testWebhook,
 } from "@/lib/api";
 import {
-  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap, Shield, Database, Search,
+  BrainCircuit, Flame, Send, Bell, UsersGroup, Cog, Zap, Shield, Database, Search, Bot,
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
 import { FieldHint } from "@/components/FieldHint";
 
-type Section = "llm" | "warmup" | "posting" | "notifications" | "auto_reply" | "groups" | "webhooks" | "security" | "data" | "account" | "tgstat";
+type Section = "ai_auto_reply" | "warmup" | "posting" | "notifications" | "groups" | "webhooks" | "security" | "data" | "account" | "tgstat";
 
 const getSections = (t: (k: string) => string): { key: Section; label: string; Icon: React.FC<IconProps> }[] => [
-  { key: "llm", label: t("settings.section.ai"), Icon: BrainCircuit },
+  { key: "ai_auto_reply", label: t("settings.section.aiAutoReply"), Icon: Bot },
   { key: "warmup", label: t("settings.section.warmup"), Icon: Flame },
   { key: "posting", label: t("settings.section.posting"), Icon: Send },
   { key: "notifications", label: t("settings.section.notifications"), Icon: Bell },
-  { key: "auto_reply", label: t("settings.autoReply"), Icon: Send },
   { key: "groups", label: t("settings.section.groups"), Icon: UsersGroup },
   { key: "tgstat", label: t("settings.section.tgstat"), Icon: Search },
   { key: "webhooks", label: t("settings.n8nIntegration"), Icon: Zap },
@@ -118,11 +117,10 @@ export default function SettingsPage() {
             {saved && <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-400">{t("settings.saved")}</div>}
             {error && <div className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400">{error}</div>}
 
-            {activeSection === "llm" && <LLMSection settings={settings.llm || {}} defaults={defaults.llm || {}} onSave={(v: Record<string, any>) => handleSaveSection("llm", v)} onReset={() => handleResetSection("llm")} saving={saving} />}
+            {activeSection === "ai_auto_reply" && <AiAutoReplySection settings={settings.ai_auto_reply || {}} defaults={defaults.ai_auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("ai_auto_reply", v)} onReset={() => handleResetSection("ai_auto_reply")} saving={saving} />}
             {activeSection === "warmup" && <WarmupSection settings={settings.warmup || {}} defaults={defaults.warmup || {}} onSave={(v: Record<string, any>) => handleSaveSection("warmup", v)} onReset={() => handleResetSection("warmup")} saving={saving} />}
             {activeSection === "posting" && <PostingSection settings={settings.posting || {}} defaults={defaults.posting || {}} onSave={(v: Record<string, any>) => handleSaveSection("posting", v)} onReset={() => handleResetSection("posting")} saving={saving} />}
             {activeSection === "notifications" && <NotificationsSection settings={settings.notifications || {}} defaults={defaults.notifications || {}} onSave={(v: Record<string, any>) => handleSaveSection("notifications", v)} onReset={() => handleResetSection("notifications")} saving={saving} />}
-            {activeSection === "auto_reply" && <AutoReplySection settings={settings.auto_reply || {}} defaults={defaults.auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("auto_reply", v)} onReset={() => handleResetSection("auto_reply")} saving={saving} />}
             {activeSection === "groups" && <GroupsSection settings={settings.groups || {}} defaults={defaults.groups || {}} onSave={(v: Record<string, any>) => handleSaveSection("groups", v)} onReset={() => handleResetSection("groups")} saving={saving} />}
             {activeSection === "tgstat" && <TgStatSection settings={settings.tgstat || {}} defaults={defaults.tgstat || {}} onSave={(v: Record<string, any>) => handleSaveSection("tgstat", v)} onReset={() => handleResetSection("tgstat")} saving={saving} />}
             {activeSection === "webhooks" && <WebhooksSection settings={settings.webhooks || {}} defaults={defaults.webhooks || {}} onSave={(v: Record<string, any>) => handleSaveSection("webhooks", v)} onReset={() => handleResetSection("webhooks")} saving={saving} />}
@@ -213,20 +211,28 @@ function SectionActions({ onSave, onReset, saving, t }: { onSave: () => void; on
   );
 }
 
-// ── Section: LLM & Classification ────────────────────────────────
-function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
+// ── Section: AI Auto-Reply (unified) ──────────────────────────────
+function AiAutoReplySection({ settings, defaults, onSave, onReset, saving }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
   const { t } = useI18n();
 
+  const templates = cfg.templates || [];
+  const addTemplate = () => { if (templates.length < 10) set("templates", [...templates, ""]); };
+  const updateTemplate = (idx: number, val: string) => { const n = [...templates]; n[idx] = val; set("templates", n); };
+  const removeTemplate = (idx: number) => set("templates", templates.filter((_: string, i: number) => i !== idx));
+
+  const channels = cfg.channels || { telegram: true, vkontakte: true };
+
   return (
     <div className="space-y-6">
-      <SectionHeader Icon={BrainCircuit} title={t("settings.aiClassification")} desc={t("settings.aiDesc")} />
+      <SectionHeader Icon={Bot} title={t("settings.aiAutoReply")} desc={t("settings.aiAutoReplyDesc")} />
 
-      <Card title={t("settings.llmProvider")}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={<>{t("settings.provider")} <FieldHint hint={t("hints.llmProvider")} /></>}>
-            <Select value={cfg.provider || "auto"} onChange={(v) => set("provider", v)}
+      {/* Block 1: LLM Provider */}
+      <Card title={t("settings.ai.llmProvider")}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label={<>{t("settings.ai.provider")} <FieldHint hint={t("hints.llmProvider")} /></>}>
+            <Select value={cfg.llm_provider || "auto"} onChange={(v) => set("llm_provider", v)}
               options={[
                 { value: "auto", label: t("settings.providerAuto") },
                 { value: "openrouter", label: t("settings.providerOpenrouter") },
@@ -235,57 +241,150 @@ function LLMSection({ settings, defaults, onSave, onReset, saving }: any) {
                 { value: "keyword_only", label: t("settings.providerKeyword") },
               ]} />
           </Field>
-          <Field label={t("settings.model")}>
-            <Input value={cfg.model || ""} onChange={(v) => set("model", v)} placeholder={t("settings.modelPlaceholder")} />
+          <Field label={t("settings.ai.model")}>
+            <Input value={cfg.llm_model || ""} onChange={(v) => set("llm_model", v)} placeholder="deepseek-chat" />
+          </Field>
+          <Field label={t("settings.ai.apiKey")}>
+            <Input value={cfg.llm_api_key || ""} onChange={(v) => set("llm_api_key", v)} placeholder="sk-..." type="password" />
           </Field>
         </div>
       </Card>
 
-      <Card title={t("settings.systemPrompt")}>
-        <Field label={<>{t("settings.llmPrompt")} <FieldHint hint={t("hints.llmPrompt")} /></>}>
-          <textarea value={cfg.system_prompt || ""} onChange={(e) => set("system_prompt", e.target.value)} rows={8}
-            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
-        </Field>
-      </Card>
-
-      <Card title={t("settings.keywordRules")}>
+      {/* Block 2: Classification */}
+      <Card title={t("settings.ai.classification")}>
         <div className="space-y-4">
-          <Field label={t("settings.hotKeywords")} hint={t("settings.hotKeywordsHint").replace("{threshold}", String(cfg.hot_threshold || 2))}>
+          <Field label={<>{t("settings.ai.classificationPrompt")} <FieldHint hint={t("hints.llmPrompt")} /></>}>
+            <textarea value={cfg.classification_prompt || ""} onChange={(e) => set("classification_prompt", e.target.value)} rows={6}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
+          </Field>
+          <Field label={t("settings.ai.hotKeywords")} hint={`${t("settings.ai.threshold")}: ${cfg.hot_threshold || 2}`}>
             <ListInput value={cfg.hot_keywords || []} onChange={(v) => set("hot_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
-          <Field label={t("settings.warmKeywords")} hint={t("settings.warmKeywordsHint").replace("{threshold}", String(cfg.warm_threshold || 1))}>
+          <Field label={t("settings.ai.warmKeywords")} hint={`${t("settings.ai.threshold")}: ${cfg.warm_threshold || 1}`}>
             <ListInput value={cfg.warm_keywords || []} onChange={(v) => set("warm_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
-          <Field label={t("settings.spamKeywords")}>
+          <Field label={t("settings.ai.spamKeywords")}>
             <ListInput value={cfg.spam_keywords || []} onChange={(v) => set("spam_keywords", v)} placeholder={t("settings.addKeyword")} />
           </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label={t("settings.ai.hotThreshold")}>
+              <NumberInput value={cfg.hot_threshold || 2} onChange={(v) => set("hot_threshold", v)} min={1} max={10} />
+            </Field>
+            <Field label={t("settings.ai.warmThreshold")}>
+              <NumberInput value={cfg.warm_threshold || 1} onChange={(v) => set("warm_threshold", v)} min={1} max={10} />
+            </Field>
+            <Field label={<>{t("settings.ai.confidenceThreshold")} <FieldHint hint={t("hints.llmThreshold")} /></>}>
+              <NumberInput value={cfg.confidence_threshold || 0.5} onChange={(v) => set("confidence_threshold", v)} min={0} max={1} step={0.05} />
+            </Field>
+          </div>
         </div>
       </Card>
 
-      <Card title={t("settings.thresholds")}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label={t("settings.hotMinMatches")} hint={t("settings.hotMinHint")}>
-            <NumberInput value={cfg.hot_threshold || 2} onChange={(v) => set("hot_threshold", v)} min={1} max={10} />
+      {/* Block 3: AI Reply Generation */}
+      <Card title={t("settings.ai.replyGeneration")}>
+        <div className="space-y-4">
+          <Field label={<>{t("settings.ai.replyPrompt")} <FieldHint hint={t("settings.ai.replyPromptHint")} /></>}>
+            <textarea value={cfg.reply_prompt || ""} onChange={(e) => set("reply_prompt", e.target.value)} rows={4}
+              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
           </Field>
-          <Field label={t("settings.warmMinMatches")}>
-            <NumberInput value={cfg.warm_threshold || 1} onChange={(v) => set("warm_threshold", v)} min={1} max={10} />
-          </Field>
-          <Field label={<>{t("settings.confidenceThreshold")} <FieldHint hint={t("hints.llmThreshold")} /></>}>
-            <NumberInput value={cfg.confidence_threshold || 0.5} onChange={(v) => set("confidence_threshold", v)} min={0} max={1} step={0.05} />
-          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.ai.replyTemperature")} hint={t("settings.ai.replyTemperatureHint")}>
+              <NumberInput value={cfg.reply_temperature || 0.7} onChange={(v) => set("reply_temperature", v)} min={0} max={1} step={0.05} />
+            </Field>
+            <Field label={t("settings.ai.replyMaxTokens")}>
+              <NumberInput value={cfg.reply_max_tokens || 500} onChange={(v) => set("reply_max_tokens", v)} min={100} max={2000} step={50} />
+            </Field>
+          </div>
         </div>
       </Card>
 
-      <Card title={t("settings.llmAdvanced")}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label={t("settings.temperature")} hint={t("settings.temperatureHint")}>
-            <NumberInput value={cfg.temperature || 0.3} onChange={(v) => set("temperature", v)} min={0} max={1} step={0.05} />
+      {/* Block 4: Reply Rules */}
+      <Card title={t("settings.ai.replyRules")}>
+        <div className="space-y-4">
+          <Toggle value={cfg.reply_enabled || false} onChange={(v) => set("reply_enabled", v)} label={t("settings.ai.replyEnabled")} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.ai.aiReplyFor")} hint={t("settings.ai.aiReplyForHint")}>
+              <Select value={cfg.ai_reply_for || "HOT"} onChange={(v) => set("ai_reply_for", v)}
+                options={[
+                  { value: "HOT", label: "HOT" },
+                  { value: "WARM", label: "HOT + WARM" },
+                  { value: "OFF", label: t("settings.ai.off") },
+                ]} />
+            </Field>
+            <Field label={t("settings.ai.templateReplyFor")} hint={t("settings.ai.templateReplyForHint")}>
+              <Select value={cfg.template_reply_for || "WARM"} onChange={(v) => set("template_reply_for", v)}
+                options={[
+                  { value: "WARM", label: "WARM" },
+                  { value: "OFF", label: t("settings.ai.off") },
+                ]} />
+            </Field>
+          </div>
+          {cfg.template_reply_for !== "OFF" && (
+            <>
+              <Field label={t("settings.ai.replyMode")}>
+                <Select value={cfg.reply_mode || "random"} onChange={(v) => set("reply_mode", v)}
+                  options={[
+                    { value: "random", label: t("settings.ai.random") },
+                    { value: "cyclic", label: t("settings.ai.cyclic") },
+                  ]} />
+              </Field>
+              <Field label={t("settings.ai.templates")} hint={`${templates.length}/10`}>
+                <div className="space-y-2">
+                  {templates.map((tpl: string, idx: number) => (
+                    <div key={idx} className="flex gap-2">
+                      <textarea value={tpl} onChange={(e) => updateTemplate(idx, e.target.value)} rows={2}
+                        className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" />
+                      <button type="button" onClick={() => removeTemplate(idx)}
+                        className="px-2 text-zinc-500 hover:text-rose-400 transition self-start mt-1">×</button>
+                    </div>
+                  ))}
+                  {templates.length < 10 && (
+                    <button type="button" onClick={addTemplate}
+                      className="px-4 py-2 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition w-full">
+                      + {t("settings.ai.addTemplate")}
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </>
+          )}
+        </div>
+      </Card>
+
+      {/* Block 5: Schedule & Limits */}
+      <Card title={t("settings.ai.schedule")}>
+        <div className="space-y-4">
+          <Field label={t("settings.ai.channels")}>
+            <div className="flex gap-4">
+              {(["telegram", "vkontakte"] as const).map((ch) => (
+                <label key={ch} className="flex items-center gap-2 cursor-pointer">
+                  <div className={`w-10 h-5 rounded-full transition-colors relative ${channels[ch] !== false ? "bg-emerald-500" : "bg-zinc-700"}`}
+                    onClick={() => set("channels", { ...channels, [ch]: channels[ch] === false ? true : false })}>
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${channels[ch] !== false ? "left-5" : "left-0.5"}`} />
+                  </div>
+                  <span className="text-sm text-zinc-300 capitalize">{ch === "vkontakte" ? "VKontakte" : "Telegram"}</span>
+                </label>
+              ))}
+            </div>
           </Field>
-          <Field label={t("settings.maxTokens")}>
-            <NumberInput value={cfg.max_tokens || 500} onChange={(v) => set("max_tokens", v)} min={100} max={4000} step={100} />
-          </Field>
-          <Field label={t("settings.fallbackModel")}>
-            <Input value={cfg.fallback_model || ""} onChange={(v) => set("fallback_model", v)} placeholder="deepseek-chat" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.ai.replyDelay")} hint={t("settings.ai.replyDelayHint")}>
+              <NumberInput value={cfg.reply_delay_seconds || 5} onChange={(v) => set("reply_delay_seconds", v)} min={0} max={60} />
+            </Field>
+            <Field label={t("settings.ai.maxRepliesPerHour")} hint={t("settings.ai.maxRepliesHint")}>
+              <NumberInput value={cfg.max_replies_per_hour || 10} onChange={(v) => set("max_replies_per_hour", v)} min={1} max={100} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("settings.ai.workHoursStart")} hint={t("settings.ai.workHoursHint")}>
+              <NumberInput value={cfg.work_hours_start || 9} onChange={(v) => set("work_hours_start", v)} min={0} max={23} />
+            </Field>
+            <Field label={t("settings.ai.workHoursEnd")}>
+              <NumberInput value={cfg.work_hours_end || 21} onChange={(v) => set("work_hours_end", v)} min={0} max={23} />
+            </Field>
+          </div>
+          <Field label={t("settings.ai.blacklistUsers")} hint={t("settings.ai.blacklistHint")}>
+            <Input value={cfg.blacklist_usernames || ""} onChange={(v) => set("blacklist_usernames", v)} placeholder="user1, user2, user3" />
           </Field>
         </div>
       </Card>
@@ -511,100 +610,6 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
             </Field>
             <Field label={t("settings.notifQuietEnd")}>
               <NumberInput value={cfg.notif_quiet_end || 8} onChange={(v) => set("notif_quiet_end", v)} min={0} max={23} />
-            </Field>
-          </div>
-        </div>
-      </Card>
-
-      <SectionActions onSave={() => onSave(cfg)} onReset={onReset} saving={saving} t={t} />
-    </div>
-  );
-}
-
-// ── Section: Auto-Reply ──────────────────────────────────────────
-function AutoReplySection({ settings, defaults, onSave, onReset, saving }: any) {
-  const [cfg, setCfg] = useState(settings);
-  const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
-  const { t } = useI18n();
-
-  const replies = cfg.replies || [];
-
-  const addReply = () => {
-    if (replies.length >= 10) return;
-    set("replies", [...replies, ""]);
-  };
-
-  const updateReply = (idx: number, value: string) => {
-    const next = [...replies];
-    next[idx] = value;
-    set("replies", next);
-  };
-
-  const removeReply = (idx: number) => {
-    set("replies", replies.filter((_: string, i: number) => i !== idx));
-  };
-
-  return (
-    <div className="space-y-6">
-      <SectionHeader Icon={Send} title={t("settings.autoReply")} desc={t("settings.autoReplyDesc")} />
-
-      <Card title={t("settings.autoReplyConfig")}>
-        <div className="space-y-4">
-          <Toggle value={cfg.enabled !== false} onChange={(v) => set("enabled", v)} label={t("settings.autoReplyEnabled")} />
-          <Field label={t("settings.autoReplyMinIntent")} hint={t("settings.autoReplyMinIntentHint")}>
-            <Select value={cfg.min_intent || "HOT"} onChange={(v) => set("min_intent", v)}
-              options={[
-                { value: "HOT", label: "HOT" },
-                { value: "WARM", label: "WARM" },
-              ]} />
-          </Field>
-          <Field label={t("settings.autoReplyMode")}>
-            <Select value={cfg.reply_mode || "random"} onChange={(v) => set("reply_mode", v)}
-              options={[
-                { value: "random", label: t("settings.autoReplyRandom") },
-                { value: "cyclic", label: t("settings.autoReplyCyclic") },
-              ]} />
-          </Field>
-          <Field label={<>{t("settings.autoReplyReplies")} <FieldHint hint={t("hints.autoReply")} /></>} hint={`${replies.length}/10`}>
-            <div className="space-y-2">
-              {replies.map((reply: string, idx: number) => (
-                <div key={idx} className="flex gap-2">
-                  <textarea value={reply} onChange={(e) => updateReply(idx, e.target.value)} rows={2}
-                    className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-zinc-500" />
-                  <button type="button" onClick={() => removeReply(idx)}
-                    className="px-2 text-zinc-500 hover:text-rose-400 transition self-start mt-1">×</button>
-                </div>
-              ))}
-              {replies.length < 10 && (
-                <button type="button" onClick={addReply}
-                  className="px-4 py-2 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition w-full">
-                  + {t("settings.addReply")}
-                </button>
-              )}
-            </div>
-          </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label={t("settings.autoReplyDelay")} hint={t("settings.autoReplyDelayHint")}>
-              <NumberInput value={cfg.reply_delay_seconds || 5} onChange={(v) => set("reply_delay_seconds", v)} min={0} max={60} />
-            </Field>
-            <Field label={t("settings.autoReplyMaxPerHour")} hint={t("settings.autoReplyMaxPerHourHint")}>
-              <NumberInput value={cfg.max_replies_per_hour || 10} onChange={(v) => set("max_replies_per_hour", v)} min={1} max={100} />
-            </Field>
-          </div>
-        </div>
-      </Card>
-
-      <Card title={t("settings.autoReplyAdvanced")}>
-        <div className="space-y-4">
-          <Field label={t("settings.blacklistUsers")} hint={t("settings.blacklistHint")}>
-            <Input value={cfg.blacklist_usernames || ""} onChange={(v) => set("blacklist_usernames", v)} placeholder="user1, user2, user3" />
-          </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label={t("settings.workHoursStart")} hint={t("settings.workHoursHint")}>
-              <NumberInput value={cfg.work_hours_start || 9} onChange={(v) => set("work_hours_start", v)} min={0} max={23} />
-            </Field>
-            <Field label={t("settings.workHoursEnd")}>
-              <NumberInput value={cfg.work_hours_end || 18} onChange={(v) => set("work_hours_end", v)} min={0} max={23} />
             </Field>
           </div>
         </div>

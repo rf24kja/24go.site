@@ -77,10 +77,10 @@ SPAM_KEYWORDS = [
 ]
 
 
-def _classify_by_keywords(text: str, tenant_cfg: dict | None = None) -> dict:
+def _classify_by_keywords(text: str, ai_cfg: dict | None = None) -> dict:
     """Fast keyword heuristic — ponytail: skip LLM if signal is clear.
 
-    Merges tenant-specific keywords from settings if provided.
+    Merges tenant-specific keywords from ai_auto_reply settings if provided.
     """
     lower = text.lower()
 
@@ -88,11 +88,10 @@ def _classify_by_keywords(text: str, tenant_cfg: dict | None = None) -> dict:
     hot_kw = list(HOT_KEYWORDS)
     warm_kw = list(WARM_KEYWORDS)
     spam_kw = list(SPAM_KEYWORDS)
-    if tenant_cfg:
-        kw_cfg = tenant_cfg.get("keywords", {})
-        hot_kw.extend(kw_cfg.get("hot", []))
-        warm_kw.extend(kw_cfg.get("warm", []))
-        spam_kw.extend(kw_cfg.get("spam", []))
+    if ai_cfg:
+        hot_kw.extend(ai_cfg.get("hot_keywords", []))
+        warm_kw.extend(ai_cfg.get("warm_keywords", []))
+        spam_kw.extend(ai_cfg.get("spam_keywords", []))
 
     spam_hits = sum(1 for kw in spam_kw if kw in lower)
     if spam_hits >= 2:
@@ -142,7 +141,7 @@ def _classify_by_keywords(text: str, tenant_cfg: dict | None = None) -> dict:
     }
 
 
-async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None = None) -> dict:
+async def classify_message(text: str, geo_tag: str = "", ai_cfg: dict | None = None) -> dict:
     """Classify incoming message intent via LLM or keyword fallback.
 
     Returns dict with keys: intent_score, confidence, summary, extracted_parameters.
@@ -150,13 +149,13 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
     # Strip and validate
     text = text.strip()
     if not text or len(text) < 3:
-        return _classify_by_keywords(text or "empty", tenant_cfg)
+        return _classify_by_keywords(text or "empty", ai_cfg)
 
     # Check if any real LLM API key is configured (skip placeholder values)
     has_llm = any(ep["key"] and not ep["key"].startswith("sk-...") for ep in LLM_ENDPOINTS)
     if not has_llm:
         log.debug("No real LLM API key configured, using keyword heuristic")
-        return _classify_by_keywords(text, tenant_cfg)
+        return _classify_by_keywords(text, ai_cfg)
 
     user_prompt = (
         f"SENDER_HANDLE: (incoming message)\n"
@@ -164,6 +163,13 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
         f"CHANNEL_GEO_TAG: {geo_tag}\n\n"
         f"Classify this message. Return ONLY the JSON."
     )
+
+    # Use tenant-specific system prompt if configured
+    system_prompt = SYSTEM_PROMPT
+    if ai_cfg:
+        custom_prompt = ai_cfg.get("classification_prompt", "")
+        if custom_prompt:
+            system_prompt = custom_prompt
 
     for ep in LLM_ENDPOINTS:
         if not ep["key"]:
@@ -179,7 +185,7 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
                     json={
                         "model": ep["model"],
                         "messages": [
-                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
                         ],
                         "temperature": 0.1,
@@ -207,4 +213,4 @@ async def classify_message(text: str, geo_tag: str = "", tenant_cfg: dict | None
 
     # All LLMs failed — fall back to keywords
     log.warning("All LLM providers failed, falling back to keyword heuristic")
-    return _classify_by_keywords(text, tenant_cfg)
+    return _classify_by_keywords(text, ai_cfg)

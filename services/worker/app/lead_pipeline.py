@@ -65,7 +65,8 @@ async def process_incoming_message(
     # 1. Classify via LLM (keyword heuristic fallback)
     from app.tenant_settings import get_tenant_settings_from_db
     tenant_cfg = await get_tenant_settings_from_db(tenant_id)
-    classification = await classify_message(message_text, geo_tag, tenant_cfg=tenant_cfg)  # ponytail: tenant_cfg passed for keyword merge
+    ai_cfg = tenant_cfg.get("ai_auto_reply", {})
+    classification = await classify_message(message_text, geo_tag, ai_cfg=ai_cfg)
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL
@@ -160,17 +161,18 @@ async def process_incoming_message(
         except Exception as e:
             log.debug(f"Telegram/Slack notify failed (non-blocking): {e}")
 
-    # 6. Auto-reply to HOT leads
+    # 6. Auto-reply to leads
     try:
-        auto_reply_cfg = tenant_cfg.get("auto_reply", {})
-        if auto_reply_cfg.get("enabled"):
+        ai_cfg = tenant_cfg.get("ai_auto_reply", {})
+        if ai_cfg.get("reply_enabled"):
             from app.auto_reply import send_auto_reply
             asyncio.create_task(send_auto_reply(
                 account_id=str(account_id),
                 tenant_id=str(tenant_id),
                 user_handle=user_handle,
                 intent=intent_score,
-                auto_reply_config=auto_reply_cfg,
+                message_text=message_text,
+                ai_config=ai_cfg,
             ))
     except Exception as e:
         log.debug(f"Auto-reply dispatch failed (non-blocking): {e}")

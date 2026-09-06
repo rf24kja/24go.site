@@ -13,10 +13,11 @@ import asyncpg
 log = logging.getLogger(__name__)
 
 DEFAULTS = {
-    "llm": {
-        "provider": "auto",
-        "model": "deepseek-chat",
-        "system_prompt": (
+    "ai_auto_reply": {
+        "llm_provider": "auto",
+        "llm_api_key": "",
+        "llm_model": "deepseek-chat",
+        "classification_prompt": (
             "You are an expert sales analyst for a B2B lead generation system.\n\n"
             "Analyze an incoming message and extract qualification parameters.\n\n"
             "Return strictly a valid JSON object:\n"
@@ -39,6 +40,27 @@ DEFAULTS = {
         "hot_threshold": 2,
         "warm_threshold": 1,
         "confidence_threshold": 0.5,
+        "reply_prompt": (
+            "Ты — вежливый менеджер по продажам B2B. "
+            "Отвечай на русском языке кратко и по делу. "
+            "Используй информацию из сообщения клиента."
+        ),
+        "reply_temperature": 0.7,
+        "reply_max_tokens": 500,
+        "reply_enabled": False,
+        "ai_reply_for": "HOT",
+        "template_reply_for": "WARM",
+        "reply_mode": "random",
+        "templates": [
+            "Спасибо за интерес! Менеджер свяжется с вами. 🙏",
+            "Здравствуйте! Мы скоро ответим. 😊",
+        ],
+        "channels": {"telegram": True, "vkontakte": True},
+        "reply_delay_seconds": 5,
+        "max_replies_per_hour": 10,
+        "work_hours_start": 9,
+        "work_hours_end": 21,
+        "blacklist_usernames": "",
     },
     "warmup": {
         "channels": ["https://t.me/s/ru2ch", "https://t.me/s/pikabu", "https://t.me/s/born2chat"],
@@ -74,23 +96,10 @@ DEFAULTS = {
         "min_members_count": 100,
         "prefer_open_comments": True,
     },
-    "auto_reply": {
-        "enabled": False,
-        "min_intent": "HOT",
-        "reply_mode": "random",
-        "replies": [
-            "Thank you for your interest! Our manager will contact you shortly. 🙏",
-            "Hi there! Thanks for reaching out. We'll get back to you soon! 😊",
-            "Great to hear from you! Our team will follow up shortly. ✨"
-        ],
-        "reply_delay_seconds": 5,
-        "max_replies_per_hour": 10,
-    },
 }
 
 
 def _ensure_dict(val):
-    """Ensure val is a dict, handling strings and other types."""
     if isinstance(val, dict):
         return val
     if isinstance(val, str):
@@ -113,6 +122,48 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+def _migrate_old_sections(raw: dict) -> dict:
+    """Merge legacy llm + auto_reply sections into ai_auto_reply."""
+    ai = raw.get("ai_auto_reply", {})
+    changed = False
+
+    llm = raw.pop("llm", None)
+    if llm:
+        ai.setdefault("llm_provider", llm.get("provider", "auto"))
+        ai.setdefault("llm_model", llm.get("model", "deepseek-chat"))
+        ai.setdefault("llm_api_key", llm.get("api_key", ""))
+        ai.setdefault("classification_prompt", llm.get("system_prompt", ""))
+        ai.setdefault("hot_keywords", llm.get("hot_keywords", []))
+        ai.setdefault("warm_keywords", llm.get("warm_keywords", []))
+        ai.setdefault("spam_keywords", llm.get("spam_keywords", []))
+        ai.setdefault("hot_threshold", llm.get("hot_threshold", 2))
+        ai.setdefault("warm_threshold", llm.get("warm_threshold", 1))
+        ai.setdefault("confidence_threshold", llm.get("confidence_threshold", 0.5))
+        changed = True
+
+    ar = raw.pop("auto_reply", None)
+    if ar:
+        ai.setdefault("reply_enabled", ar.get("enabled", False))
+        min_intent = ar.get("min_intent", "HOT")
+        if min_intent == "HOT":
+            ai.setdefault("ai_reply_for", "HOT")
+            ai.setdefault("template_reply_for", "WARM")
+        else:
+            ai.setdefault("ai_reply_for", "WARM")
+            ai.setdefault("template_reply_for", "OFF")
+        ai.setdefault("reply_mode", ar.get("reply_mode", "random"))
+        ai.setdefault("templates", ar.get("replies", []))
+        ai.setdefault("reply_delay_seconds", ar.get("reply_delay_seconds", 5))
+        ai.setdefault("max_replies_per_hour", ar.get("max_replies_per_hour", 10))
+        ai.setdefault("work_hours_start", ar.get("work_hours_start", 9))
+        ai.setdefault("work_hours_end", ar.get("work_hours_end", 21))
+        changed = True
+
+    if changed:
+        raw["ai_auto_reply"] = ai
+    return raw
+
+
 async def get_tenant_settings_from_db(tenant_id: str) -> dict:
     """Async version — use when already in async context."""
     from app.config import DATABASE_URL
@@ -127,6 +178,7 @@ async def get_tenant_settings_from_db(tenant_id: str) -> dict:
             raw = row["settings"]
             if isinstance(raw, str):
                 raw = json.loads(raw)
+            raw = _migrate_old_sections(raw)
             return _deep_merge(DEFAULTS, raw)
         return DEFAULTS.copy()
     except Exception as e:
