@@ -73,6 +73,7 @@ class TargetResponse(BaseModel):
     members_count: int
     engagement_rate: float = 0.0
     is_active: bool
+    is_joined: bool = False
     last_parsed_at: datetime | None = None
     created_at: datetime | None = None
 

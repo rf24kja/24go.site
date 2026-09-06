@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts } from "@/lib/api";
+import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts, checkMembership } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
@@ -20,6 +20,7 @@ type Target = {
   members_count: number;
   engagement_rate: number;
   is_active: boolean;
+  is_joined: boolean;
   last_parsed_at: string | null;
   created_at: string;
 };
@@ -456,9 +457,28 @@ export default function TargetsPage() {
                       : <span className="text-zinc-600">{t("targets.never")}</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${target.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
-                      {target.is_active ? t("targets.active") : t("targets.inactive")}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium border ${target.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                        {target.is_active ? t("targets.active") : t("targets.inactive")}
+                      </span>
+                      <button onClick={async () => {
+                        if (!auth?.token) return;
+                        try {
+                          const res = await checkMembership(auth.token, target.id);
+                          load();
+                          toast(res.is_joined ? `Joined: ${target.title}` : `Not joined: ${target.title}`, "info");
+                        } catch (e: any) {
+                          toast(e.message || "Check failed", "error");
+                        }
+                      }}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition ${
+                          target.is_joined
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:text-zinc-300"
+                        }`}>
+                        {target.is_joined ? "Joined" : "Check"}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => openScrapeModal(target.id)}

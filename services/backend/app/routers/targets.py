@@ -105,6 +105,89 @@ async def delete_target(
     )
 
 
+# ── Membership Check ─────────────────────────────────────────────────
+
+@router.post("/{target_id}/check-membership")
+async def check_membership(
+    target_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Check if any active account is a member of this target group. Updates is_joined."""
+    import asyncio
+
+    result = await db.execute(
+        select(Target).where(Target.id == target_id, Target.tenant_id == current_user.tenant_id)
+    )
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(404, "Target not found")
+
+    acct_result = await db.execute(
+        select(AccountPool).where(
+            AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.status == "active",
+        )
+    )
+    accounts = acct_result.scalars().all()
+    if not accounts:
+        raise HTTPException(400, "No active Telegram accounts")
+
+    async def _check():
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+        import os, asyncpg
+        from app.crypto import decrypt as dec
+        from app.config import settings as cfg
+
+        api_id = int(os.getenv("TG_API_ID", "0"))
+        api_hash = os.getenv("TG_API_HASH", "")
+        if not api_id or not api_hash:
+            return False
+
+        for account in accounts:
+            conn = await asyncpg.connect(cfg.DATABASE_URL.replace("+asyncpg", ""))
+            try:
+                row = await conn.fetchrow(
+                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                    account.id,
+                )
+                if not row:
+                    continue
+                session_str = dec(row["session_data"])
+            finally:
+                await conn.close()
+
+            client = TelegramClient(StringSession(session_str), api_id, api_hash)
+            await client.connect()
+            try:
+                entity = await client.get_entity(target.target_id_code)
+                me = await client.get_me()
+                try:
+                    await client.get_participant(entity, me.id)
+                    await client.disconnect()
+                    return True  # Found a member
+                except Exception:
+                    pass
+            finally:
+                await client.disconnect()
+        return False
+
+    try:
+        is_member = await asyncio.wait_for(_check(), timeout=30)
+    except asyncio.TimeoutError:
+        raise HTTPException(504, "Timeout checking membership")
+    except Exception as e:
+        log.error(f"Membership check failed: {e}")
+        raise HTTPException(500, f"Check failed: {e}")
+
+    target.is_joined = is_member
+    await db.commit()
+
+    return {"target_id": str(target_id), "is_joined": is_member}
+
+
 # ── Recent Posts ───────────────────────────────────────────────────────
 
 @router.get("/{target_id}/recent-posts")

@@ -197,6 +197,23 @@ async def _send_message(account_id: str, target_channel: str, text: str) -> dict
 
     try:
         entity = await client.get_entity(target_channel)
+
+        # Auto-join if not a member
+        try:
+            me = await client.get_me()
+            participant = await client.get_participant(entity, me.id)
+        except Exception:
+            participant = None
+        if participant is None:
+            log.info(f"Auto-joining {target_channel} with account {account_id}")
+            try:
+                await client.join_chat(entity)
+                # Refresh entity after joining
+                entity = await client.get_entity(target_channel)
+            except Exception as e:
+                log.warning(f"Failed to join {target_channel}: {e}")
+                return {"status": "error", "error": f"join_failed: {e}"}
+
         message = await client.send_message(entity, text)
         _set_status(account_id, "online")
         return {

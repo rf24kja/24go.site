@@ -121,6 +121,7 @@ class Target(Base):
     members_count = Column(Integer, default=0)
     engagement_rate = Column(Numeric(5, 2), default=0.0)
     is_active = Column(Boolean, default=True)
+    is_joined = Column(Boolean, default=False)  # True if any account is a member
     last_parsed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -270,6 +271,7 @@ class MonitoredGroup(Base):
     members_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     status = Column(String(50), default="idle")  # 'idle' | 'scanning' | 'error'
+    is_joined = Column(Boolean, default=False)  # True if account is a member of the group
     last_scan_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

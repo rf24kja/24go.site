@@ -243,6 +243,12 @@ export async function getRecentPosts(token: string, targetId: string, limit: num
   );
 }
 
+export async function checkMembership(token: string, targetId: string) {
+  return api<{ target_id: string; is_joined: boolean }>(
+    `/api/v1/targets/${targetId}/check-membership`, { method: "POST", token }
+  );
+}
+
 // ── Groups (Monitored) ────────────────────────────────────────────────
 
 export async function getGroups(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
