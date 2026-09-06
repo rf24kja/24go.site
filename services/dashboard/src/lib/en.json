@@ -307,6 +307,7 @@
   "targets.startScraping": "Start Scraping",
   "targets.found": "Found {total} targets",
   "targets.noneFound": "No targets found — try different GEO/niche, or connect a Telegram account",
+  "targets.freeSearchNoAccounts": "Free search requires a connected Telegram account. Connect one in Accounts, or use TgStat mode.",
   "targets.scanFailed": "Scan failed",
   "targets.scrapeStarted": "Comment scrape started",
   "targets.scrapeFailed": "Scrape failed",

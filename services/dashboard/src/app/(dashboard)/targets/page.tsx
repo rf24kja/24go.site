@@ -109,7 +109,7 @@ export default function TargetsPage() {
       if (res.total > 0) {
         toast(t("targets.found").replace("{total}", String(res.total)), "success");
       } else {
-        toast(t("targets.noneFound"), "info");
+        toast(t("targets.freeSearchNoAccounts"), "info");
       }
       load();
     } catch (e: any) {
