@@ -281,22 +281,8 @@ function AccountsSection({ t }: { t: (k: string) => string }) {
           </div>
         </div>
       }
-      howTo={[
-        t("wiki.section.accounts.howTo1"),
-        t("wiki.section.accounts.howTo2"),
-        t("wiki.section.accounts.howTo3"),
-        t("wiki.section.accounts.howTo4"),
-        t("wiki.section.accounts.howTo5"),
-        t("wiki.section.accounts.howTo6"),
-        t("wiki.section.accounts.howTo7"),
-      ]}
-      expect={[
-        t("wiki.section.accounts.expect1"),
-        t("wiki.section.accounts.expect2"),
-        t("wiki.section.accounts.expect3"),
-        t("wiki.section.accounts.expect4"),
-        t("wiki.section.accounts.expect5"),
-      ]}
+      howTo={t("wiki.section.accounts.howTo").split("\n")}
+      expect={t("wiki.section.accounts.expect").split("\n")}
       warnings={t("wiki.section.accounts.warning")}
       tips={t("wiki.section.accounts.buyTip")}
       extra={
