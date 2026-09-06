@@ -621,20 +621,19 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                             if word in name:
                                 relevance += 3
 
-                        if relevance > 0:
-                            seen.add(username)
-                            try:
-                                full = await client.get_entity(entity)
-                                members = getattr(full, 'participants_count', 0) or 0
-                            except Exception:
-                                members = 0
-                            results.append({
-                                "platform": "telegram",
-                                "group_identifier": f"@{username}",
-                                "title": getattr(entity, 'title', username),
-                                "members_count": members,
-                                "relevance": relevance,
-                            })
+                        seen.add(username)
+                        try:
+                            full = await client.get_entity(entity)
+                            members = getattr(full, 'participants_count', 0) or 0
+                        except Exception:
+                            members = 0
+                        results.append({
+                            "platform": "telegram",
+                            "group_identifier": f"@{username}",
+                            "title": getattr(entity, 'title', username),
+                            "members_count": members,
+                            "relevance": relevance,
+                        })
                 except Exception as e:
                     log.debug(f"Search query '{query}' failed: {e}")
                     continue

@@ -583,7 +583,7 @@ async def confirm_telegram(
         log.info(f"confirm_telegram: calling sign_in for {_mask_phone(body.phone)}")
 
         try:
-            await client.sign_in(body.phone, code=body.code, phone_code_hash=phone_code_hash)
+            await client.sign_in(stored_phone, code=body.code, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError:
             # 2FA is enabled — save session state to Redis, ask frontend for password
             pending_session = client.session.save()
@@ -655,14 +655,7 @@ async def confirm_telegram(
                 args=[str(current_user.tenant_id), str(account_id)],
                 queue="warmup",
             )
-            # Set tg_status in Redis so dashboard shows online
-            import redis as _r2
-            r2 = _r2.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
-            import time as _t
-            r2.setex(
-                f"tg_status:{account_id}", 300,
-                _json.dumps({"status": "online", "platform": "telegram", "updated_at": _t.time()}),
-            )
+            # tg_status will be set by the Celery worker after successful connection
             log.info(f"Auto-dispatched listener + warmup for account {account_id}")
         except Exception as dispatch_err:
             log.warning(f"Failed to auto-dispatch tasks: {dispatch_err}")
