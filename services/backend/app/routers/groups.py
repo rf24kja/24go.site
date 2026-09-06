@@ -653,7 +653,13 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                                 relevance += 3
 
                         seen.add(username)
-                        members = getattr(entity, 'participants_count', 0) or 0
+                        # get_full_channel returns participants_count
+                        try:
+                            from telethon.tl.functions.channels import GetFullChannelRequest
+                            full = await client(GetFullChannelRequest(entity))
+                            members = getattr(full.full_chat, 'participants_count', 0) or 0
+                        except Exception:
+                            members = 0
                         results.append({
                             "platform": "telegram",
                             "group_identifier": f"@{username}",
