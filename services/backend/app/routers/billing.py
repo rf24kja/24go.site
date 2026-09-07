@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app import db_pool
 from app.database import get_db
 from app.models import User
 from app.quota import PLAN_LIMITS, get_plan_limits
@@ -373,9 +374,7 @@ async def yookassa_webhook(request: Request):
 
     # Idempotency: check if we already processed this payment
     if provider_tx_id:
-        url = settings.DATABASE_URL.replace("+asyncpg", "")
-        conn = await asyncpg.connect(url)
-        try:
+        async with db_pool.connection() as conn:
             exists = await conn.fetchval(
                 "SELECT 1 FROM billing_transactions WHERE provider_transaction_id = $1",
                 provider_tx_id,
@@ -383,8 +382,6 @@ async def yookassa_webhook(request: Request):
             if exists:
                 log.info(f"YooKassa webhook duplicate: {provider_tx_id}")
                 return {"status": "already_processed"}
-        finally:
-            await conn.close()
 
     if event_type == "payment.succeeded":
         plan_tier = obj.get("metadata", {}).get("plan_tier", "starter")
@@ -413,12 +410,9 @@ async def _process_payment(
         log.warning("Webhook missing tenant_id — skipping")
         return
 
-    url = settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    async with db_pool.connection() as conn:
         tenant_uuid = uuid.UUID(tenant_id)
 
-        # Record transaction
         await conn.execute(
             """INSERT INTO billing_transactions (id, tenant_id, amount_usd, payment_provider, provider_transaction_id, status)
                VALUES (gen_random_uuid(), $1, $2, $3, $4, 'succeeded')
@@ -426,7 +420,6 @@ async def _process_payment(
             tenant_uuid, amount_usd, provider, provider_tx_id,
         )
 
-        # Upgrade subscription (UPSERT — create if missing)
         limits = get_plan_limits(plan_tier)
         await conn.execute(
             """INSERT INTO subscriptions (id, tenant_id, plan, status, current_period_start, current_period_end,
@@ -448,15 +441,11 @@ async def _process_payment(
         )
 
         log.info(f"Payment processed: tenant={tenant_id} plan={plan_tier} amount=${amount_usd}")
-    finally:
-        await conn.close()
 
 
 async def _extend_subscription(customer_id: str | None, subscription_id: str):
     """Extend subscription period on successful renewal."""
-    url = settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    async with db_pool.connection() as conn:
         row = await conn.fetchrow(
             """SELECT tenant_id FROM subscriptions WHERE id::text = $1 LIMIT 1""",
             subscription_id,
@@ -473,15 +462,11 @@ async def _extend_subscription(customer_id: str | None, subscription_id: str):
             row["tenant_id"],
         )
         log.info(f"Subscription extended: tenant={row['tenant_id']}")
-    finally:
-        await conn.close()
 
 
 async def _deactivate_subscription(customer_id: str | None, subscription_id: str):
     """Deactivate subscription on cancellation."""
-    url = settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    async with db_pool.connection() as conn:
         row = await conn.fetchrow(
             "SELECT tenant_id FROM subscriptions WHERE id::text = $1 LIMIT 1",
             subscription_id,
@@ -494,5 +479,3 @@ async def _deactivate_subscription(customer_id: str | None, subscription_id: str
             row["tenant_id"],
         )
         log.info(f"Subscription deactivated: tenant={row['tenant_id']}")
-    finally:
-        await conn.close()

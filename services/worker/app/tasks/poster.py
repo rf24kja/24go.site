@@ -13,8 +13,6 @@ import random
 import re
 import uuid as uuid_mod
 
-from celery import shared_task
-
 from app.celery_app import celery
 from app.locks import acquire_account_lock, increment_daily_actions
 from app.config import WARMUP_LIMITS

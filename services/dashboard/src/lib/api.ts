@@ -22,6 +22,14 @@ export class ApiError extends Error {
   }
 }
 
+function toQuery(params?: Record<string, string | number | undefined | null>): string {
+  if (!params) return "";
+  const filtered = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+  );
+  return new URLSearchParams(filtered as Record<string, string>).toString();
+}
+
 export async function api<T = any>(path: string, opts: FetchOptions = {}): Promise<T> {
   const { token, ...init } = opts;
   const headers: Record<string, string> = {
@@ -77,9 +85,9 @@ export async function getMe(token: string) {
 // ── Leads ─────────────────────────────────────────────────────────────
 
 export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
-  const mapped: any = params ? Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")) : undefined;
-  if (mapped?.status) { mapped.status_filter = mapped.status; delete mapped.status; }
-  const qs = new URLSearchParams(mapped).toString();
+  const mapped: Record<string, string | number | undefined> = params ? { ...params } : {};
+  if (mapped.status) { mapped.status_filter = mapped.status as string; delete mapped.status; }
+  const qs = toQuery(mapped);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/leads/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -97,7 +105,7 @@ export async function qualifyLead(token: string, data: {
 // ── Accounts ──────────────────────────────────────────────────────────
 
 export async function getAccounts(token: string, params?: { status_filter?: string; limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/accounts/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -187,7 +195,7 @@ export async function connectVK(token: string, accountId: string, groupToken: st
 // ── Campaigns ─────────────────────────────────────────────────────────
 
 export async function getCampaigns(token: string, params?: { limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/campaigns/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -220,14 +228,14 @@ export async function getCampaignAbStats(token: string, campaignId: string) {
 }
 
 export async function getCampaignLogs(token: string, campaignId: string, params?: { limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<any>(`/api/v1/campaigns/${campaignId}/logs${qs ? `?${qs}` : ""}`, { token });
 }
 
 // ── Targets ───────────────────────────────────────────────────────────
 
 export async function getTargets(token: string, params?: { limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/targets/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -252,7 +260,7 @@ export async function checkMembership(token: string, targetId: string) {
 // ── Groups (Monitored) ────────────────────────────────────────────────
 
 export async function getGroups(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/groups/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -381,7 +389,7 @@ export async function getListenerStatus(token: string) {
 // ── Audit ─────────────────────────────────────────────────────────────
 
 export async function getAuditLog(token: string, params?: { entity_type?: string; limit?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<any[]>(`/api/v1/audit/${qs ? `?${qs}` : ""}`, { token });
 }
 
@@ -544,7 +552,7 @@ export async function getBlogSlugs() {
 // ── Mailings ─────────────────────────────────────────────────────
 
 export async function getMailings(token: string, params?: { limit?: number; offset?: number }) {
-  const qs = new URLSearchParams(params as any).toString();
+  const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/mailings/${qs ? `?${qs}` : ""}`, { token });
 }
 

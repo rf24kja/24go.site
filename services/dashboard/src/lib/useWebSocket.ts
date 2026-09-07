@@ -12,15 +12,19 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 function getWsUrl() {
-  if (typeof window === "undefined") return "wss://api.24go.site";
+  if (typeof window === "undefined") {
+    const base = process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site";
+    return base.replace(/^http/, "ws");
+  }
   if (window.location.hostname === "localhost") return "ws://localhost:8000";
-  return "wss://api.24go.site"; // ponytail: hardcoded, same as getApiBase
+  const base = process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site";
+  return base.replace(/^http/, "ws");
 }
 
 function getApiUrl() {
-  if (typeof window === "undefined") return "https://api.24go.site";
+  if (typeof window === "undefined") return process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site";
   if (window.location.hostname === "localhost") return "http://localhost:8000";
-  return "https://api.24go.site"; // ponytail: hardcoded
+  return process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site";
 }
 
 export interface WsEvent {

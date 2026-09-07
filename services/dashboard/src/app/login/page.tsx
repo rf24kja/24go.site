@@ -61,13 +61,16 @@ export default function LoginPage() {
 
           {mode === "register" && (
             <input type="text" placeholder={t("login.companyPlaceholder")} value={company} onChange={(e) => setCompany(e.target.value)} required
+              aria-label={t("login.companyPlaceholder")}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500" />
           )}
 
           <input type="email" placeholder={t("login.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus
+            aria-label={t("login.emailPlaceholder")}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500" />
 
           <input type="password" placeholder={t("login.passwordPlaceholder")} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
+            aria-label={t("login.passwordPlaceholder")}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500" />
 
           {error && (
