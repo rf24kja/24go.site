@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Spinner } from "@/components/Spinner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +24,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 md:ml-60 p-4 md:p-8">
-        <OnboardingChecklist />
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
     </div>
