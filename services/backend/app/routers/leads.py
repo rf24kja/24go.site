@@ -266,6 +266,10 @@ async def import_leads_csv(
     import io
     import uuid
 
+    MAX_IMPORT_SIZE = 10 * 1024 * 1024  # 10MB
+    if len(body.file.encode("utf-8")) > MAX_IMPORT_SIZE:
+        raise HTTPException(413, "File too large (max 10MB)")
+
     reader = csv.DictReader(io.StringIO(body.file))
     imported = 0
     skipped = 0

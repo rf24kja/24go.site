@@ -353,19 +353,25 @@ class ResetPasswordRequest(BaseModel):
 @router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Send a password reset email. Always returns 200 to prevent email enumeration."""
+    import uuid as _uuid
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
     if user:
+        jti = str(_uuid.uuid4())
         reset_token = jwt.encode(
             {
                 "sub": str(user.id),
                 "type": "password_reset",
+                "jti": jti,
                 "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             },
             settings.JWT_SECRET,
             algorithm=settings.JWT_ALGORITHM,
         )
+
+        # Store jti in Redis (1 hour TTL) — allows revocation after use
+        _redis.setex(f"reset_token:{jti}", 3600, str(user.id))
 
         reset_link = f"https://www.24go.site/reset-password?token={reset_token}"
         body_text = (
@@ -388,7 +394,6 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
                 server.login(settings.SMTP_USER, settings.SMTP_PASS)
                 server.sendmail(settings.FROM_EMAIL, body.email, msg.as_string())
         except Exception:
-            # ponytail: swallow email errors, don't leak info
             pass
 
     return {"message": "If that email is registered, you'll receive a reset link shortly."}
@@ -405,6 +410,14 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     if payload.get("type") != "password_reset":
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
+    jti = payload.get("jti")
+    if not jti:
+        raise HTTPException(status_code=400, detail="Invalid token format")
+
+    # Verify token hasn't been used (stored in Redis on creation)
+    if not _redis.exists(f"reset_token:{jti}"):
+        raise HTTPException(status_code=400, detail="Token already used or expired")
+
     user_id = payload.get("sub")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -413,5 +426,8 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
 
     user.password_hash = hash_password(body.new_password)
     await db.commit()
+
+    # Invalidate token after use
+    _redis.delete(f"reset_token:{jti}")
 
     return {"message": "Password updated successfully. You can now log in."}
