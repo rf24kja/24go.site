@@ -67,13 +67,16 @@ async def add_request_id(request: Request, call_next):
 
 # ── Middleware ──────────────────────────────────────────────────────────
 ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:8080",
     "https://24go.site",
     "https://www.24go.site",
     "https://app.24go.site",
 ]
+if not _is_production:
+    ALLOWED_ORIGINS.extend([
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8080",
+    ])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -295,14 +298,12 @@ async def health():
     """Health check — returns status + dependency health."""
     checks = {"status": "ok", "ws_connections": ws_manager.active_tenants()}
 
-    # DB check
+    # DB check — reuse SQLAlchemy pool
     try:
-        import asyncpg
-        from app.config import settings
-        db_url = settings.DATABASE_URL.replace("+asyncpg", "")
-        conn = await asyncpg.connect(db_url, timeout=3)
-        await conn.fetchval("SELECT 1")
-        await conn.close()
+        from app.database import engine
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception:
         checks["database"] = "error"

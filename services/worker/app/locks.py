@@ -1,10 +1,11 @@
 """Distributed lock for account/proxy concurrency control (Redlock pattern).
 
-Uses Redis SET NX with TTL. Per spec: workers MUST acquire lock before
-executing actions on an account to prevent race conditions.
+Uses Redis SET NX with TTL and ownership tokens.
+Workers MUST acquire lock before executing actions on an account.
 """
 import os
 import time
+import uuid
 from contextlib import contextmanager
 
 import redis
@@ -22,17 +23,30 @@ def _get_redis() -> redis.Redis:
     return _redis
 
 
+def _release_lock(r: redis.Redis, lock_key: str, owner: str):
+    """Release lock only if we still own it (Lua atomic check-and-delete)."""
+    LUA_RELEASE = """
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+else
+    return 0
+end
+"""
+    r.eval(LUA_RELEASE, 1, lock_key, owner)
+
+
 @contextmanager
 def acquire_account_lock(tenant_id: str, account_id: str, lock_timeout: int = 60):
-    """Acquire a per-account distributed lock. Yields True if acquired, False otherwise."""
+    """Acquire a per-account distributed lock. Yields (acquired, owner_id)."""
     r = _get_redis()
     lock_key = f"lock:tenant:{tenant_id}:account:{account_id}"
-    acquired = r.set(lock_key, "locked", nx=True, ex=lock_timeout)
+    owner = str(uuid.uuid4())
+    acquired = r.set(lock_key, owner, nx=True, ex=lock_timeout)
     try:
-        yield acquired
+        yield (acquired, owner if acquired else None)
     finally:
         if acquired:
-            r.delete(lock_key)
+            _release_lock(r, lock_key, owner)
 
 
 @contextmanager
@@ -40,12 +54,13 @@ def acquire_proxy_lock(tenant_id: str, proxy_id: str, lock_timeout: int = 120):
     """Acquire a per-proxy distributed lock."""
     r = _get_redis()
     lock_key = f"lock:tenant:{tenant_id}:proxy:{proxy_id}"
-    acquired = r.set(lock_key, "locked", nx=True, ex=lock_timeout)
+    owner = str(uuid.uuid4())
+    acquired = r.set(lock_key, owner, nx=True, ex=lock_timeout)
     try:
-        yield acquired
+        yield (acquired, owner if acquired else None)
     finally:
         if acquired:
-            r.delete(lock_key)
+            _release_lock(r, lock_key, owner)
 
 
 def get_daily_action_count(tenant_id: str, account_id: str) -> int:

@@ -50,7 +50,10 @@ def _get_fernet():
         return _fernet
     encryption_key = os.getenv("ENCRYPTION_KEY", "")
     if not encryption_key:
-        return None
+        raise RuntimeError(
+            "ENCRYPTION_KEY not set — Telegram sessions will be stored unencrypted! "
+            "Set ENCRYPTION_KEY in your .env file."
+        )
     try:
         import base64, hashlib
         from cryptography.fernet import Fernet
@@ -59,7 +62,7 @@ def _get_fernet():
         _fernet = Fernet(fernet_key)
         return _fernet
     except ImportError:
-        return None
+        raise RuntimeError("cryptography package not installed — cannot encrypt sessions")
 
 def _encrypt(plaintext: str) -> str:
     f = _get_fernet()
@@ -357,8 +360,14 @@ def get_all_statuses() -> dict[str, dict]:
             break
     statuses = {}
     for key in keys:
+        raw = r.get(key)
+        if raw is None:
+            continue
         account_id = key.split(":", 1)[1]
-        statuses[account_id] = json.loads(r.get(key))
+        try:
+            statuses[account_id] = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
     return statuses
 
 

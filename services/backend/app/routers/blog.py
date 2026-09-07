@@ -1,7 +1,7 @@
 """Blog API — admin CRUD + public read."""
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -141,7 +141,7 @@ async def admin_update_post(
 
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(post, key, value)
-    post.updated_at = datetime.utcnow()
+    post.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(post)
     return _post_to_dict(post)

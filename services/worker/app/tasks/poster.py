@@ -93,7 +93,7 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
         if selected_variant:
             base_text = selected_variant.get("text", base_text)
 
-    with acquire_account_lock(tenant_id, account_id) as locked:
+    with acquire_account_lock(tenant_id, account_id) as (locked, owner):
         if not locked:
             log.warning(f"Account {account_id} locked by another worker, retrying")
             raise self.retry(countdown=30, exc=Exception("Account lock active"))
@@ -240,34 +240,6 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
     import asyncpg
     import os
 
-
-def _update_variant_stats(tenant_id: str, campaign_id: str, variants: list):
-    """Update A/B variant post counts in campaigns table."""
-    import asyncpg
-    import os
-    import json
-
-    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
-    db_url = db_url.replace("+asyncpg", "")
-
-    async def _update():
-        conn = await asyncpg.connect(db_url)
-        try:
-            await conn.execute(
-                "UPDATE campaigns SET ab_variants = $1 WHERE id = $2 AND tenant_id = $3",
-                json.dumps(variants),
-                uuid.UUID(campaign_id),
-                uuid.UUID(tenant_id),
-            )
-        finally:
-            await conn.close()
-
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_update())
-    finally:
-        loop.close()
-
     db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
     db_url = db_url.replace("+asyncpg", "")
 
@@ -294,5 +266,34 @@ def _update_variant_stats(tenant_id: str, campaign_id: str, variants: list):
     loop = asyncio.new_event_loop()
     try:
         loop.run_until_complete(_insert())
+    finally:
+        loop.close()
+
+
+def _update_variant_stats(tenant_id: str, campaign_id: str, variants: list):
+    """Update A/B variant post counts in campaigns table."""
+    import asyncpg
+    import os
+    import json
+    import uuid
+
+    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
+    db_url = db_url.replace("+asyncpg", "")
+
+    async def _update():
+        conn = await asyncpg.connect(db_url)
+        try:
+            await conn.execute(
+                "UPDATE campaigns SET ab_variants = $1 WHERE id = $2 AND tenant_id = $3",
+                json.dumps(variants),
+                uuid.UUID(campaign_id),
+                uuid.UUID(tenant_id),
+            )
+        finally:
+            await conn.close()
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_update())
     finally:
         loop.close()
