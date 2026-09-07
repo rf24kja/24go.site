@@ -24,6 +24,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
     { url: `${base}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/tools`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/tools/roi-calculator`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/tools/group-analyzer`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/tools/account-checker`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/integrations/amo-crm`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/integrations/google-sheets`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/integrations/hubspot`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/integrations/bitrix24`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/integrations/webhook`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/tutorials/telegram-auto-reply`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/tutorials/telegram-lead-scraping`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/tutorials/telegram-warmup`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
   ];
 
   const blogPages = await getBlogPosts();
