@@ -25,7 +25,8 @@ export default function GroupAnalyzer() {
     setResult(null);
 
     try {
-      const res = await fetch("/api/v1/tools/analyze-group", {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site";
+      const res = await fetch(`${apiBase}/api/v1/tools/analyze-group`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),

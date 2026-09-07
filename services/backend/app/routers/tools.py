@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app import db_pool
+
 router = APIRouter(prefix="/api/v1/tools", tags=["tools"])
 
 
@@ -42,8 +44,6 @@ async def analyze_group(body: GroupAnalysisRequest):
         raise HTTPException(400, str(e))
 
     try:
-        from app.telegram_client import get_client, disconnect_client
-
         # Use a shared client for public group analysis (no tenant needed)
         # ponytail: use first available account for public group lookups
         client = await _get_analysis_client()
@@ -83,23 +83,48 @@ async def analyze_group(body: GroupAnalysisRequest):
         raise HTTPException(502, f"Failed to fetch group info: {str(e)[:200]}")
 
 
+_analysis_client = None
+
+
 async def _get_analysis_client():
-    """Get a connected Telethon client for public group analysis."""
+    """Get a connected Telethon client for public group analysis.
+
+    ponytail: single shared client for all public lookups, reuses DB pool.
+    """
+    global _analysis_client
+    if _analysis_client and _analysis_client.is_connected():
+        return _analysis_client
+
     import os
-    import asyncpg
+    from telethon import TelegramClient
+    from telethon.sessions import StringSession
+    from app.crypto import decrypt as crypto_decrypt
 
-    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
-    db_url = db_url.replace("+asyncpg", "")
+    tg_id = int(os.environ.get("TG_API_ID", "0"))
+    tg_hash = os.environ.get("TG_API_HASH", "")
+    if not tg_id or not tg_hash:
+        return None
 
-    conn = await asyncpg.connect(db_url)
-    try:
+    async with db_pool.connection() as conn:
         row = await conn.fetchrow(
-            "SELECT id::text FROM account_pool WHERE status = 'active' LIMIT 1"
+            """SELECT s.session_data
+               FROM account_sessions s
+               JOIN account_pool p ON p.id = s.account_id
+               WHERE p.status = 'active'
+               LIMIT 1"""
         )
         if not row:
             return None
-    finally:
-        await conn.close()
+        session_string = crypto_decrypt(row["session_data"])
 
-    from app.telegram_client import get_client
-    return await get_client(row["id"])
+    if not session_string:
+        return None
+
+    client = TelegramClient(StringSession(session_string), tg_id, tg_hash)
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.disconnect()
+        return None
+
+    _analysis_client = client
+    return client
