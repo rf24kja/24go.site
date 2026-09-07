@@ -130,6 +130,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       },
       alternates: {
         canonical: `https://www.24go.site/blog/${post.slug}`,
+        languages: {
+          en: `https://www.24go.site/blog/${post.slug}?locale=en`,
+          ru: `https://www.24go.site/blog/${post.slug}?locale=ru`,
+          "x-default": `https://www.24go.site/blog/${post.slug}?locale=en`,
+        },
       },
     };
   } catch {
