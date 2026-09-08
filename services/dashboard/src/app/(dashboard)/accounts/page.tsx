@@ -582,9 +582,9 @@ export default function AccountsPage() {
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono text-center text-lg tracking-widest" />
                 {connectError && <p className="text-xs text-rose-400">{connectError}</p>}
                 <p className="text-[10px] text-zinc-600">{t("accounts.codeHint")}</p>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button onClick={handleConnectConfirm} disabled={connectBusy || !connectCode}
-                    className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                    className="flex-1 min-w-[120px] py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                     {connectBusy ? t("accounts.connecting") : t("accounts.confirm")}
                   </button>
                   <button onClick={handleConnectSendCode} disabled={connectBusy}

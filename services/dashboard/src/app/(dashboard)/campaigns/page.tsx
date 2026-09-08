@@ -184,7 +184,7 @@ export default function CampaignsPage() {
 
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{t("campaigns.title")}</h1>
         <button onClick={openCreate}
           className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-200 btn-press">

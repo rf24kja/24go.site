@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 md:ml-60 p-4 md:p-8">
+      <main className="flex-1 md:ml-60 p-4 pt-14 md:pt-8 md:p-8">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
     </div>

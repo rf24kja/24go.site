@@ -15,11 +15,11 @@ const getPlans = (t: (k: string) => string) => [
     period: t("plans.perMonth"),
     desc: t("plans.starterDesc"),
     features: [
-      "Analytics, Leads & Lead Rules",
-      "Groups & Group Search (Free)",
-      "Accounts & Proxies",
-      "Campaigns, Mailings & Auto-Replies",
-      "Settings, Billing & Help",
+      t("plans.f1"),
+      t("plans.f2"),
+      t("plans.f3"),
+      t("plans.f4"),
+      t("plans.f5"),
     ],
   },
   {
@@ -28,10 +28,10 @@ const getPlans = (t: (k: string) => string) => [
     period: t("plans.perMonth"),
     desc: t("plans.proDesc"),
     features: [
-      "Everything in Starter",
-      "Group Search (TgStat API)",
-      "Team Management",
-      "Monitoring & Listeners",
+      t("plans.f6"),
+      t("plans.f7"),
+      t("plans.f8"),
+      t("plans.f9"),
     ],
   },
   {
@@ -40,9 +40,9 @@ const getPlans = (t: (k: string) => string) => [
     period: t("plans.perMonth"),
     desc: t("plans.enterpriseDesc"),
     features: [
-      "Everything in Pro",
-      "API Access (REST)",
-      "Webhooks & Custom Integrations",
+      t("plans.f10"),
+      t("plans.f11"),
+      t("plans.f12"),
     ],
   },
 ];

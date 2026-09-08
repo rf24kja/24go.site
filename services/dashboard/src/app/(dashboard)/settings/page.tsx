@@ -80,7 +80,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className={`flex gap-6 max-w-6xl animate-fade-slide-in`}>
+    <div className={`flex flex-col md:flex-row gap-6 max-w-6xl animate-fade-slide-in`}>
       {/* Mobile section selector */}
       <div className="md:hidden w-full">
         <select value={activeSection} onChange={(e) => { setActiveSection(e.target.value as Section); setSaved(false); setError(""); }}

@@ -89,13 +89,13 @@ export function Sidebar() {
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
               onClick={() => setLang("en")}
-              className={`flex-1 text-xs py-1 rounded transition ${lang === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${lang === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               EN
             </button>
             <button
               onClick={() => setLang("ru")}
-              className={`flex-1 text-xs py-1 rounded transition ${lang === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${lang === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               RU
             </button>
@@ -103,13 +103,13 @@ export function Sidebar() {
           {/* Platform toggle */}
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
-              className="flex-1 text-xs py-1 rounded bg-emerald-500/20 text-emerald-400"
+              className="flex-1 text-xs py-2 rounded bg-emerald-500/20 text-emerald-400 min-h-[36px]"
             >
               Telegram
             </button>
             <button
               onClick={() => toast(t("sidebar.comingSoon"), "info")}
-              className="flex-1 text-xs py-1 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed"
+              className="flex-1 text-xs py-2 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed min-h-[36px]"
               title={t("sidebar.comingSoon")}
             >
               VKontakte
@@ -117,7 +117,7 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
             <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>
-            <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5">
+            <button onClick={logout} className="text-xs text-zinc-400 hover:text-rose-400 transition flex items-center gap-1.5 min-h-[36px] py-1">
               <LogOut className="w-4 h-4" /> {t("sidebar.signOut")}
             </button>
           </div>
