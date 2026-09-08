@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import IntegrationTemplate from "../template";
+import IntegrationTemplate from "../IntegrationTemplate";
 
 export const metadata: Metadata = {
   title: "Telegram → HubSpot Integration — Auto-Import Leads | 24GO",

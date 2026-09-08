@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import TutorialTemplate from "../template";
+import TutorialTemplate from "../TutorialTemplate";
 
 export const metadata: Metadata = {
   title: "How to Warm Up Telegram Accounts — Complete Guide (2026) | 24GO",

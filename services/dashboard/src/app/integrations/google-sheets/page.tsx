@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import IntegrationTemplate from "../template";
+import IntegrationTemplate from "../IntegrationTemplate";
 
 export const metadata: Metadata = {
   title: "Telegram → Google Sheets Integration — Auto-Export Leads | 24GO",
