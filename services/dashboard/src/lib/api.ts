@@ -257,6 +257,15 @@ export async function checkMembership(token: string, targetId: string) {
   );
 }
 
+export async function joinTarget(token: string, targetId: string, accountIds?: string[]) {
+  return api<{ target_id: string; results: { account_id: string; status: string; error?: string }[] }>(
+    `/api/v1/targets/${targetId}/join`, {
+      method: "POST", token,
+      body: JSON.stringify({ account_ids: accountIds || null }),
+    }
+  );
+}
+
 // ── Groups (Monitored) ────────────────────────────────────────────────
 
 export async function getGroups(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
@@ -391,6 +400,14 @@ export async function getListenerStatus(token: string) {
 export async function getAuditLog(token: string, params?: { entity_type?: string; limit?: number }) {
   const qs = toQuery(params);
   return api<any[]>(`/api/v1/audit/${qs ? `?${qs}` : ""}`, { token });
+}
+
+export async function getOwnerAuditLog(token: string, params?: {
+  entity_type?: string; user_id?: string; tenant_id?: string;
+  action?: string; date_from?: string; date_to?: string; limit?: number;
+}) {
+  const qs = toQuery(params);
+  return api<any[]>(`/api/v1/audit/owner${qs ? `?${qs}` : ""}`, { token });
 }
 
 // ── Users ─────────────────────────────────────────────────────────────

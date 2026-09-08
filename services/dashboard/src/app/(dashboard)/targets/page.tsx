@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts, checkMembership } from "@/lib/api";
+import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts, checkMembership, joinTarget, getAccounts } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
@@ -98,6 +98,12 @@ export default function TargetsPage() {
   const [tgstatResults, setTgstatResults] = useState<any[]>([]);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
+  const [joinModal, setJoinModal] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
+  const [joining, setJoining] = useState(false);
+  const [joinResults, setJoinResults] = useState<{ account_id: string; status: string; error?: string }[] | null>(null);
+
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
@@ -105,6 +111,33 @@ export default function TargetsPage() {
   };
 
   useEffect(() => { load(); }, [auth?.token]);
+
+  const loadAccounts = () => {
+    if (!auth?.token) return;
+    getAccounts(auth.token).then((res) => setAccounts(Array.isArray(res) ? res : res.items || [])).catch(() => {});
+  };
+
+  const openJoinModal = (targetId: string) => {
+    setJoinModal(targetId);
+    setJoinResults(null);
+    setSelectedAccounts(new Set());
+    loadAccounts();
+  };
+
+  const handleJoin = async () => {
+    if (!auth?.token || !joinModal) return;
+    setJoining(true);
+    try {
+      const ids = selectedAccounts.size > 0 ? Array.from(selectedAccounts) : undefined;
+      const res = await joinTarget(auth.token, joinModal, ids);
+      setJoinResults(res.results);
+      load();
+    } catch (e: any) {
+      toast(e.message || "Join failed", "error");
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const handleFreeSearch = async () => {
     if (!auth?.token) return;
@@ -461,6 +494,10 @@ export default function TargetsPage() {
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${target.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                         {target.is_active ? t("targets.active") : t("targets.inactive")}
                       </span>
+                      <button onClick={() => openJoinModal(target.id)}
+                        className="px-2.5 py-1 text-[10px] rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition min-h-[36px]">
+                        Join
+                      </button>
                       <button onClick={async () => {
                         if (!auth?.token) return;
                         try {
@@ -566,6 +603,60 @@ export default function TargetsPage() {
               <button onClick={() => setScrapeModal(null)}
                 className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("targets.cancel")}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Group Modal */}
+      {joinModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setJoinModal(null)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-zinc-100">Join Group</h3>
+
+            {!joinResults ? (
+              <>
+                <p className="text-sm text-zinc-400">Select which accounts should join this group. Leave empty to use all active accounts.</p>
+                <div className="max-h-60 overflow-y-auto space-y-1 border border-zinc-800 rounded-lg p-2">
+                  {accounts.length === 0 && <p className="text-xs text-zinc-600">Loading accounts...</p>}
+                  {accounts.map((a: any) => (
+                    <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-800 cursor-pointer text-sm">
+                      <input type="checkbox" checked={selectedAccounts.has(a.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedAccounts);
+                          e.target.checked ? next.add(a.id) : next.delete(a.id);
+                          setSelectedAccounts(next);
+                        }}
+                        className="accent-emerald-500" />
+                      <span className="text-zinc-300">{a.account_identifier}</span>
+                      <span className={`text-[10px] ml-auto ${a.status === "active" ? "text-emerald-400" : "text-zinc-600"}`}>{a.status}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleJoin} disabled={joining}
+                    className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                    {joining ? "Joining..." : `Join${selectedAccounts.size > 0 ? ` (${selectedAccounts.size})` : " All"}`}
+                  </button>
+                  <button onClick={() => setJoinModal(null)}
+                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {joinResults.map((r) => (
+                    <div key={r.account_id} className="flex items-center gap-2 text-sm">
+                      <span className={r.status === "joined" ? "text-emerald-400" : r.status === "already_member" ? "text-sky-400" : "text-rose-400"}>
+                        {r.status === "joined" ? "✓ Joined" : r.status === "already_member" ? "✓ Already member" : r.status === "no_session" ? "⚠ No session" : `✗ ${r.error || "Error"}`}
+                      </span>
+                      <span className="text-zinc-600 text-xs truncate">{r.account_id.slice(0, 8)}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setJoinModal(null)}
+                  className="w-full py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Close</button>
+              </>
+            )}
           </div>
         </div>
       )}

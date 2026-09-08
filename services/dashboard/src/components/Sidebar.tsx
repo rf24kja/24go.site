@@ -40,11 +40,14 @@ export function Sidebar() {
     { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
-    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit" },
+    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
-  ].filter((item) => !item.feature || hasAccess(item.feature));
+  ].filter((item) => {
+    if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com" && auth?.user?.role !== "owner") return false;
+    return !item.feature || hasAccess(item.feature);
+  });
 
   return (
     <>

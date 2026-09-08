@@ -188,6 +188,117 @@ async def check_membership(
     return {"target_id": str(target_id), "is_joined": is_member}
 
 
+class JoinTargetRequest(BaseModel):
+    account_ids: list[UUID] | None = None  # None = all active accounts
+
+
+@router.post("/{target_id}/join")
+async def join_target(
+    target_id: UUID,
+    body: JoinTargetRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Join a target group/channel with selected or all active accounts."""
+    import asyncio
+
+    result = await db.execute(
+        select(Target).where(Target.id == target_id, Target.tenant_id == current_user.tenant_id)
+    )
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(404, "Target not found")
+
+    if body.account_ids:
+        acct_result = await db.execute(
+            select(AccountPool).where(
+                AccountPool.id.in_(body.account_ids),
+                AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.status == "active",
+            )
+        )
+    else:
+        acct_result = await db.execute(
+            select(AccountPool).where(
+                AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.status == "active",
+            )
+        )
+    accounts = acct_result.scalars().all()
+    if not accounts:
+        raise HTTPException(400, "No active accounts selected")
+
+    async def _join():
+        from telethon import TelegramClient
+        from telethon.sessions import StringSession
+        import os, asyncpg
+        from app.crypto import decrypt as dec
+        from app.config import settings as cfg
+
+        api_id = int(os.getenv("TG_API_ID", "0"))
+        api_hash = os.getenv("TG_API_HASH", "")
+        if not api_id or not api_hash:
+            return [], "TG_API_ID/TG_API_HASH not configured"
+
+        results = []
+        for account in accounts:
+            conn = await asyncpg.connect(cfg.DATABASE_URL.replace("+asyncpg", ""))
+            try:
+                row = await conn.fetchrow(
+                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                    account.id,
+                )
+                if not row:
+                    results.append({"account_id": str(account.id), "status": "no_session"})
+                    continue
+                session_str = dec(row["session_data"])
+            finally:
+                await conn.close()
+
+            client = TelegramClient(StringSession(session_str), api_id, api_hash)
+            await client.connect()
+            try:
+                entity = await client.get_entity(target.target_id_code)
+                try:
+                    await client.get_participant(entity, (await client.get_me()).id)
+                    results.append({"account_id": str(account.id), "status": "already_member"})
+                    continue
+                except Exception:
+                    pass
+                await client.join_chat(entity)
+                results.append({"account_id": str(account.id), "status": "joined"})
+            except Exception as e:
+                results.append({"account_id": str(account.id), "status": "error", "error": str(e)[:200]})
+            finally:
+                await client.disconnect()
+        return results, None
+
+    try:
+        join_results, error = await asyncio.wait_for(_join(), timeout=120)
+    except asyncio.TimeoutError:
+        raise HTTPException(504, "Timeout joining groups")
+    except Exception as e:
+        log.error(f"Join failed: {e}")
+        raise HTTPException(500, f"Join failed: {e}")
+
+    if error:
+        raise HTTPException(500, error)
+
+    any_joined = any(r["status"] == "joined" for r in join_results)
+    if any_joined:
+        target.is_joined = True
+        await db.commit()
+
+    await log_event(
+        settings.DATABASE_URL, current_user.tenant_id,
+        "joined", "target", target_id,
+        None, {"results": join_results}, current_user.id,
+        request.client.host if request else None,
+    )
+
+    return {"target_id": str(target_id), "results": join_results}
+
+
 # ── Recent Posts ───────────────────────────────────────────────────────
 
 @router.get("/{target_id}/recent-posts")
