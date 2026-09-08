@@ -864,8 +864,8 @@ function BillingSection({ t }: { t: (k: string) => string }) {
       forWhat={
         <div className="space-y-4">
           <p>{t("wiki.section.billing.forWhat")}</p>
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-4 gap-px bg-zinc-700">
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-x-auto">
+            <div className="grid grid-cols-4 gap-px bg-zinc-700 min-w-[400px]">
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-zinc-500">{t("wiki.section.billing.tablePlan")}</div>
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-emerald-400 text-center">{t("wiki.section.billing.tableStarter")}</div>
               <div className="bg-zinc-800 p-3 text-xs font-semibold text-blue-400 text-center">{t("wiki.section.billing.tablePro")}</div>

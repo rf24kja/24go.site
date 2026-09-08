@@ -844,7 +844,7 @@ function SecuritySection({ settings, defaults, onSave, onReset, saving }: any) {
               <button onClick={() => revokeKey(k.id)} className="text-xs text-rose-400 hover:text-rose-300">{t("settings.revoke")}</button>
             </div>
           ))}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input value={newKeyName} onChange={setNewKeyName} placeholder={t("settings.security.keyName")} />
             <button onClick={generateKey} disabled={!newKeyName.trim()} className="px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 disabled:opacity-50 whitespace-nowrap">{t("settings.security.generateKey")}</button>
           </div>

@@ -116,14 +116,13 @@ export default function BlogContent({ initialPosts, initialLocale }: { initialPo
   const featured = posts[0];
 
   return (
-    <>
-      {/* Locale switcher in header area */}
-      <BlogLocaleSwitcher locale={locale} setLocale={setLocale} />
-
-      <main className="max-w-6xl mx-auto px-6 py-12">
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="flex items-center justify-end mb-6">
+        <BlogLocaleSwitcher locale={locale} setLocale={setLocale} />
+      </div>
         {/* Featured */}
         {!loading && featured && activeCategory === "all" && !searchQuery && (
-          <Link href={`/blog/${featured.slug}?locale=${locale}`} className="group block mb-10 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20 border border-zinc-800 rounded-2xl p-8 hover:border-emerald-500/30 transition-all duration-300">
+          <Link href={`/blog/${featured.slug}?locale=${locale}`} className="group block mb-10 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20 border border-zinc-800 rounded-2xl p-4 sm:p-8 hover:border-emerald-500/30 transition-all duration-300">
             <div className="flex items-center gap-2 mb-4">
               <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20">
                 <TrendingUp className="w-3 h-3 inline mr-1" />{locale === "ru" ? "Популярное" : "Featured"}
@@ -132,7 +131,7 @@ export default function BlogContent({ initialPosts, initialLocale }: { initialPo
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-zinc-100 group-hover:text-emerald-400 transition mb-3">{featured.title}</h2>
             {featured.excerpt && <p className="text-zinc-400 text-base leading-relaxed max-w-3xl mb-4">{featured.excerpt}</p>}
-            <div className="flex items-center gap-4 text-sm text-zinc-500">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
               <time>{fmtDate(featured.created_at, locale)}</time>
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{featured.reading_time || readingTime(featured.excerpt)} {locale === "ru" ? "мин" : "min"}</span>
               <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{locale === "ru" ? "Читать" : "Read"}</span>
@@ -146,7 +145,7 @@ export default function BlogContent({ initialPosts, initialLocale }: { initialPo
           <input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setShowCount(12); }}
             placeholder={locale === "ru" ? "Поиск статей..." : "Search articles..."}
             className="w-full pl-11 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700 transition" />
-          {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs">Clear</button>}
+          {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs">{locale === "ru" ? "Очистить" : "Clear"}</button>}
         </div>
 
         {/* Category tabs */}
@@ -214,6 +213,5 @@ export default function BlogContent({ initialPosts, initialLocale }: { initialPo
           </div>
         )}
       </main>
-    </>
   );
 }

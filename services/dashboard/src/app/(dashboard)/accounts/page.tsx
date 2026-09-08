@@ -317,9 +317,9 @@ export default function AccountsPage() {
 
   return (
     <div className={`p-6 space-y-6 animate-fade-slide-in`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-zinc-100">{t("accounts.title")}</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button onClick={() => { setShowBulk(!showBulk); setBulkResult(null); }}
             className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium border border-zinc-700 hover:bg-zinc-700">
             {t("accounts.bulkImport")}
@@ -401,12 +401,12 @@ export default function AccountsPage() {
 
       {/* Accounts table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")} <FieldHint hint={t("hints.accounts.tgStatus")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")} <FieldHint hint={t("hints.accounts.identifier")} /></th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colPlatform")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden sm:table-cell">{t("accounts.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")} <FieldHint hint={t("hints.accounts.status")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colWarmup")} <FieldHint hint={t("hints.accounts.warmup")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("accounts.colQuota")} <FieldHint hint={t("hints.accounts.quota")} /></th>
@@ -458,7 +458,7 @@ export default function AccountsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{acct.account_identifier}</td>
-                    <td className="px-4 py-3 text-zinc-400 capitalize">{acct.platform}</td>
+                    <td className="px-4 py-3 text-zinc-400 capitalize hidden sm:table-cell">{acct.platform}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[acct.status] ?? ""}`}>
                         {statusLabels[acct.status] ?? acct.status}
@@ -493,15 +493,15 @@ export default function AccountsPage() {
                             </button>
                           ) : null
                         ) : !tgHasSession ? (
-                          <button onClick={() => handleConnectStart(acct.id)}
-                            className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
+                            <button onClick={() => handleConnectStart(acct.id)}
+                              className="px-3 py-1.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition min-h-[36px]">
                             {t("accounts.connectTg")}
                           </button>
                         ) : (
                           <>
                             <button onClick={() => listenerActive ? handleStop(acct.id) : handleStart(acct.id)}
                               disabled={actionBusy === acct.id || acct.status === "banned"}
-                              className={`px-2.5 py-1 text-xs rounded transition border ${
+                              className={`px-3 py-1.5 text-xs rounded transition border min-h-[36px] ${
                                 listenerActive
                                   ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
                                   : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
@@ -511,20 +511,20 @@ export default function AccountsPage() {
                             {!tgConnected && (
                               <button onClick={() => handleReconnect(acct.id)}
                                 disabled={actionBusy === acct.id}
-                                className="px-2.5 py-1 text-xs text-zinc-500 hover:text-emerald-400 border border-zinc-700 rounded hover:border-emerald-500/30 transition disabled:opacity-40"
+                                className="px-3 py-1.5 text-xs text-zinc-500 hover:text-emerald-400 border border-zinc-700 rounded hover:border-emerald-500/30 transition disabled:opacity-40 min-h-[36px]"
                                 title={t("accounts.reconnect")}>
                                 {t("accounts.reconnect")}
                               </button>
                             )}
                             <button onClick={() => handleDisconnect(acct.id)}
                               disabled={actionBusy === acct.id || listenerActive}
-                              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
+                              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40 min-h-[36px]"
                               title={t("accounts.disconnect")}>
                               {t("accounts.disconnect")}
                             </button>
                             <button onClick={() => handleDelete(acct.id)}
                               disabled={actionBusy === acct.id || listenerActive}
-                              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40"
+                              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40 min-h-[36px]"
                               title={t("accounts.delete")}>
                               {t("accounts.delete")}
                             </button>

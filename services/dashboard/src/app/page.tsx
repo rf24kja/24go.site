@@ -88,7 +88,7 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight">24<span className="text-emerald-400">GO</span></span>
           </Link>
-          <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-3 sm:gap-6 text-sm flex-wrap justify-end">
             <a href="#how" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navHow")}</a>
             <Link href="/blog" className="text-zinc-400 hover:text-zinc-100 transition hidden sm:block">{t("landing.navBlog")}</Link>
             <Link href="/login" className="text-zinc-400 hover:text-zinc-100 transition">{t("landing.navSignIn")}</Link>
@@ -390,7 +390,7 @@ export default function LandingPage() {
               <p className="text-sm text-zinc-500">{t("landing.testimonialsCount")}</p>
             </div>
 
-            <div className="flex items-center justify-center gap-6 mb-10 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-10 text-sm">
               {[5,4,3,2,1].map((n) => (
                 <div key={n} className="flex items-center gap-2">
                   <span className="text-zinc-400">{n}★</span>

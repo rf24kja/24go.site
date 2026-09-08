@@ -105,7 +105,7 @@ export default function BillingPage() {
         </div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
           <Skeleton className="h-4 w-36" />
-          <div className="flex gap-8">
+          <div className="flex flex-wrap gap-4 sm:gap-8">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="space-y-1">
                 <Skeleton className="h-7 w-24" />
@@ -207,7 +207,7 @@ export default function BillingPage() {
       {usage && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("billing.usageSummary")}</h2>
-          <div className="flex gap-8">
+          <div className="flex flex-wrap gap-4 sm:gap-8">
             <div>
               <p className="text-2xl font-semibold text-zinc-100">{(usage.total_tokens_used ?? 0).toLocaleString()}</p>
               <p className="text-zinc-400 text-xs">{t("billing.totalTokensUsed")}</p>

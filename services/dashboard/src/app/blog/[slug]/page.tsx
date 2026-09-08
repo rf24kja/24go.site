@@ -81,7 +81,11 @@ function md(text: string): string {
     .replace(/\[(.+?)\]\(([^)]+)\)/g, '<a href="$2" class="text-emerald-400 hover:underline">$1</a>')
     .replace(/^- (.+)$/gm, "<li>$1</li>")
     .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="list-disc pl-5 space-y-1 my-3">$1</ul>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li class="list-decimal">$2</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<oli>$2</oli>')
+    .replace(/((?:<oli>.*<\/oli>\n?)+)/g, (_m: string, inner: string) => {
+      const items = inner.replace(/<\/?oli>/g, (tag: string) => tag === "<oli>" ? "<li>" : "</li>");
+      return `<ol class="list-decimal pl-5 space-y-1 my-3">${items}</ol>`;
+    })
     .split("\n\n").map((p) => {
       const trimmed = p.trim();
       if (!trimmed) return "";
@@ -138,7 +142,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       },
     };
   } catch {
-    return { title: "Blog Post — 24GO" };
+    return { title: locale === "ru" ? "Статья блога — 24GO" : "Blog Post — 24GO" };
   }
 }
 
@@ -190,14 +194,14 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="flex gap-0.5 bg-zinc-800 rounded-lg p-0.5">
               <a href={`/blog/${params.slug}?locale=en`}
                 className={`px-2 py-1 rounded text-xs font-medium transition ${locale === "en" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>EN</a>
               <a href={`/blog/${params.slug}?locale=ru`}
                 className={`px-2 py-1 rounded text-xs font-medium transition ${locale === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>RU</a>
             </div>
-            <Link href="/blog" className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5">
+            <Link href="/blog" className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 whitespace-nowrap">
               <ArrowLeft className="w-4 h-4" />
               {labels.back}
             </Link>
@@ -206,18 +210,18 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       </header>
 
       {/* Breadcrumbs */}
-      <div className="max-w-4xl mx-auto px-6 py-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
         <nav className="flex items-center gap-2 text-sm text-zinc-500">
           <Link href="/" className="hover:text-zinc-300 transition">24GO</Link>
           <span>/</span>
-          <Link href="/blog" className="hover:text-zinc-300 transition">Blog</Link>
+          <Link href="/blog" className="hover:text-zinc-300 transition">{locale === "ru" ? "Блог" : "Blog"}</Link>
           <span>/</span>
           <span className="text-zinc-300 truncate max-w-[200px]">{post.title}</span>
         </nav>
       </div>
 
       {/* Article */}
-      <article className="max-w-4xl mx-auto px-6 pb-20">
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 pb-20">
         <div className="max-w-3xl">
           {/* Tags */}
           {post.tags?.length > 0 && (
@@ -233,7 +237,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
 
           <h1 className="text-3xl lg:text-4xl font-bold mb-4 leading-tight">{post.title}</h1>
 
-          <div className="flex items-center gap-4 text-sm text-zinc-500 mb-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500 mb-8">
             <time>{new Date(post.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", { year: "numeric", month: "long", day: "numeric" })}</time>
             <span className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />

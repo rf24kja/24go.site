@@ -275,9 +275,9 @@ export default function CampaignsPage() {
               {c.last_posted_at && (
                 <p className="text-[10px] text-zinc-600 mt-1">{t("campaigns.lastPosted", { date: new Date(c.last_posted_at).toLocaleString() })}</p>
               )}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => openEdit(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">{t("campaigns.edit")}</button>
-                <button onClick={() => openStats(c)} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition">{t("campaigns.stats")}</button>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button onClick={() => openEdit(c)} className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition min-h-[36px]">{t("campaigns.edit")}</button>
+                <button onClick={() => openStats(c)} className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition min-h-[36px]">{t("campaigns.stats")}</button>
 
                 <button onClick={async () => {
                   if (!auth?.token || !confirm(t("campaigns.runConfirm"))) return;
@@ -287,8 +287,8 @@ export default function CampaignsPage() {
                   } catch (err: any) {
                     toast(err.message || t("campaigns.runFailed"), "error");
                   }
-                }} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-xs hover:bg-emerald-500/20 transition">{t("campaigns.run")}</button>
-                <button onClick={() => handleDelete(c.id)} className="px-3 py-1 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition">{t("campaigns.delete")}</button>
+                }} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-xs hover:bg-emerald-500/20 transition min-h-[36px]">{t("campaigns.run")}</button>
+                <button onClick={() => handleDelete(c.id)} className="px-3 py-1.5 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition min-h-[36px]">{t("campaigns.delete")}</button>
               </div>
             </div>
           ))}
@@ -319,7 +319,7 @@ export default function CampaignsPage() {
                     {form.emoji || "Emoji"}
                   </button>
                   {showEmojiPicker && (
-                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg p-2 z-10 grid grid-cols-8 gap-1 w-72 shadow-xl">
+                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg p-2 z-10 grid grid-cols-6 sm:grid-cols-8 gap-1 max-w-[280px] sm:w-72 shadow-xl">
                       {COMMON_EMOJI.map((em) => (
                         <button key={em} type="button" onClick={() => { setForm({ ...form, emoji: em }); setShowEmojiPicker(false); }}
                           className="w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-700 text-sm transition">
