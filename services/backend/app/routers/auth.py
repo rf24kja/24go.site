@@ -393,8 +393,9 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
                 server.starttls()
                 server.login(settings.SMTP_USER, settings.SMTP_PASS)
                 server.sendmail(settings.FROM_EMAIL, body.email, msg.as_string())
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("leadgen").error(f"Failed to send reset email: {type(e).__name__}: {e}")
 
     return {"message": "If that email is registered, you'll receive a reset link shortly."}
 
