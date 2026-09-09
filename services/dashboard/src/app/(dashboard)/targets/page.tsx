@@ -6,6 +6,7 @@ import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, g
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 import { Search, Telegram, Vk } from "@/components/Icons";
 
@@ -71,6 +72,7 @@ export default function TargetsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchMode, setSearchMode] = useState<SearchMode>("free");
@@ -107,10 +109,10 @@ export default function TargetsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getTargets(auth.token).then((res) => setTargets(res.items || res)).catch(() => setTargets([])).finally(() => setLoading(false));
+    getTargets(auth.token, { platform }).then((res) => setTargets(res.items || res)).catch(() => setTargets([])).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => { load(); }, [auth?.token, platform]);
 
   const loadAccounts = () => {
     if (!auth?.token) return;

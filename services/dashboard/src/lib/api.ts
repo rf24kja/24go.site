@@ -84,7 +84,7 @@ export async function getMe(token: string) {
 
 // ── Leads ─────────────────────────────────────────────────────────────
 
-export async function getLeads(token: string, params?: { intent_score?: string; status?: string; limit?: number; offset?: number }) {
+export async function getLeads(token: string, params?: { intent_score?: string; status?: string; platform?: string; limit?: number; offset?: number }) {
   const mapped: Record<string, string | number | undefined> = params ? { ...params } : {};
   if (mapped.status) { mapped.status_filter = mapped.status as string; delete mapped.status; }
   const qs = toQuery(mapped);
@@ -104,7 +104,7 @@ export async function qualifyLead(token: string, data: {
 
 // ── Accounts ──────────────────────────────────────────────────────────
 
-export async function getAccounts(token: string, params?: { status_filter?: string; limit?: number; offset?: number }) {
+export async function getAccounts(token: string, params?: { status_filter?: string; platform?: string; limit?: number; offset?: number }) {
   const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/accounts/${qs ? `?${qs}` : ""}`, { token });
 }
@@ -194,7 +194,7 @@ export async function connectVK(token: string, accountId: string, groupToken: st
 
 // ── Campaigns ─────────────────────────────────────────────────────────
 
-export async function getCampaigns(token: string, params?: { limit?: number; offset?: number }) {
+export async function getCampaigns(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
   const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/campaigns/${qs ? `?${qs}` : ""}`, { token });
 }
@@ -234,7 +234,7 @@ export async function getCampaignLogs(token: string, campaignId: string, params?
 
 // ── Targets ───────────────────────────────────────────────────────────
 
-export async function getTargets(token: string, params?: { limit?: number; offset?: number }) {
+export async function getTargets(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
   const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/targets/${qs ? `?${qs}` : ""}`, { token });
 }
@@ -331,12 +331,14 @@ export async function dispatchPoster(token: string, data: any) {
 
 // ── Analytics ─────────────────────────────────────────────────────────
 
-export async function getAnalytics(token: string, days = 30) {
-  return api<any>(`/api/v1/analytics/?days=${days}`, { token });
+export async function getAnalytics(token: string, days = 30, platform?: string) {
+  const plat = platform ? `&platform=${platform}` : "";
+  return api<any>(`/api/v1/analytics/?days=${days}${plat}`, { token });
 }
 
-export async function getLeaderboard(token: string, days = 30) {
-  return api<any>(`/api/v1/analytics/leaderboard?days=${days}`, { token });
+export async function getLeaderboard(token: string, days = 30, platform?: string) {
+  const plat = platform ? `&platform=${platform}` : "";
+  return api<any>(`/api/v1/analytics/leaderboard?days=${days}${plat}`, { token });
 }
 
 // ── Lead Status ───────────────────────────────────────────────────────
@@ -568,7 +570,7 @@ export async function getBlogSlugs() {
 
 // ── Mailings ─────────────────────────────────────────────────────
 
-export async function getMailings(token: string, params?: { limit?: number; offset?: number }) {
+export async function getMailings(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
   const qs = toQuery(params);
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/mailings/${qs ? `?${qs}` : ""}`, { token });
 }

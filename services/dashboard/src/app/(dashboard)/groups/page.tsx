@@ -6,6 +6,7 @@ import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, 
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 
 type Group = {
@@ -37,6 +38,7 @@ export default function GroupsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [groups, setGroups] = useState<Group[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +72,8 @@ export default function GroupsPage() {
     if (!auth?.token) return;
     setLoading(true);
     Promise.all([
-      getGroups(auth.token).catch(() => ({ items: [] })),
-      getAccounts(auth.token).catch(() => ({ items: [] })),
+      getGroups(auth.token, { platform }).catch(() => ({ items: [] })),
+      getAccounts(auth.token, { platform }).catch(() => ({ items: [] })),
     ]).then(([g, a]) => {
       setGroups(g.items || []);
       const items = a.items || [];
@@ -80,7 +82,7 @@ export default function GroupsPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => { load(); }, [auth?.token, platform]);
 
   // Poll every 5s to keep scanner status fresh
   useEffect(() => {

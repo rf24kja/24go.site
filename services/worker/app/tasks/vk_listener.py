@@ -188,11 +188,17 @@ def _set_vk_status(account_id: str, status: str) -> None:
     import json
     import os
     try:
-        r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
-        r.setex(f"tg_status:{account_id}", 300, json.dumps({
+        _set_vk_status._conn = getattr(_set_vk_status, '_conn', None)
+        if _set_vk_status._conn is None:
+            _set_vk_status._conn = redis.Redis.from_url(
+                os.getenv("REDIS_URL", "redis://redis:6379/0"),
+                decode_responses=True,
+            )
+        _set_vk_status._conn.setex(f"tg_status:{account_id}", 300, json.dumps({
             "status": status,
             "updated_at": time.time(),
             "platform": "vkontakte",
         }))
     except Exception as e:
         log.warning(f"Failed to set VK status: {e}")
+        _set_vk_status._conn = None

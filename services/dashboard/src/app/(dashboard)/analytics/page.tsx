@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 import { getAnalytics, getLeaderboard } from "@/lib/api";
 import {
@@ -23,6 +24,7 @@ const COLORS = {
 export default function AnalyticsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [data, setData] = useState<any>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [days, setDays] = useState(30);
@@ -32,13 +34,13 @@ export default function AnalyticsPage() {
     if (!auth?.token) return;
     setLoading(true);
     Promise.all([
-      getAnalytics(auth.token, days),
-      getLeaderboard(auth.token, days).catch(() => ({ leaderboard: [] })),
+      getAnalytics(auth.token, days, platform),
+      getLeaderboard(auth.token, days, platform).catch(() => ({ leaderboard: [] })),
     ]).then(([analytics, lb]) => {
       setData(analytics);
       setLeaderboard(lb.leaderboard || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [auth?.token, days]);
+  }, [auth?.token, days, platform]);
 
   if (loading) return (
     <div className="space-y-8 animate-fade-in">

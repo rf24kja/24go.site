@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign, previewCron } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
@@ -45,6 +46,7 @@ export default function CampaignsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
+  const { platform } = usePlatform();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -63,10 +65,10 @@ export default function CampaignsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getCampaigns(auth.token).then((res) => setCampaigns(res.items || res)).catch(() => setCampaigns([])).finally(() => setLoading(false));
+    getCampaigns(auth.token, { platform }).then((res) => setCampaigns(res.items || res)).catch(() => setCampaigns([])).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => { load(); }, [auth?.token, platform]);
 
   // Cron preview: show next 5 run times when editing schedule
   useEffect(() => {

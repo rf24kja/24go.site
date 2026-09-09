@@ -8,6 +8,7 @@ import { useWebSocket } from "@/lib/useWebSocket";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
+import { usePlatform } from "@/lib/platform";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
@@ -21,13 +22,14 @@ export function Sidebar() {
   const { t, lang, setLang } = useI18n();
   const { toast } = useToast();
   const { hasAccess } = usePlanAccess();
+  const { platform, setPlatform } = usePlatform();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (!auth.token) return null;
 
-  const NAV = [
+  const NAV_ITEMS = platform === "telegram" ? [
     { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
@@ -44,7 +46,25 @@ export function Sidebar() {
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
-  ].filter((item) => {
+  ] : [
+    { href: "/analytics", label: "Analytics (VK)", icon: ChartBar, feature: "analytics" },
+    { href: "/leads", label: "Leads (VK)", icon: Crosshair, feature: "leads" },
+    { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
+    { href: "/targets", label: "Group Search (VK)", icon: Radar, feature: "targets" },
+    { href: "/groups", label: "Monitoring (VK)", icon: Radio, feature: "groups" },
+    { href: "/accounts", label: "VK Communities", icon: UserCircle, feature: "accounts" },
+    { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
+    { href: "/campaigns", label: "VK Campaigns", icon: Megaphone, feature: "campaigns" },
+    { href: "/mailings", label: "VK Mailings", icon: Send, feature: "mailings" },
+    { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
+    { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
+    { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
+    { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
+    { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
+    { href: "/vk-help", label: "How to Use (VK)", icon: FileText },
+    { href: "/vk-settings", label: "VK Settings", icon: Cog },
+  ];
+  const NAV = NAV_ITEMS.filter((item) => {
     if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com" && auth?.user?.role !== "owner") return false;
     return !item.feature || hasAccess(item.feature);
   });
@@ -106,14 +126,14 @@ export function Sidebar() {
           {/* Platform toggle */}
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
-              className="flex-1 text-xs py-2 rounded bg-emerald-500/20 text-emerald-400 min-h-[36px]"
+              onClick={() => setPlatform("telegram")}
+              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${platform === "telegram" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               Telegram
             </button>
             <button
-              onClick={() => toast(t("sidebar.comingSoon"), "info")}
-              className="flex-1 text-xs py-2 rounded text-zinc-500 hover:text-zinc-300 opacity-50 cursor-not-allowed min-h-[36px]"
-              title={t("sidebar.comingSoon")}
+              onClick={() => setPlatform("vkontakte")}
+              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               VKontakte
             </button>

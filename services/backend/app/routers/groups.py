@@ -718,12 +718,15 @@ async def _discover_vk_groups(geo_tag: str, niche: str) -> list:
 
         results = []
         for item in response.get("items", []):
+            members = item.get("members_count", 0)
+            if members < 50:  # Skip tiny groups
+                continue
             results.append({
                 "platform": "vkontakte",
                 "group_identifier": f"vk_{item['id']}",
                 "title": item.get("name", ""),
-                "members_count": item.get("members_count", 0),
-                "relevance": 5,  # Default relevance for VK
+                "members_count": members,
+                "relevance": 5,
             })
 
         return results[:20]

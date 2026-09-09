@@ -5,10 +5,12 @@ Retry: 3 retries
 Timeout: 60s
 
 Flow:
-1. Render spintax template
-2. Post to VK community wall
-3. Save to posting_logs
-4. Trigger VK comment scraper
+1. Check rate limit and warmup stage
+2. Render spintax template
+3. Random delay (anti-ban)
+4. Post to VK community wall
+5. Save to posting_logs
+6. Trigger VK comment scraper
 """
 import asyncio
 import logging
@@ -80,8 +82,18 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
                            group_id: int, text: str,
                            campaign_id: str, target_id: str) -> dict:
     """Publish to VK wall and save to posting_logs."""
-    from app.vk_client import get_vk_group_session
+    from app.vk_client import get_vk_group_session, check_rate_limit, record_action, random_delay
+    from app.config import settings
     import asyncpg, uuid, os
+
+    # Check rate limit before posting
+    allowed = await check_rate_limit(account_id, "wall_post")
+    if not allowed:
+        log.warning(f"VK poster rate limited for account {account_id}")
+        return {"status": "error", "error": "rate_limited"}
+
+    # Anti-ban: random delay before action
+    await random_delay()
 
     group_token = os.getenv("VK_GROUP_TOKEN", "")
     if not group_token:
@@ -94,12 +106,17 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
     vk = vk_session.get_api()
 
     try:
-        # Post to wall
+        # Post to wall — random_id prevents duplicate posts on retry
+        import random as _random
         owner_id = -group_id
         response = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: vk.wall.post(owner_id=owner_id, message=text, from_group=1),
+            lambda: vk.wall.post(owner_id=owner_id, message=text, from_group=1,
+                                 random_id=_random.randint(0, 2**31)),
         )
+
+        # Record action for rate limiting
+        await record_action(account_id, "wall_post")
 
         post_id = response.get("post_id", 0)
         log.info(f"VK post published: group={group_id} post={post_id}")

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import {
   getAccounts, createAccount, startListener, stopListener,
   getListenerStatus, connectTelegram, confirmTelegram, confirmPassword2FA,
@@ -51,6 +52,7 @@ const WARMUP_COLORS: Record<number, string> = {
 export default function AccountsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tgStatuses, setTgStatuses] = useState<Record<string, TgStatus>>({});
   const [listeners, setListeners] = useState<ListenerInfo[]>([]);
@@ -90,7 +92,7 @@ export default function AccountsPage() {
     if (!auth?.token) return;
     setLoading(true);
     Promise.all([
-      getAccounts(auth.token),
+      getAccounts(auth.token, { platform }),
       getListenerStatus(auth.token).catch(() => ({})),
       getProxies(auth.token).catch(() => []),
     ]).then(async ([accts, listeners_, proxyList]) => {
@@ -112,7 +114,7 @@ export default function AccountsPage() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => { load(); }, [auth?.token, platform]);
 
   // ── Proxy assignment ──
   const handleProxyAssign = async (accountId: string, proxyId: string | null) => {

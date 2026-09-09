@@ -8,6 +8,7 @@ import { useWebSocket } from "@/lib/useWebSocket";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 
 type Lead = {
@@ -52,6 +53,7 @@ export default function LeadsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -103,6 +105,7 @@ export default function LeadsPage() {
       setLoading(true);
       getLeads(token, {
         intent_score: filter === "ALL" ? undefined : filter,
+        platform,
         limit: PAGE_SIZE, offset: 0,
       } as any).then((res) => {
         let items = res.items || res;
@@ -112,12 +115,12 @@ export default function LeadsPage() {
       }).catch(() => { setLeads([]); setTotal(0); }).finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [auth?.token, filter, sourceFilter]);
+  }, [auth?.token, filter, sourceFilter, platform]);
 
   function loadMore() {
     if (!auth?.token || loadingMore) return;
     setLoadingMore(true);
-    getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, limit: PAGE_SIZE, offset: leads.length })
+    getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, platform, limit: PAGE_SIZE, offset: leads.length })
       .then((res) => { setLeads((prev) => [...prev, ...(res.items || res)]); setTotal(res.total || total); })
       .catch(() => {})
       .finally(() => setLoadingMore(false));
@@ -184,9 +187,9 @@ export default function LeadsPage() {
     try {
       await updateLeadStatus(auth.token, leadId, newStatus);
     } catch {
-      getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
+      getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, platform }).then((res) => setLeads(res.items || res));
     }
-  }, [auth?.token, filter]);
+  }, [auth?.token, filter, platform]);
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     if (!auth?.token) return;
@@ -269,7 +272,7 @@ export default function LeadsPage() {
                 const result = await importLeadsCsv(auth.token, text);
                 const msg = t("leads.importResult").replace("{imported}", String(result.imported)).replace("{skipped}", String(result.skipped)) + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
                 toast(msg, result.errors?.length ? "info" : "success");
-                getLeads(auth.token, filter === "ALL" ? undefined : { intent_score: filter }).then((res) => setLeads(res.items || res));
+                getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, platform }).then((res) => setLeads(res.items || res));
               } catch { toast(t("leads.importFailed"), "error"); }
               e.target.value = "";
             }} />

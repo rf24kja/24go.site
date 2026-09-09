@@ -2,16 +2,62 @@
 
 Ponytail: uses vk_api library for both User and Group API.
 Session stored encrypted in account_sessions table (same as Telegram).
+Anti-ban: integrated rate limiting and account rotation.
 """
 import asyncio
 import logging
 import os
+import random
 from typing import Optional
+
+from .config import settings
+from .anti_ban import get_rate_limiter, get_account_rotation, get_warmup_manager
 
 log = logging.getLogger(__name__)
 
 # Cache: account_id → vk_session
 _vk_sessions: dict = {}
+
+VK_RATE_LIMITS = {
+    "messages": {"max_per_hour": 30, "max_per_day": 300},
+    "wall_post": {"max_per_hour": 10, "max_per_day": 50},
+    "comment": {"max_per_hour": 50, "max_per_day": 500},
+}
+
+
+async def check_rate_limit(account_id: str, action_type: str) -> bool:
+    """Check if account can perform this action."""
+    limiter = get_rate_limiter(settings.REDIS_URL)
+    limits = VK_RATE_LIMITS.get(action_type, VK_RATE_LIMITS["messages"])
+    allowed = await limiter.is_allowed(account_id, action_type, limits)
+    if not allowed:
+        log.warning(f"Rate limit hit for account {account_id} action {action_type}")
+    return allowed
+
+
+async def wait_for_rate_limit(account_id: str, action_type: str) -> float:
+    """Wait until rate limit allows the action."""
+    limiter = get_rate_limiter(settings.REDIS_URL)
+    limits = VK_RATE_LIMITS.get(action_type, VK_RATE_LIMITS["messages"])
+    return await limiter.wait_if_needed(account_id, action_type, limits)
+
+
+async def record_action(account_id: str, action_type: str) -> None:
+    """Record that an action was performed."""
+    limiter = get_rate_limiter(settings.REDIS_URL)
+    await limiter.record_action(account_id, action_type, {
+        "min_delay": int(os.getenv("VK_MIN_DELAY", "15")),
+        "max_delay": int(os.getenv("VK_MAX_DELAY", "45")),
+    })
+
+
+async def random_delay() -> None:
+    """Sleep for a random duration between actions."""
+    min_delay = int(os.getenv("VK_MIN_DELAY", "15"))
+    max_delay = int(os.getenv("VK_MAX_DELAY", "45"))
+    delay = random.uniform(min_delay, max_delay)
+    log.debug(f"Anti-ban delay: {delay:.1f}s")
+    await asyncio.sleep(delay)
 
 
 async def get_vk_user_session(account_id: str, access_token: str) -> Optional[object]:

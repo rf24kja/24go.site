@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { PlanGuard } from "@/components/PlanGuard";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 import { Spinner } from "@/components/Spinner";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -32,6 +33,7 @@ export default function MailingsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
+  const { platform } = usePlatform();
   const [mailings, setMailings] = useState<Mailing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -46,10 +48,12 @@ export default function MailingsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getMailings(auth.token).then((res) => setMailings(res.items || [])).catch(() => setMailings([])).finally(() => setLoading(false));
+    getMailings(auth.token, { platform }).then((res) => setMailings(res.items || [])).catch(() => setMailings([])).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => { load(); }, [auth?.token, platform]);
+
+  useEffect(() => { setForm((f) => ({ ...f, platform })); }, [platform]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

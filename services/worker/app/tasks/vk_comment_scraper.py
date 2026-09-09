@@ -90,6 +90,26 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
         if not comments:
             return {"status": "ok", "comments_found": 0, "leads_created": 0}
 
+        # Batch-fetch all user info (VK supports comma-separated IDs)
+        user_ids = [str(c.get("from_id", 0)) for c in comments if c.get("from_id", 0) > 0]
+        user_map: dict[int, dict] = {}
+        if user_ids:
+            try:
+                # VK users.get accepts up to 1000 comma-separated IDs
+                batch_size = 100
+                for i in range(0, len(user_ids), batch_size):
+                    batch = user_ids[i:i+batch_size]
+                    users = await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda b=batch: vk.users.get(
+                            user_ids=",".join(b), fields="screen_name"
+                        ),
+                    )
+                    for u in users:
+                        user_map[u["id"]] = u
+            except Exception:
+                pass  # Fall back to fallback handles
+
         leads_created = 0
         for comment in comments:
             text = comment.get("text", "")
@@ -105,15 +125,12 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
                 tenant_cache_vk.clear()
             tenant_cache_vk.add(cache_key)
 
-            # Get user info
-            try:
-                user_info = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda uid=user_id: vk.users.get(user_ids=uid, fields="screen_name")[0],
-                )
-                user_handle = f"@{user_info.get('screen_name', user_id)}"
-                user_full = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip()
-            except Exception:
+            # Get user info from batch map
+            if user_id in user_map:
+                u = user_map[user_id]
+                user_handle = f"@{u.get('screen_name', user_id)}"
+                user_full = f"{u.get('first_name', '')} {u.get('last_name', '')}".strip()
+            else:
                 user_handle = f"vk_{user_id}"
                 user_full = ""
 
