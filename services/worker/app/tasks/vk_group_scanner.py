@@ -5,23 +5,20 @@ Retry: 5 retries, 30s delay
 Timeout: Infinite (long-polling)
 
 Flow:
-1. Connect to VK community via group token
-2. Listen for new wall posts and comments
+1. Connect to VK community via group token (from DB)
+2. Listen for new wall posts and comments via Groups LongPoll
 3. Classify each via LLM/keyword pipeline
 4. Messages with buying intent → leads
 """
 import asyncio
+import json
 import logging
 import time
-import os
 
 from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
-
-_seen_vk: dict[str, set] = {}
-_MAX_SEEN_VK = 10000
 
 
 @celery.task(name="app.tasks.vk_group_scanner.start_vk_group_scanner", queue="listener",
@@ -32,6 +29,7 @@ def start_vk_group_scanner(self, tenant_id: str, account_id: str,
     """Start monitoring a VK community wall for new posts and comments.
 
     group_id: VK community ID (positive integer)
+    Token is loaded from DB via account_id.
     """
     log.info(f"start_vk_group_scanner: tenant={tenant_id} group={group_id}")
 
@@ -52,29 +50,24 @@ def start_vk_group_scanner(self, tenant_id: str, account_id: str,
 
 async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                                 group_id: int, monitor_group_id: str):
-    """Async runner: monitor VK group wall via Long Poll."""
-    from app.vk_client import get_vk_group_session
+    from app.vk_client import (
+        get_vk_group_session_for, get_longpoll_server,
+        _handle_vk_error, handle_flood_wait,
+    )
     from app.lead_pipeline import process_incoming_message
     from app.config import DATABASE_URL
     import httpx, asyncpg
 
-    group_token = os.getenv("VK_GROUP_TOKEN", "")
-    if not group_token:
-        log.error("No VK_GROUP_TOKEN configured")
-        return
-
-    vk_session = await get_vk_group_session(account_id, group_token)
+    vk_session = await get_vk_group_session_for(account_id)
     if vk_session is None:
         log.error(f"No VK session for account {account_id}")
         return
 
-    vk = vk_session.get_api()
-
     # Update DB status
     if monitor_group_id:
         try:
-            db_url = DATABASE_URL.replace("+asyncpg", "")
-            conn = await asyncpg.connect(db_url)
+            conn_url = DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
             try:
                 await conn.execute(
                     "UPDATE monitored_groups SET status = 'scanning', last_scan_at = NOW() WHERE id = $1",
@@ -85,16 +78,12 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
         except Exception:
             pass
 
-    # Get Long Poll for community messages
-    try:
-        server_info = vk.messages.getLongPollServer(group_id=group_id)
-        lp_server = server_info["server"]
-        lp_key = server_info["key"]
-        lp_ts = server_info["ts"]
-    except Exception as e:
-        log.error(f"VK LongPoll server error: {e}")
+    # Groups LongPoll server
+    lp = get_longpoll_server(vk_session, group_id)
+    if lp is None:
         return
 
+    lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
     log.info(f"VK Group Scanner connected: group={group_id}")
 
     loop = asyncio.get_event_loop()
@@ -112,41 +101,37 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
 
                 if raw.get("failed"):
                     log.warning(f"VK LongPoll failed ({raw['failed']}), reconnecting...")
-                    server_info = await loop.run_in_executor(
-                        None, lambda: vk.messages.getLongPollServer(group_id=group_id)
-                    )
-                    lp_server = server_info["server"]
-                    lp_key = server_info["key"]
-                    lp_ts = server_info["ts"]
+                    lp = get_longpoll_server(vk_session, group_id)
+                    if lp:
+                        lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
                     continue
 
                 lp_ts = raw.get("ts", lp_ts)
                 updates = raw.get("updates", [])
 
                 for event in updates:
-                    # Type 4 = new message
                     if event[0] == 4:
                         flags = event[1]
                         peer_id = event[3]
                         text = event[5] if len(event) > 5 else ""
 
-                        if flags & 2:  # outgoing
+                        if flags & 2:
                             continue
                         if not text or len(text) < 3:
                             continue
 
-                        # Dedup with max size
-                        msg_key = f"vk_group_{group_id}:{event[1]}"
-                        tenant_seen_vk = _seen_vk.setdefault(tenant_id, set())
-                        if msg_key in tenant_seen_vk:
+                        # Redis dedup
+                        dedup_key = f"vk:scanner:{account_id}:{event[1]}:{peer_id}"
+                        if await _is_duplicate(dedup_key):
                             continue
-                        if len(tenant_seen_vk) >= _MAX_SEEN_VK:
-                            tenant_seen_vk.clear()
-                        tenant_seen_vk.add(msg_key)
+                        await _mark_seen(dedup_key)
 
-                        # Get sender
-                        user_id = peer_id
+                        user_id = peer_id if peer_id > 0 else 0
+                        if user_id <= 0:
+                            continue
+
                         try:
+                            vk = vk_session.get_api()
                             user_info = await loop.run_in_executor(
                                 None,
                                 lambda: vk.users.get(user_ids=user_id, fields="screen_name")[0],
@@ -171,27 +156,23 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                             source="group",
                             post_id=str(event[1]),
                         )
-
                         log.info(f"VK Group lead: {result.get('intent_score')} from {user_handle}")
 
             except Exception as e:
+                vk_err = _handle_vk_error(str(e))
+                if vk_err.code == 921:
+                    await handle_flood_wait(vk_err)
                 log.error(f"VK Group scanner error: {e}, reconnecting in 5s...")
                 await asyncio.sleep(5)
-                try:
-                    server_info = await loop.run_in_executor(
-                        None, lambda: vk.messages.getLongPollServer(group_id=group_id)
-                    )
-                    lp_server = server_info["server"]
-                    lp_key = server_info["key"]
-                    lp_ts = server_info["ts"]
-                except Exception:
-                    pass
+                lp = get_longpoll_server(vk_session, group_id)
+                if lp:
+                    lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
 
     finally:
         if monitor_group_id:
             try:
-                db_url = DATABASE_URL.replace("+asyncpg", "")
-                conn = await asyncpg.connect(db_url)
+                conn_url = DATABASE_URL.replace("+asyncpg", "")
+                conn = await asyncpg.connect(conn_url)
                 try:
                     await conn.execute(
                         "UPDATE monitored_groups SET status = 'idle' WHERE id = $1",
@@ -202,3 +183,23 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
             except Exception:
                 pass
         log.info(f"VK Group scanner stopped: {group_id}")
+
+
+async def _is_duplicate(key: str) -> bool:
+    import redis.asyncio as aioredis
+    from app.config import REDIS_URL
+    r = aioredis.from_url(REDIS_URL, decode_responses=True)
+    try:
+        return await r.exists(key)
+    finally:
+        await r.aclose()
+
+
+async def _mark_seen(key: str) -> None:
+    import redis.asyncio as aioredis
+    from app.config import REDIS_URL
+    r = aioredis.from_url(REDIS_URL, decode_responses=True)
+    try:
+        await r.set(key, "1", ex=3600)
+    finally:
+        await r.aclose()

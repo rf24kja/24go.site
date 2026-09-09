@@ -1016,7 +1016,10 @@ async def connect_vk(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Connect VKontakte community via group token."""
+    """Connect VKontakte community via group token.
+
+    Validates the token against VK API before storing.
+    """
     result = await db.execute(
         select(AccountPool).where(
             AccountPool.id == account_id,
@@ -1028,6 +1031,23 @@ async def connect_vk(
         raise HTTPException(404, "Account not found")
     if account.platform != "vkontakte":
         raise HTTPException(400, "Account platform must be 'vkontakte'")
+
+    # Validate token against VK API before storing
+    import vk_api
+    try:
+        session = vk_api.VkApi(token=body.group_token)
+        vk = session.get_api()
+        groups = vk.groups.getById()
+        if not groups:
+            raise HTTPException(400, "Token does not belong to any VK community")
+        g = groups[0]
+        # Verify the group_id matches
+        if g["id"] != body.group_id:
+            raise HTTPException(400, f"Token belongs to community {g['id']} ({g['name']}), not {body.group_id}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Invalid VK token: {str(e)[:200]}")
 
     # Store group token encrypted in session_data
     import uuid as _uuid
@@ -1052,31 +1072,26 @@ async def connect_vk(
                    VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
                 _uuid.UUID(str(account_id)), encrypted,
             )
-        # Also store group_id as meta
-        await conn.execute(
-            "UPDATE account_sessions SET updated_at = NOW() WHERE account_id = $1",
-            _uuid.UUID(str(account_id)),
-        )
     finally:
         await conn.close()
 
     account.status = "active"
     await db.commit()
 
-    log.info(f"VK connected for account {account_id}, group={body.group_id}")
-    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+    log.info(f"VK connected for account {account_id}, group={body.group_id} ({g['name']})")
     conn = await asyncpg.connect(conn_url)
     try:
         await log_event(
             tenant_id=current_user.tenant_id, action="connected_vk", entity_type="account",
             entity_id=str(account_id),
-            new_value={"group_id": body.group_id},
+            new_value={"group_id": body.group_id, "group_name": g["name"]},
             user_id=current_user.id, ip_address=request.client.host if request else None,
             conn=conn,
         )
     finally:
         await conn.close()
-    return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte"}
+    return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte",
+            "group_name": g["name"], "members_count": g.get("members_count", 0)}
 
 
 # ── Proxy assignment ─────────────────────────────────────────────────
