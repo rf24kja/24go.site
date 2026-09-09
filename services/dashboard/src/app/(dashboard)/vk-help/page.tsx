@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import {
-  BookOpen, Users, Search, Eye, Send, UserCheck, Filter,
-  Megaphone, CreditCard, UserCog, Lightbulb, AlertTriangle,
-  ArrowRight, Menu, X, MessageSquare, Shield, Settings,
-  Globe,
-} from "lucide-react";
+  FileText, UsersGroup, Radar, Crosshair, Send, UserCircle, Scales,
+  Megaphone, CreditCard, Cog, Zap, Shield, ExternalLink, Menu, Cross,
+} from "@/components/Icons";
 
 type SectionId =
   | "overview"
@@ -30,18 +28,18 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: "overview", icon: BookOpen, label: "Overview" },
-  { id: "communities", icon: Users, label: "VK Communities" },
-  { id: "comment_scraper", icon: Search, label: "Comment Scraping" },
+  { id: "overview", icon: FileText, label: "Overview" },
+  { id: "communities", icon: UsersGroup, label: "VK Communities" },
+  { id: "comment_scraper", icon: Radar, label: "Comment Scraping" },
   { id: "outreach", icon: Send, label: "VK Outreach (DM)" },
   { id: "posting", icon: Megaphone, label: "VK Posting" },
-  { id: "auto_replies", icon: MessageSquare, label: "Auto-Replies" },
-  { id: "leads", icon: UserCheck, label: "Leads" },
-  { id: "rules", icon: Filter, label: "Lead Rules" },
+  { id: "auto_replies", icon: Send, label: "Auto-Replies" },
+  { id: "leads", icon: Crosshair, label: "Leads" },
+  { id: "rules", icon: Scales, label: "Lead Rules" },
   { id: "campaigns", icon: Megaphone, label: "Campaigns" },
-  { id: "proxies", icon: Globe, label: "Proxies" },
+  { id: "proxies", icon: ExternalLink, label: "Proxies" },
   { id: "anti_ban", icon: Shield, label: "Anti-Ban System" },
-  { id: "settings", icon: Settings, label: "VK Settings" },
+  { id: "settings", icon: Cog, label: "VK Settings" },
 ];
 
 function Section({
@@ -88,20 +86,20 @@ function Section({
         </div>
         {tips && (
           <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-            <Lightbulb className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <Zap className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-emerald-300">{tips}</p>
           </div>
         )}
         {warnings && (
           <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <Shield className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-300">{warnings}</p>
           </div>
         )}
         {nextId && (
           <div className="pt-4 border-t border-zinc-800 text-right">
             <a href={`#${nextId}`} className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition">
-              {nextLabel} <ArrowRight className="w-3.5 h-3.5" />
+              {nextLabel} →
             </a>
           </div>
         )}
@@ -118,7 +116,7 @@ export default function VkHelpPage() {
       {/* Mobile nav toggle */}
       <button onClick={() => setMobileOpen(!mobileOpen)}
         className="md:hidden fixed top-14 left-4 z-50 bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-zinc-300">
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {mobileOpen ? <Cross className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Sidebar nav */}
@@ -134,7 +132,7 @@ export default function VkHelpPage() {
 
       {/* Content */}
       <div className="flex-1 min-w-0 space-y-2">
-        <Section id="overview" icon={BookOpen} title="VK Lead Generation Overview"
+        <Section id="overview" icon={FileText} title="VK Lead Generation Overview"
           forWhat="VKontakte (VK) is the largest social network in Russia and CIS. This section lets you generate leads from VK communities by scraping comments, sending direct messages, and posting to community walls."
           howTo={[
             "Go to VK Settings and add your VK API tokens (service token + community tokens)",
@@ -148,7 +146,7 @@ export default function VkHelpPage() {
           nextId="communities" nextLabel="VK Communities"
         />
 
-        <Section id="communities" icon={Users} title="VK Communities"
+        <Section id="communities" icon={UsersGroup} title="VK Communities"
           forWhat="VK communities (groups) are where your lead generation happens. Each community needs a community access token to perform actions like reading messages, posting, and scraping comments."
           howTo={[
             "Create a VK community at vk.com/groups if you don't have one",
@@ -162,7 +160,7 @@ export default function VkHelpPage() {
           nextId="comment_scraper" nextLabel="Comment Scraping"
         />
 
-        <Section id="comment_scraper" icon={Search} title="VK Comment Scraping"
+        <Section id="comment_scraper" icon={Radar} title="VK Comment Scraping"
           forWhat="Scrape comments from VK community wall posts to find potential leads. Comments are classified by AI to identify hot/warm/cold leads based on message intent."
           howTo={[
             "Add VK communities with tokens first",
@@ -204,7 +202,7 @@ export default function VkHelpPage() {
           nextId="auto_replies" nextLabel="Auto-Replies"
         />
 
-        <Section id="auto_replies" icon={MessageSquare} title="VK Auto-Replies"
+        <Section id="auto_replies" icon={Send} title="VK Auto-Replies"
           forWhat="Automatically reply to incoming messages in your VK communities. Can use AI (LLM) or template-based replies."
           howTo={[
             "Enable Auto-Reply in VK Settings",
@@ -217,7 +215,7 @@ export default function VkHelpPage() {
           nextId="leads" nextLabel="Leads"
         />
 
-        <Section id="leads" icon={UserCheck} title="VK Leads"
+        <Section id="leads" icon={Crosshair} title="VK Leads"
           forWhat="Leads collected from VK (via comment scraping, DM responses, or manual import). Same lead management as Telegram leads."
           howTo={[
             "Leads appear automatically from comment scraping",
@@ -230,7 +228,7 @@ export default function VkHelpPage() {
           nextId="rules" nextLabel="Lead Rules"
         />
 
-        <Section id="rules" icon={Filter} title="VK Lead Rules"
+        <Section id="rules" icon={Scales} title="VK Lead Rules"
           forWhat="Automated rules that process VK leads the same way as Telegram leads. Rules can auto-reply, classify, and route leads."
           howTo={[
             "Go to Lead Rules",
@@ -254,7 +252,7 @@ export default function VkHelpPage() {
           nextId="proxies" nextLabel="Proxies"
         />
 
-        <Section id="proxies" icon={Globe} title="VK Proxy Settings"
+        <Section id="proxies" icon={ExternalLink} title="VK Proxy Settings"
           forWhat="Proxies protect your accounts by routing VK API requests through different IP addresses. Each account should use a different proxy."
           howTo={[
             "Get residential or datacenter proxies",
@@ -282,7 +280,7 @@ export default function VkHelpPage() {
           nextId="settings" nextLabel="VK Settings"
         />
 
-        <Section id="settings" icon={Settings} title="VK Settings"
+        <Section id="settings" icon={Cog} title="VK Settings"
           forWhat="Configure all VK-related settings: API tokens, rate limits, anti-ban parameters, proxies, and auto-reply behavior."
           howTo={[
             "Go to VK Settings (sidebar > VK Settings)",

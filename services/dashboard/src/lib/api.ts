@@ -341,6 +341,18 @@ export async function getLeaderboard(token: string, days = 30, platform?: string
   return api<any>(`/api/v1/analytics/leaderboard?days=${days}${plat}`, { token });
 }
 
+export async function getVkOverview(token: string, days = 30) {
+  return api<any>(`/api/v1/analytics/vk-overview?days=${days}`, { token });
+}
+
+export async function bulkImportVkAccounts(token: string, accounts: { group_id: number; token: string }[]) {
+  return api<any>("/api/v1/accounts/bulk-import-vk", {
+    method: "POST",
+    body: JSON.stringify({ accounts }),
+    token,
+  });
+}
+
 // ── Lead Status ───────────────────────────────────────────────────────
 
 export async function updateLeadStatus(token: string, leadId: string, status: string) {

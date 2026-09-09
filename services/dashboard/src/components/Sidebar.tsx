@@ -47,7 +47,7 @@ export function Sidebar() {
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : [
-    { href: "/analytics", label: "Analytics (VK)", icon: ChartBar, feature: "analytics" },
+    { href: "/vk-overview", label: "VK Overview", icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: "Leads (VK)", icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
     { href: "/targets", label: "Group Search (VK)", icon: Radar, feature: "targets" },

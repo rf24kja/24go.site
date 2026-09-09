@@ -13,6 +13,7 @@ import {
   type IconProps,
 } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
+import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 
 type Section = "ai_auto_reply" | "warmup" | "posting" | "notifications" | "groups" | "webhooks" | "security" | "data" | "account" | "tgstat";
@@ -33,6 +34,7 @@ const getSections = (t: (k: string) => string): { key: Section; label: string; I
 export default function SettingsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
+  const { platform } = usePlatform();
   const [activeSection, setActiveSection] = useState<Section>("ai_auto_reply");
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [defaults, setDefaults] = useState<Record<string, any>>({});
@@ -41,7 +43,10 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  const SECTIONS = getSections(t);
+  const SECTIONS = getSections(t).filter((s) => {
+    if (platform === "vkontakte" && (s.key === "tgstat" || s.key === "webhooks")) return false;
+    return true;
+  });
 
   const loadSettings = useCallback(async () => {
     if (!auth?.token) return;

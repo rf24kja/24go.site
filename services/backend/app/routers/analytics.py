@@ -293,3 +293,112 @@ async def leaderboard(
     leaderboard.sort(key=lambda x: (-x["total_leads"], -x["hot_leads"]))
 
     return {"leaderboard": leaderboard[:10], "period_days": days}
+
+
+# ── VK Overview ─────────────────────────────────────────────────────
+
+@router.get("/vk-overview")
+async def get_vk_overview(
+    days: int = Query(default=30, le=90),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """VK-specific overview: account health, lead funnel, recent leads, community performance."""
+    tenant_id = current_user.tenant_id
+    since = date.today() - timedelta(days=days)
+
+    # Summary stats (VK only)
+    leads_q = await db.execute(
+        select(
+            func.count(Lead.id).label("total"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.WARM, 1))).label("warm"),
+            func.count(case((Lead.status == "converted", 1))).label("converted"),
+        ).where(
+            Lead.tenant_id == tenant_id,
+            Lead.platform == "vkontakte",
+            Lead.created_at >= since,
+        )
+    )
+    row = leads_q.one()
+    total_leads = row.total or 0
+    hot_leads = row.hot or 0
+    converted = row.converted or 0
+    conversion_rate = round(converted / total_leads * 100, 1) if total_leads > 0 else 0
+
+    # Account health
+    accounts_q = await db.execute(
+        select(AccountPool).where(
+            AccountPool.tenant_id == tenant_id,
+            AccountPool.platform == "vkontakte",
+        )
+    )
+    accounts = accounts_q.scalars().all()
+    active_accounts = sum(1 for a in accounts if a.status == "active")
+
+    account_health = []
+    for a in accounts:
+        fp = a.device_fingerprint or {}
+        account_health.append({
+            "id": str(a.id),
+            "group_name": fp.get("group_name", f"Group {a.account_identifier}"),
+            "group_id": a.account_identifier,
+            "members_count": fp.get("members_count", 0),
+            "status": a.status,
+            "warmup_stage": a.warmup_stage or 1,
+            "actions_today": a.actions_today or 0,
+            "daily_action_limit": a.daily_action_limit or 30,
+        })
+
+    # Recent leads (last 10)
+    recent_q = await db.execute(
+        select(Lead).where(
+            Lead.tenant_id == tenant_id,
+            Lead.platform == "vkontakte",
+        ).order_by(Lead.created_at.desc()).limit(10)
+    )
+    recent_leads = [
+        {
+            "id": str(l.id),
+            "user_handle": l.user_handle,
+            "intent_score": l.intent_score,
+            "source": l.source,
+            "status": l.status,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        }
+        for l in recent_q.scalars().all()
+    ]
+
+    # Community performance (group by target)
+    community_q = await db.execute(
+        select(
+            Lead.target_name,
+            func.count(Lead.id).label("leads"),
+            func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
+        ).where(
+            Lead.tenant_id == tenant_id,
+            Lead.platform == "vkontakte",
+            Lead.created_at >= since,
+            Lead.target_name.isnot(None),
+        ).group_by(Lead.target_name)
+        .order_by(func.count(Lead.id).desc())
+        .limit(10)
+    )
+    communities = [
+        {"name": r.target_name, "leads": r.leads, "hot": r.hot}
+        for r in community_q.all()
+    ]
+
+    return {
+        "summary": {
+            "total_leads": total_leads,
+            "hot_leads": hot_leads,
+            "warm_leads": row.warm or 0,
+            "active_accounts": active_accounts,
+            "total_accounts": len(accounts),
+            "conversion_rate": conversion_rate,
+        },
+        "account_health": account_health,
+        "recent_leads": recent_leads,
+        "communities": communities,
+    }

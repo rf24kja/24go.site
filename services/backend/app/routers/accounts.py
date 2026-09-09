@@ -289,6 +289,104 @@ async def bulk_import_accounts(
     return {"imported": imported, "failed": failed, "accounts": results}
 
 
+# ── VK Bulk Import ──────────────────────────────────────────────────
+
+class VKBulkImportRequest(BaseModel):
+    accounts: list[dict]  # [{"group_id": 123, "token": "..."}]
+
+
+@router.post("/bulk-import-vk")
+async def bulk_import_vk_accounts(
+    body: VKBulkImportRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Import VK community accounts in bulk.
+
+    Validates each token via VK API, creates AccountPool + account_sessions.
+    """
+    results = []
+    imported = 0
+    failed = 0
+
+    for i, acc in enumerate(body.accounts):
+        group_id = acc.get("group_id")
+        token = acc.get("token", "")
+
+        if not group_id or not token:
+            failed += 1
+            results.append({"identifier": str(group_id or i), "status": "failed", "error": "Missing group_id or token"})
+            continue
+
+        try:
+            # Validate token via VK API
+            import vk_api
+            session = vk_api.VkApi(token=token)
+            vk = session.get_api()
+            groups = vk.groups.getById()
+            if not groups:
+                raise ValueError("Token does not belong to any community")
+            g = groups[0]
+            if g["id"] != int(group_id):
+                raise ValueError(f"Token belongs to {g['id']}, not {group_id}")
+
+            # Create AccountPool entry
+            account = AccountPool(
+                tenant_id=current_user.tenant_id,
+                platform="vkontakte",
+                account_identifier=str(group_id),
+                session_data="vk_token",  # placeholder, real token in account_sessions
+                device_fingerprint={"group_name": g["name"], "members_count": g.get("members_count", 0)},
+                status="warming_up",
+            )
+            db.add(account)
+            await db.flush()
+
+            # Store encrypted token in account_sessions
+            import uuid as _uuid
+            encrypted = encrypt(token)
+            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
+            try:
+                existing = await conn.fetchrow(
+                    "SELECT id FROM account_sessions WHERE account_id = $1",
+                    _uuid.UUID(str(account.id)),
+                )
+                if existing:
+                    await conn.execute(
+                        "UPDATE account_sessions SET session_data = $1, updated_at = NOW() WHERE account_id = $2",
+                        encrypted, _uuid.UUID(str(account.id)),
+                    )
+                else:
+                    await conn.execute(
+                        """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                           VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
+                        _uuid.UUID(str(account.id)), encrypted,
+                    )
+            finally:
+                await conn.close()
+
+            imported += 1
+            results.append({
+                "id": str(account.id),
+                "identifier": f"vk_{group_id}",
+                "group_name": g["name"],
+                "members_count": g.get("members_count", 0),
+                "status": "warming_up",
+                "error": None,
+            })
+
+        except Exception as e:
+            failed += 1
+            results.append({"identifier": str(group_id or i), "status": "failed", "error": str(e)[:200]})
+
+    if imported:
+        await db.commit()
+
+    return {"imported": imported, "failed": failed, "accounts": results}
+
+
 @router.post("/connect-all")
 async def bulk_connect_accounts(
     body: BulkConnectRequest,
