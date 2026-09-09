@@ -157,6 +157,7 @@ export default function LeadsPage() {
       const result = await qualifyLead(auth.token, {
         user_handle: testHandle,
         message_text: testMessage,
+        platform,
       });
       setTestResult(result);
       setTestMessage("");
@@ -253,7 +254,7 @@ export default function LeadsPage() {
           <button onClick={async () => {
               if (!auth?.token) return;
               try {
-                const blob = await exportLeadsCsv(auth.token, filter !== "ALL" ? { intent_score: filter } : undefined);
+                const blob = await exportLeadsCsv(auth.token, { ...(filter !== "ALL" ? { intent_score: filter } : {}), platform });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a"); a.href = url; a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
                 a.click(); URL.revokeObjectURL(url);

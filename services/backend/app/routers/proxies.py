@@ -232,16 +232,15 @@ async def bulk_assign_proxies(body: BulkAssignRequest, db: AsyncSession = Depend
     if not proxies:
         raise HTTPException(400, "No active proxies to assign")
 
-    # Get TG accounts
+    # Get accounts (all platforms)
     acct_result = await db.execute(
         select(AccountPool).where(
             AccountPool.tenant_id == user.tenant_id,
-            AccountPool.platform == "telegram",
         )
     )
     accounts = list(acct_result.scalars().all())
     if not accounts:
-        raise HTTPException(400, "No Telegram accounts found")
+        raise HTTPException(400, "No accounts found")
 
     # Optionally reset all assignments first
     if body.reset_first:

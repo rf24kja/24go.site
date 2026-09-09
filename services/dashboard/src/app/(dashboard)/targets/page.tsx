@@ -147,7 +147,7 @@ export default function TargetsPage() {
     try {
       const geo = scanGeo.split(",").map((s) => s.trim()).filter(Boolean)[0] || "global";
       const niche = scanNiche.split(",").map((s) => s.trim()).filter(Boolean)[0] || "general";
-      const res = await discoverGroups(auth.token, { geo_tag: geo, niche, platform: "telegram" });
+      const res = await discoverGroups(auth.token, { geo_tag: geo, niche, platform });
       if (res.total > 0) {
         toast(t("targets.found").replace("{total}", String(res.total)), "success");
       } else {
@@ -286,16 +286,18 @@ export default function TargetsPage() {
             >
               {t("targets.modeFree")}
             </button>
-            <button
-              onClick={() => setSearchMode("tgstat")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                searchMode === "tgstat"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              TgStat
-            </button>
+            {platform === "telegram" && (
+              <button
+                onClick={() => setSearchMode("tgstat")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  searchMode === "tgstat"
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                TgStat
+              </button>
+            )}
           </div>
           <span className="text-[10px] text-zinc-600">
             {searchMode === "free" ? t("targets.freeDesc") : t("targets.tgstatDesc")}
@@ -589,11 +591,17 @@ export default function TargetsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-zinc-500">Enter the Telegram post message ID:</p>
+                <p className="text-xs text-zinc-500">
+                  {platform === "vkontakte" ? "Enter the VK post ID:" : "Enter the Telegram post message ID:"}
+                </p>
                 <input type="text" placeholder="e.g. 12345" value={scrapePostId}
                   onChange={(e) => setScrapePostId(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
-                <p className="text-[10px] text-zinc-600">Find the message ID from the post URL: t.me/channel/12345</p>
+                <p className="text-[10px] text-zinc-600">
+                  {platform === "vkontakte"
+                    ? "Find the post ID from the VK community wall."
+                    : "Find the message ID from the post URL: t.me/channel/12345"}
+                </p>
               </div>
             )}
 

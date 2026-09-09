@@ -198,6 +198,7 @@ async def bulk_update_status(
 async def export_leads_csv(
     intent_score: str | None = None,
     status_filter: str | None = None,
+    platform: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -211,6 +212,8 @@ async def export_leads_csv(
         q = q.where(Lead.intent_score == intent_score)
     if status_filter:
         q = q.where(Lead.status == status_filter)
+    if platform:
+        q = q.where(Lead.platform == platform)
     result = await db.execute(q.order_by(Lead.created_at.desc()).limit(5000))
     leads = result.scalars().all()
 

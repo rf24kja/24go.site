@@ -371,7 +371,7 @@ export async function bulkUpdateLeadStatus(token: string, leadIds: string[], sta
   });
 }
 
-export async function exportLeadsCsv(token: string, params?: { intent_score?: string; status?: string }) {
+export async function exportLeadsCsv(token: string, params?: { intent_score?: string; status?: string; platform?: string }) {
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${API_URL}/api/v1/leads/export${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },

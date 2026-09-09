@@ -247,7 +247,7 @@ def _set_vk_status(account_id: str, status: str) -> None:
                 os.getenv("REDIS_URL", "redis://redis:6379/0"),
                 decode_responses=True,
             )
-        _set_vk_status._conn.setex(f"tg_status:{account_id}", 300, json.dumps({
+        _set_vk_status._conn.setex(f"vk_status:{account_id}", 300, json.dumps({
             "status": status,
             "updated_at": time.time(),
             "platform": "vkontakte",

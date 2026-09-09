@@ -249,11 +249,9 @@ export default function MailingsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.platform")} <FieldHint hint={t("hints.mailings.platform")} /></label>
-                  <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                    <option value="telegram">Telegram</option>
-                    <option value="vkontakte">VKontakte</option>
-                  </select>
+                  <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
+                    {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.delayLabel")} <FieldHint hint={t("hints.mailings.delay")} /></label>

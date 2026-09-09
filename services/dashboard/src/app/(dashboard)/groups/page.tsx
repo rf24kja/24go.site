@@ -43,7 +43,6 @@ export default function GroupsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [addPlatform, setAddPlatform] = useState("telegram");
   const [addIdentifier, setAddIdentifier] = useState("");
   const [addAccountId, setAddAccountId] = useState("");
   const [addSaving, setAddSaving] = useState(false);
@@ -63,7 +62,6 @@ export default function GroupsPage() {
   const [showDiscover, setShowDiscover] = useState(false);
   const [discoverGeo, setDiscoverGeo] = useState("");
   const [discoverNiche, setDiscoverNiche] = useState("");
-  const [discoverPlatform, setDiscoverPlatform] = useState("telegram");
   const [discoverResults, setDiscoverResults] = useState<any[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discovered, setDiscovered] = useState(false);
@@ -99,7 +97,7 @@ export default function GroupsPage() {
       const res = await discoverGroups(auth.token, {
         geo_tag: discoverGeo.trim(),
         niche: discoverNiche.trim(),
-        platform: discoverPlatform,
+        platform,
       });
       setDiscoverResults(res.results || []);
     } catch (e: any) {
@@ -130,7 +128,7 @@ export default function GroupsPage() {
     setAddSaving(true);
     try {
       await addGroup(auth.token, {
-        platform: addPlatform,
+        platform,
         group_identifier: addIdentifier.trim(),
         account_id: addAccountId,
       });
@@ -308,11 +306,9 @@ export default function GroupsPage() {
               </div>
               <div className="w-full md:w-32">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
-                <select value={discoverPlatform} onChange={(e) => setDiscoverPlatform(e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                  <option value="telegram">Telegram</option>
-                  <option value="vkontakte">VKontakte</option>
-                </select>
+                <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
+                  {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+                </div>
               </div>
               <div className="w-full md:w-48">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.useAccount")}</label>
@@ -373,18 +369,16 @@ export default function GroupsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")} <FieldHint hint={t("groups.hint.platform")} /></label>
-              <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                <option value="telegram">Telegram</option>
-                <option value="vkontakte">VKontakte</option>
-              </select>
+              <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
+                {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+              </div>
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">
-                {addPlatform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")} <FieldHint hint={t("groups.hint.groupLink")} />
+                {platform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")} <FieldHint hint={t("groups.hint.groupLink")} />
               </label>
               <input type="text" required value={addIdentifier}
-                placeholder={addPlatform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}
+                placeholder={platform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}
                 onChange={(e) => setAddIdentifier(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
             </div>
@@ -400,7 +394,7 @@ export default function GroupsPage() {
             </div>
           </div>
           <p className="text-[10px] text-zinc-600">
-            {addPlatform === "telegram"
+            {platform === "telegram"
               ? t("groups.hintTg")
               : t("groups.hintVk")}
           </p>

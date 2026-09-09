@@ -99,7 +99,7 @@ async def import_recipients(
             tenant_id=current_user.tenant_id,
             name="Imported Mailing",
             message_text="",
-            platform="telegram",
+            platform=body.platform if hasattr(body, 'platform') else "telegram",
         )
         db.add(mailing)
         await db.flush()

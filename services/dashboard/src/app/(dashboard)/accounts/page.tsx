@@ -60,7 +60,6 @@ export default function AccountsPage() {
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addPhone, setAddPhone] = useState("");
-  const [addPlatform, setAddPlatform] = useState("telegram");
   const [addSaving, setAddSaving] = useState(false);
 
   // Connect modal state (Telegram)
@@ -101,12 +100,13 @@ export default function AccountsPage() {
       setListeners((listeners_ as any)?.active_workers ?? []);
       setProxies(Array.isArray(proxyList) ? proxyList : []);
 
-      // Fetch TG status for each account
+      // Fetch TG status only for Telegram accounts
       const statuses: Record<string, TgStatus> = {};
+      const tgItems = items.filter((acct: any) => acct.platform === "telegram");
       const results = await Promise.allSettled(
-        items.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
+        tgItems.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
       );
-      items.forEach((acct: any, i: number) => {
+      tgItems.forEach((acct: any, i: number) => {
         const r = results[i];
         statuses[acct.id] = r.status === "fulfilled" ? r.value : { has_session: false, connected: false, tg_status: "unknown" };
       });
@@ -260,7 +260,7 @@ export default function AccountsPage() {
     try {
       await createAccount(auth.token, {
         account_identifier: addPhone,
-        platform: addPlatform,
+        platform,
       });
       setShowAdd(false);
       setAddPhone("");
@@ -363,11 +363,9 @@ export default function AccountsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.platform")}</label>
-              <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-                <option value="telegram">{t("accounts.telegram")}</option>
-                <option value="vkontakte">{t("accounts.vkontakte")}</option>
-              </select>
+              <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
+                {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+              </div>
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">{t("accounts.phoneNumber")} <FieldHint hint={t("hints.phoneNumber")} /></label>
@@ -406,7 +404,9 @@ export default function AccountsPage() {
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")} <FieldHint hint={t("hints.accounts.tgStatus")} /></th>
+              {platform === "telegram" && (
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colTgStatus")} <FieldHint hint={t("hints.accounts.tgStatus")} /></th>
+              )}
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colIdentifier")} <FieldHint hint={t("hints.accounts.identifier")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden sm:table-cell">{t("accounts.colPlatform")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("accounts.colStatus")} <FieldHint hint={t("hints.accounts.status")} /></th>
@@ -450,15 +450,17 @@ export default function AccountsPage() {
 
                 return (
                   <tr key={acct.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
-                    {/* TG Status */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${tgConnected ? "bg-emerald-400 animate-pulse" : tgHasSession ? "bg-amber-400" : "bg-zinc-600"}`} />
-                        <span className="text-xs text-zinc-400">
-                          {tgConnected ? t("accounts.tgOnline") : tgHasSession ? t("accounts.tgSession") : t("accounts.tgNoSession")}
-                        </span>
-                      </div>
-                    </td>
+                    {/* TG Status — only for Telegram accounts */}
+                    {platform === "telegram" && (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${tgConnected ? "bg-emerald-400 animate-pulse" : tgHasSession ? "bg-amber-400" : "bg-zinc-600"}`} />
+                          <span className="text-xs text-zinc-400">
+                            {tgConnected ? t("accounts.tgOnline") : tgHasSession ? t("accounts.tgSession") : t("accounts.tgNoSession")}
+                          </span>
+                        </div>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{acct.account_identifier}</td>
                     <td className="px-4 py-3 text-zinc-400 capitalize hidden sm:table-cell">{acct.platform}</td>
                     <td className="px-4 py-3">
@@ -488,12 +490,10 @@ export default function AccountsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {acct.platform === "vkontakte" ? (
-                          !tgHasSession ? (
-                            <button onClick={() => { setVkModal(acct.id); setVkToken(""); setVkError(""); }}
-                              className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
-                              {t("accounts.connectVk")}
-                            </button>
-                          ) : null
+                          <button onClick={() => { setVkModal(acct.id); setVkToken(""); setVkError(""); }}
+                            className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
+                            {t("accounts.connectVk")}
+                          </button>
                         ) : !tgHasSession ? (
                             <button onClick={() => handleConnectStart(acct.id)}
                               className="px-3 py-1.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition min-h-[36px]">
@@ -534,7 +534,7 @@ export default function AccountsPage() {
                         )}
                       </div>
                       {/* Proxy assignment */}
-                      {acct.platform === "telegram" && proxies.length > 0 && (
+                      {proxies.length > 0 && (
                         <div className="mt-1.5">
                           <select value={acct.proxy_id || ""} onChange={e => handleProxyAssign(acct.id, e.target.value || null)}
                             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-400 focus:outline-none focus:border-emerald-500 cursor-pointer">

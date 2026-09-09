@@ -125,7 +125,7 @@ export default function SettingsPage() {
             {activeSection === "ai_auto_reply" && <AiAutoReplySection settings={settings.ai_auto_reply || {}} defaults={defaults.ai_auto_reply || {}} onSave={(v: Record<string, any>) => handleSaveSection("ai_auto_reply", v)} onReset={() => handleResetSection("ai_auto_reply")} saving={saving} />}
             {activeSection === "warmup" && <WarmupSection settings={settings.warmup || {}} defaults={defaults.warmup || {}} onSave={(v: Record<string, any>) => handleSaveSection("warmup", v)} onReset={() => handleResetSection("warmup")} saving={saving} />}
             {activeSection === "posting" && <PostingSection settings={settings.posting || {}} defaults={defaults.posting || {}} onSave={(v: Record<string, any>) => handleSaveSection("posting", v)} onReset={() => handleResetSection("posting")} saving={saving} />}
-            {activeSection === "notifications" && <NotificationsSection settings={settings.notifications || {}} defaults={defaults.notifications || {}} onSave={(v: Record<string, any>) => handleSaveSection("notifications", v)} onReset={() => handleResetSection("notifications")} saving={saving} />}
+            {activeSection === "notifications" && <NotificationsSection settings={settings.notifications || {}} defaults={defaults.notifications || {}} onSave={(v: Record<string, any>) => handleSaveSection("notifications", v)} onReset={() => handleResetSection("notifications")} saving={saving} platform={platform} />}
             {activeSection === "groups" && <GroupsSection settings={settings.groups || {}} defaults={defaults.groups || {}} onSave={(v: Record<string, any>) => handleSaveSection("groups", v)} onReset={() => handleResetSection("groups")} saving={saving} />}
             {activeSection === "tgstat" && <TgStatSection settings={settings.tgstat || {}} defaults={defaults.tgstat || {}} onSave={(v: Record<string, any>) => handleSaveSection("tgstat", v)} onReset={() => handleResetSection("tgstat")} saving={saving} />}
             {activeSection === "webhooks" && <WebhooksSection settings={settings.webhooks || {}} defaults={defaults.webhooks || {}} onSave={(v: Record<string, any>) => handleSaveSection("webhooks", v)} onReset={() => handleResetSection("webhooks")} saving={saving} />}
@@ -539,7 +539,7 @@ function PostingSection({ settings, defaults, onSave, onReset, saving }: any) {
 }
 
 // ── Section: Notifications ───────────────────────────────────────
-function NotificationsSection({ settings, defaults, onSave, onReset, saving }: any) {
+function NotificationsSection({ settings, defaults, onSave, onReset, saving, platform }: any) {
   const [cfg, setCfg] = useState(settings);
   const set = (k: string, v: any) => setCfg({ ...cfg, [k]: v });
   const { t } = useI18n();
@@ -582,12 +582,16 @@ function NotificationsSection({ settings, defaults, onSave, onReset, saving }: a
                 { value: "COLD", label: "COLD" },
               ]} />
           </Field>
-          <Field label={<>{t("settings.notifTelegramToken")} <FieldHint hint={t("hints.tgBotToken")} /></>}>
-            <Input value={cfg.telegram_bot_token || ""} onChange={(v) => set("telegram_bot_token", v)} placeholder="123456:ABC-DEF..." type="password" />
-          </Field>
-          <Field label={<>{t("settings.notifTelegramChat")} <FieldHint hint={t("hints.tgChatId")} /></>}>
-            <Input value={cfg.telegram_chat_id || ""} onChange={(v) => set("telegram_chat_id", v)} placeholder="-1001234567890" />
-          </Field>
+          {platform === "telegram" && (
+            <>
+              <Field label={<>{t("settings.notifTelegramToken")} <FieldHint hint={t("hints.tgBotToken")} /></>}>
+                <Input value={cfg.telegram_bot_token || ""} onChange={(v) => set("telegram_bot_token", v)} placeholder="123456:ABC-DEF..." type="password" />
+              </Field>
+              <Field label={<>{t("settings.notifTelegramChat")} <FieldHint hint={t("hints.tgChatId")} /></>}>
+                <Input value={cfg.telegram_chat_id || ""} onChange={(v) => set("telegram_chat_id", v)} placeholder="-1001234567890" />
+              </Field>
+            </>
+          )}
           <Field label={t("settings.notifSlackWebhook")} hint={t("settings.notifSlackWebhookHint")}>
             <Input value={cfg.slack_webhook_url || ""} onChange={(v) => set("slack_webhook_url", v)} placeholder="https://hooks.slack.com/services/..." />
           </Field>
