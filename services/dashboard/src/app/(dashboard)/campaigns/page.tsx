@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
 import { getCampaigns, createCampaign, updateCampaign, deleteCampaign, getCampaignStats, runCampaign, previewCron } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
+import { GlassBarStatic } from "@/components/GlassChart";
 import { useToast } from "@/components/Toast";
 import { Spinner } from "@/components/Spinner";
 import { FieldHint } from "@/components/FieldHint";
@@ -623,23 +624,11 @@ export default function CampaignsPage() {
                   </div>
                 )}
 
-                {/* Posts chart (simple bar) */}
+                {/* Posts chart (glass 3D bar) */}
                 {statsCampaign.posts_by_day && statsCampaign.posts_by_day.length > 0 && (
                   <div>
                     <h3 className="text-xs text-zinc-500 mb-2">{t("campaigns.postsLast7")}</h3>
-                    <div className="flex items-end gap-1 h-16">
-                      {statsCampaign.posts_by_day.map((d: any) => {
-                        const maxCount = Math.max(...statsCampaign.posts_by_day.map((x: any) => x.count), 1);
-                        const height = Math.max(4, (d.count / maxCount) * 100);
-                        return (
-                          <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                            <span className="text-[10px] text-zinc-500">{d.count}</span>
-                            <div className="w-full bg-emerald-500/30 rounded-sm" style={{ height: `${height}%` }} />
-                            <span className="text-[10px] text-zinc-600">{d.date.slice(5)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <GlassBarStatic data={statsCampaign.posts_by_day} />
                   </div>
                 )}
 

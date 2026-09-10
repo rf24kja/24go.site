@@ -6,11 +6,8 @@ import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
 import { FieldHint } from "@/components/FieldHint";
 import { getAnalytics, getLeaderboard } from "@/lib/api";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, Legend,
-} from "recharts";
-import { Skeleton, CardSkeleton } from "@/components/Skeleton";
+import { GlassAreaChart, GlassBarChart, GlassPieChart } from "@/components/GlassChart";
+import { Skeleton } from "@/components/Skeleton";
 
 const COLORS = {
   rose: "#f43f5e",
@@ -19,6 +16,7 @@ const COLORS = {
   emerald: "#10b981",
   slate: "#94a3b8",
   zinc: "#71717a",
+  violet: "#8b5cf6",
 };
 
 export default function AnalyticsPage() {
@@ -126,106 +124,54 @@ export default function AnalyticsPage() {
 
       {/* Time Series — posts + leads overlay */}
       {data.time_series && data.time_series.length > 0 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.activityOverTime")}</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={data.time_series}>
-              <defs>
-                <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.sky} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={COLORS.sky} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="postGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLORS.emerald} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={COLORS.emerald} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-              <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-              <Legend />
-              <Area type="monotone" dataKey="leads" name={t("analytics.leads")} stroke={COLORS.sky} fill="url(#leadGrad)" strokeWidth={2} />
-              <Area type="monotone" dataKey="hot_leads" name={t("analytics.hot")} stroke={COLORS.rose} fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
-              <Area type="monotone" dataKey="posts" name={t("analytics.posts")} stroke={COLORS.emerald} fill="url(#postGrad)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div>
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.activityOverTime")}</h2>
+          <GlassAreaChart data={data.time_series} series={[
+            { key: "leads", name: t("analytics.leads"), color: COLORS.sky },
+            { key: "hot_leads", name: t("analytics.hot"), color: COLORS.rose, dashed: true },
+            { key: "posts", name: t("analytics.posts"), color: COLORS.emerald },
+          ]} />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Conversion Funnel */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.conversionFunnel")}</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={funnelData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-              <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {funnelData.map((_: any, i: number) => (
-                  <Cell key={i} fill={[COLORS.slate, COLORS.sky, COLORS.amber, COLORS.rose][i]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div>
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.conversionFunnel")}</h2>
+          <GlassBarChart data={funnelData} bars={[{ key: "value", name: "Count", color: "slate" }]} />
         </div>
 
         {/* Intent Distribution */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.intentDistribution")}</h2>
+        <div>
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.intentDistribution")}</h2>
           {intentPie.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={intentPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                  {intentPie.map((entry: any, i: number) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
+            <GlassPieChart data={intentPie} />
           ) : (
             <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noLeadData")}</p>
           )}
         </div>
 
         {/* Source Breakdown */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.leadsBySource")}</h2>
+        <div>
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.leadsBySource")}</h2>
           {sourceData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={sourceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-                <Legend />
-                <Bar dataKey="leads" fill={COLORS.sky} name={t("analytics.totalLeads")} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="hot" fill={COLORS.rose} name={t("analytics.hotLeadsLabel")} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <GlassBarChart data={sourceData} bars={[
+              { key: "leads", name: t("analytics.totalLeads"), color: "sky" },
+              { key: "hot", name: t("analytics.hotLeadsLabel"), color: "rose" },
+            ]} />
           ) : (
             <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noSourceData")}</p>
           )}
         </div>
 
         {/* Geo Breakdown */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 lg:col-span-2">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("analytics.geoBreakdown")}</h2>
+        <div className="lg:col-span-2">
+          <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.geoBreakdown")}</h2>
           {geoData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={geoData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis type="number" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 12 }} width={100} />
-                <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8 }} />
-                <Legend />
-                <Bar dataKey="leads" fill={COLORS.sky} name={t("analytics.totalLeads")} radius={[0, 4, 4, 0]} />
-                <Bar dataKey="hot" fill={COLORS.rose} name={t("analytics.hotLeadsLabel")} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <GlassBarChart data={geoData} horizontal bars={[
+              { key: "leads", name: t("analytics.totalLeads"), color: "sky" },
+              { key: "hot", name: t("analytics.hotLeadsLabel"), color: "rose" },
+            ]} />
           ) : (
             <p className="text-zinc-500 text-sm text-center py-12">{t("analytics.noGeoData")}</p>
           )}
@@ -304,8 +250,15 @@ function MetricCard({ label, value, accent }: { label: string; value: number; ac
     sky: "text-sky-400",
     emerald: "text-emerald-400",
   };
+  const glows: Record<string, string> = {
+    rose: "0 0 20px rgba(244,63,94,0.12)",
+    amber: "0 0 20px rgba(245,158,11,0.12)",
+    sky: "0 0 20px rgba(14,165,233,0.12)",
+    emerald: "0 0 20px rgba(16,185,129,0.12)",
+  };
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+    <div className="bg-zinc-900/80 border border-zinc-800/60 rounded-2xl p-4 backdrop-blur-sm hover:border-zinc-700/60 transition-all duration-300"
+      style={{ boxShadow: glows[accent ?? ""] || "none" }}>
       <p className="text-zinc-500 text-xs mb-1">{label}</p>
       <p className={`text-2xl font-bold ${colors[accent ?? ""] ?? "text-zinc-100"}`}>{value.toLocaleString()}</p>
     </div>
