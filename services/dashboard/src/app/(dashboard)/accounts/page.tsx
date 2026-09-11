@@ -442,7 +442,7 @@ export default function AccountsPage() {
               accounts.map((acct) => {
                 const pct = acct.daily_action_limit > 0
                   ? Math.round((acct.actions_today / acct.daily_action_limit) * 100) : 0;
-                const warmupPct = Math.round((acct.warmup_stage / 3) * 100);
+                const warmupPct = Math.round((acct.warmup_stage / 4) * 100);
                 const tg = tgStatuses[acct.id];
                 const tgConnected = tg?.connected ?? false;
                 const tgHasSession = tg?.has_session ?? false;

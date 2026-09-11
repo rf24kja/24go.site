@@ -47,22 +47,22 @@ export function Sidebar() {
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : [
-    { href: "/vk-overview", label: "VK Overview", icon: ChartBar, feature: "analytics" },
-    { href: "/leads", label: "Leads (VK)", icon: Crosshair, feature: "leads" },
+    { href: "/vk-overview", label: t("sidebar.vkOverview"), icon: ChartBar, feature: "analytics" },
+    { href: "/leads", label: t("sidebar.vkLeads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
-    { href: "/targets", label: "Group Search (VK)", icon: Radar, feature: "targets" },
-    { href: "/groups", label: "Monitoring (VK)", icon: Radio, feature: "groups" },
-    { href: "/accounts", label: "VK Communities", icon: UserCircle, feature: "accounts" },
+    { href: "/targets", label: t("sidebar.vkGroupSearch"), icon: Radar, feature: "targets" },
+    { href: "/groups", label: t("sidebar.vkMonitoring"), icon: Radio, feature: "groups" },
+    { href: "/accounts", label: t("sidebar.vkCommunities"), icon: UserCircle, feature: "accounts" },
     { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
-    { href: "/campaigns", label: "VK Campaigns", icon: Megaphone, feature: "campaigns" },
-    { href: "/mailings", label: "VK Mailings", icon: Send, feature: "mailings" },
+    { href: "/campaigns", label: t("sidebar.vkCampaigns"), icon: Megaphone, feature: "campaigns" },
+    { href: "/mailings", label: t("sidebar.vkMailings"), icon: Send, feature: "mailings" },
     { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
-    { href: "/vk-help", label: "How to Use (VK)", icon: FileText },
-    { href: "/vk-settings", label: "VK Settings", icon: Cog },
+    { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
+    { href: "/vk-settings", label: t("sidebar.vkSettings"), icon: Cog },
   ];
   const NAV = NAV_ITEMS.filter((item) => {
     if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com" && auth?.user?.role !== "owner") return false;
@@ -135,7 +135,7 @@ export function Sidebar() {
               onClick={() => setPlatform("vkontakte")}
               className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
-              VKontakte
+              {t("sidebar.vkontakte")}
             </button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">

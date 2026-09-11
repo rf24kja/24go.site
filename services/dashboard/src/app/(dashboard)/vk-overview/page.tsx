@@ -23,15 +23,15 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-slate-500/10 text-slate-400 border border-slate-500/20",
 };
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "never";
+function timeAgo(dateStr: string | null, t: (k: string, v?: any) => string): string {
+  if (!dateStr) return t("vkOverview.never");
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}min ago`;
+  if (mins < 1) return t("vkOverview.justNow");
+  if (mins < 60) return t("vkOverview.minAgo", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return t("vkOverview.hoursAgo", { n: hrs });
+  return t("vkOverview.daysAgo", { n: Math.floor(hrs / 24) });
 }
 
 export default function VkOverviewPage() {
@@ -69,34 +69,32 @@ export default function VkOverviewPage() {
     </div>
   );
 
-  if (!data) return <div className="text-zinc-500 text-sm p-8">No data available</div>;
+  if (!data) return <div className="text-zinc-500 text-sm p-8">{t("vkOverview.noData")}</div>;
 
   const { summary, account_health, recent_leads, communities } = data;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-slide-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-100">VK Overview</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">{t("vkOverview.title")}</h1>
         <div className="flex gap-1">
           {[7, 30, 90].map((d) => (
             <button key={d} onClick={() => setDays(d)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 days === d ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
               }`}>
-              {d}d
+              {d}{t("vkOverview.days")}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Leads", value: summary.total_leads, color: "text-zinc-100" },
-          { label: "Hot Leads", value: summary.hot_leads, color: "text-rose-400" },
-          { label: "Active Accounts", value: `${summary.active_accounts}/${summary.total_accounts}`, color: "text-emerald-400" },
-          { label: "Conversion", value: `${summary.conversion_rate}%`, color: "text-sky-400" },
+          { label: t("vkOverview.totalLeads"), value: summary.total_leads, color: "text-zinc-100" },
+          { label: t("vkOverview.hotLeads"), value: summary.hot_leads, color: "text-rose-400" },
+          { label: t("vkOverview.activeAccounts"), value: `${summary.active_accounts}/${summary.total_accounts}`, color: "text-emerald-400" },
+          { label: t("vkOverview.conversion"), value: `${summary.conversion_rate}%`, color: "text-sky-400" },
         ].map((card, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 card-hover">
             <p className="text-xs text-zinc-500 mb-1">{card.label}</p>
@@ -105,14 +103,13 @@ export default function VkOverviewPage() {
         ))}
       </div>
 
-      {/* Account Health */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-zinc-100">Account Health</h2>
-          <Link href="/accounts" className="text-xs text-zinc-500 hover:text-zinc-300 transition">Manage Accounts →</Link>
+          <h2 className="text-base font-semibold text-zinc-100">{t("vkOverview.accountHealth")}</h2>
+          <Link href="/accounts" className="text-xs text-zinc-500 hover:text-zinc-300 transition">{t("vkOverview.manageAccounts")} →</Link>
         </div>
         {account_health.length === 0 ? (
-          <p className="text-sm text-zinc-500">No VK accounts connected yet.</p>
+          <p className="text-sm text-zinc-500">{t("vkOverview.noAccounts")}</p>
         ) : (
           <div className="space-y-3">
             {account_health.map((acc: any) => {
@@ -128,17 +125,16 @@ export default function VkOverviewPage() {
                         acc.status === "banned" ? "bg-rose-400" : "bg-zinc-500"
                       }`} />
                       <span className="text-sm font-medium text-zinc-100">{acc.group_name}</span>
-                      <span className="text-xs text-zinc-500">{acc.members_count?.toLocaleString()} members</span>
+                      <span className="text-xs text-zinc-500">{acc.members_count?.toLocaleString()} {t("vkOverview.members")}</span>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[acc.status] || ""}`}>
-                      {acc.status}
+                      {t(`vkOverview.status.${acc.status}`)}
                     </span>
                   </div>
 
-                  {/* Warmup Progress */}
                   <div className="mb-2">
                     <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
-                      <span>Warmup: Stage {acc.warmup_stage}/4</span>
+                      <span>{t("vkOverview.warmup")}: {t("vkOverview.stage")} {acc.warmup_stage}/4</span>
                       <span>{Math.round(warmupPct)}%</span>
                     </div>
                     <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
@@ -146,10 +142,9 @@ export default function VkOverviewPage() {
                     </div>
                   </div>
 
-                  {/* Actions Budget */}
                   <div>
                     <div className="flex items-center justify-between text-xs text-zinc-500 mb-1">
-                      <span>Actions today: {acc.actions_today}/{acc.daily_action_limit}</span>
+                      <span>{t("vkOverview.actionsToday")}: {acc.actions_today}/{acc.daily_action_limit}</span>
                       <span className={actionsPct > 90 ? "text-rose-400" : actionsPct > 70 ? "text-amber-400" : ""}>{Math.round(actionsPct)}%</span>
                     </div>
                     <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
@@ -165,23 +160,22 @@ export default function VkOverviewPage() {
         )}
       </div>
 
-      {/* Recent Leads */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-zinc-100">Recent VK Leads</h2>
-          <Link href="/leads" className="text-xs text-zinc-500 hover:text-zinc-300 transition">View All →</Link>
+          <h2 className="text-base font-semibold text-zinc-100">{t("vkOverview.recentLeads")}</h2>
+          <Link href="/leads" className="text-xs text-zinc-500 hover:text-zinc-300 transition">{t("vkOverview.viewAll")} →</Link>
         </div>
         {recent_leads.length === 0 ? (
-          <p className="text-sm text-zinc-500">No VK leads yet.</p>
+          <p className="text-sm text-zinc-500">{t("vkOverview.noLeads")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-zinc-500 border-b border-zinc-800">
-                  <th className="text-left py-2 pr-4">User</th>
-                  <th className="text-left py-2 pr-4">Source</th>
-                  <th className="text-left py-2 pr-4">Intent</th>
-                  <th className="text-left py-2">Time</th>
+                  <th className="text-left py-2 pr-4">{t("vkOverview.user")}</th>
+                  <th className="text-left py-2 pr-4">{t("vkOverview.source")}</th>
+                  <th className="text-left py-2 pr-4">{t("vkOverview.intent")}</th>
+                  <th className="text-left py-2">{t("vkOverview.time")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,7 +188,7 @@ export default function VkOverviewPage() {
                         {lead.intent_score}
                       </span>
                     </td>
-                    <td className="py-2.5 text-zinc-500 text-xs">{timeAgo(lead.created_at)}</td>
+                    <td className="py-2.5 text-zinc-500 text-xs">{timeAgo(lead.created_at, t)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -203,17 +197,16 @@ export default function VkOverviewPage() {
         )}
       </div>
 
-      {/* Community Performance */}
       {communities.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h2 className="text-base font-semibold text-zinc-100 mb-4">Community Performance</h2>
+          <h2 className="text-base font-semibold text-zinc-100 mb-4">{t("vkOverview.communityPerformance")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-zinc-500 border-b border-zinc-800">
-                  <th className="text-left py-2 pr-4">Community</th>
-                  <th className="text-left py-2 pr-4">Leads</th>
-                  <th className="text-left py-2">Hot</th>
+                  <th className="text-left py-2 pr-4">{t("vkOverview.community")}</th>
+                  <th className="text-left py-2 pr-4">{t("vkOverview.leads")}</th>
+                  <th className="text-left py-2">{t("vkOverview.hot")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -230,16 +223,15 @@ export default function VkOverviewPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
       <div className="flex gap-3">
         <Link href="/targets" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 hover:bg-zinc-700 transition btn-press">
-          <Radar className="w-4 h-4" /> Group Search
+          <Radar className="w-4 h-4" /> {t("vkOverview.groupSearch")}
         </Link>
         <Link href="/campaigns" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 hover:bg-zinc-700 transition btn-press">
-          <Megaphone className="w-4 h-4" /> Post to Wall
+          <Megaphone className="w-4 h-4" /> {t("vkOverview.postToWall")}
         </Link>
         <Link href="/mailings" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 hover:bg-zinc-700 transition btn-press">
-          <Send className="w-4 h-4" /> Send DMs
+          <Send className="w-4 h-4" /> {t("vkOverview.sendDms")}
         </Link>
       </div>
     </div>
