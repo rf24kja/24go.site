@@ -135,7 +135,7 @@ export default function TargetsPage() {
       setJoinResults(res.results);
       load();
     } catch (e: any) {
-      toast(e.message || "Join failed", "error");
+      toast(e.message || t("targets.joinFailed"), "error");
     } finally {
       setJoining(false);
     }
@@ -176,7 +176,7 @@ export default function TargetsPage() {
       setTgstatResults(res.results || []);
       setTgstatBalance(res.balance ?? null);
       if ((res.results || []).length > 0) {
-        toast(`Found ${res.results.length} channels`, "success");
+        toast(t("targets.foundChannels").replace("{count}", String(res.results.length)), "success");
       } else {
         toast(t("targets.noneFound"), "info");
       }
@@ -199,7 +199,7 @@ export default function TargetsPage() {
       toast(t("targets.added"), "success");
       load();
     } catch (e: any) {
-      toast(e.message || "Failed to add", "error");
+      toast(e.message || t("targets.addFailed"), "error");
     }
   };
 
@@ -238,7 +238,7 @@ export default function TargetsPage() {
       setHasMorePosts(res.posts.length === 50);
       setPostsOffset(offset + 50);
     } catch (e: any) {
-      toast(e.message || "Failed to load posts", "error");
+      toast(e.message || t("targets.loadPostsFailed"), "error");
     } finally {
       setPostsLoading(false);
     }
@@ -500,16 +500,16 @@ export default function TargetsPage() {
                       </span>
                       <button onClick={() => openJoinModal(target.id)}
                         className="px-2.5 py-1 text-[10px] rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition min-h-[36px]">
-                        Join
+                        {t("targets.join")}
                       </button>
                       <button onClick={async () => {
                         if (!auth?.token) return;
                         try {
                           const res = await checkMembership(auth.token, target.id);
                           load();
-                          toast(res.is_joined ? `Joined: ${target.title}` : `Not joined: ${target.title}`, "info");
+                          toast(res.is_joined ? t("targets.joinedGroup").replace("{title}", target.title) : t("targets.notJoinedGroup").replace("{title}", target.title), "info");
                         } catch (e: any) {
-                          toast(e.message || "Check failed", "error");
+                          toast(e.message || t("targets.checkFailed"), "error");
                         }
                       }}
                         className={`px-2 py-0.5 text-[10px] rounded border transition ${
@@ -517,7 +517,7 @@ export default function TargetsPage() {
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                             : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:text-zinc-300"
                         }`}>
-                        {target.is_joined ? "Joined" : "Check"}
+                        {target.is_joined ? t("targets.joined") : t("targets.check")}
                       </button>
                     </div>
                   </td>
@@ -585,22 +585,22 @@ export default function TargetsPage() {
                 {hasMorePosts && !postsLoading && recentPosts.length > 0 && (
                   <button onClick={() => loadRecentPosts(scrapeModal, postsOffset)}
                     className="w-full py-1.5 text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-800 rounded-lg transition">
-                    Load more
+                    {t("targets.loadMore")}
                   </button>
                 )}
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-zinc-500">
-                  {platform === "vkontakte" ? "Enter the VK post ID:" : "Enter the Telegram post message ID:"}
+                  {platform === "vkontakte" ? t("targets.enterVkPostId") : t("targets.enterTgPostId")}
                 </p>
                 <input type="text" placeholder="e.g. 12345" value={scrapePostId}
                   onChange={(e) => setScrapePostId(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
                 <p className="text-[10px] text-zinc-600">
                   {platform === "vkontakte"
-                    ? "Find the post ID from the VK community wall."
-                    : "Find the message ID from the post URL: t.me/channel/12345"}
+                    ? t("targets.findVkPostHint")
+                    : t("targets.findTgPostHint")}
                 </p>
               </div>
             )}
@@ -621,13 +621,13 @@ export default function TargetsPage() {
       {joinModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setJoinModal(null)}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-zinc-100">Join Group</h3>
+            <h3 className="text-lg font-bold text-zinc-100">{t("targets.joinGroup")}</h3>
 
             {!joinResults ? (
               <>
-                <p className="text-sm text-zinc-400">Select which accounts should join this group. Leave empty to use all active accounts.</p>
+                <p className="text-sm text-zinc-400">{t("targets.joinGroupDesc")}</p>
                 <div className="max-h-60 overflow-y-auto space-y-1 border border-zinc-800 rounded-lg p-2">
-                  {accounts.length === 0 && <p className="text-xs text-zinc-600">Loading accounts...</p>}
+                  {accounts.length === 0 && <p className="text-xs text-zinc-600">{t("targets.loadingAccounts")}</p>}
                   {accounts.map((a: any) => (
                     <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-800 cursor-pointer text-sm">
                       <input type="checkbox" checked={selectedAccounts.has(a.id)}
@@ -645,10 +645,10 @@ export default function TargetsPage() {
                 <div className="flex gap-3">
                   <button onClick={handleJoin} disabled={joining}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                    {joining ? "Joining..." : `Join${selectedAccounts.size > 0 ? ` (${selectedAccounts.size})` : " All"}`}
+                    {joining ? t("targets.joining") : `${t("targets.join")}${selectedAccounts.size > 0 ? ` (${selectedAccounts.size})` : ` ${t("targets.joinAll")}`}`}
                   </button>
                   <button onClick={() => setJoinModal(null)}
-                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Cancel</button>
+                    className="flex-1 py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("targets.cancel")}</button>
                 </div>
               </>
             ) : (
@@ -657,14 +657,14 @@ export default function TargetsPage() {
                   {joinResults.map((r) => (
                     <div key={r.account_id} className="flex items-center gap-2 text-sm">
                       <span className={r.status === "joined" ? "text-emerald-400" : r.status === "already_member" ? "text-sky-400" : "text-rose-400"}>
-                        {r.status === "joined" ? "✓ Joined" : r.status === "already_member" ? "✓ Already member" : r.status === "no_session" ? "⚠ No session" : `✗ ${r.error || "Error"}`}
+                        {r.status === "joined" ? `✓ ${t("targets.joined")}` : r.status === "already_member" ? `✓ ${t("targets.alreadyMember")}` : r.status === "no_session" ? `⚠ ${t("targets.noSession")}` : `✗ ${r.error || t("targets.error")}`}
                       </span>
                       <span className="text-zinc-600 text-xs truncate">{r.account_id.slice(0, 8)}</span>
                     </div>
                   ))}
                 </div>
                 <button onClick={() => setJoinModal(null)}
-                  className="w-full py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">Close</button>
+                  className="w-full py-2 bg-zinc-800 text-zinc-400 rounded-lg text-sm">{t("targets.close")}</button>
               </>
             )}
           </div>

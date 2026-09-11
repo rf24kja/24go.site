@@ -58,6 +58,10 @@ export default function LeadsPage() {
   const [filter, setFilter] = useState<string>("ALL");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [testHandle, setTestHandle] = useState("@test_user");
+
+  useEffect(() => {
+    setTestHandle(platform === "vkontakte" ? "id12345" : "@test_user");
+  }, [platform]);
   const [testMessage, setTestMessage] = useState("");
   const [testResult, setTestResult] = useState<any>(null);
   const [qualifying, setQualifying] = useState(false);

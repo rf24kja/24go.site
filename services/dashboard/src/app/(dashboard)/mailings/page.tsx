@@ -68,7 +68,7 @@ export default function MailingsPage() {
         delay_seconds: parseInt(form.delay_seconds) || 30,
       });
       setShowCreate(false);
-      setForm({ name: "", message_text: "", platform: "telegram", delay_seconds: "30" });
+      setForm({ name: "", message_text: "", platform, delay_seconds: "30" });
       load();
       toast(t("mailings.created"), "success");
     } catch (e: any) {

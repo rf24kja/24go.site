@@ -474,7 +474,7 @@ export default function AccountsPage() {
                           <div className={`h-full rounded-full transition-all ${WARMUP_COLORS[acct.warmup_stage] ?? "bg-zinc-600"}`}
                             style={{ width: `${warmupPct}%` }} />
                         </div>
-                        <span className="text-zinc-400 text-xs">{acct.warmup_stage}/3</span>
+                        <span className="text-zinc-400 text-xs">{acct.warmup_stage}/4</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
