@@ -150,8 +150,8 @@ async def _process_mailing_async(task, mailing_id: str, tenant_id: str, db_url: 
 
                     if result.get("status") == "ok":
                         await conn.execute(
-                            "UPDATE mailing_recipients SET status = 'sent', sent_at = NOW() WHERE id = $1",
-                            recipient["id"],
+                            "UPDATE mailing_recipients SET status = 'sent', sent_at = NOW(), message_id = $1 WHERE id = $2",
+                            result.get("message_id"), recipient["id"],
                         )
                         await conn.execute(
                             "UPDATE mailings SET sent_count = sent_count + 1 WHERE id = $1",
@@ -213,6 +213,11 @@ async def _process_mailing_async(task, mailing_id: str, tenant_id: str, db_url: 
                     uuid_mod.UUID(mailing_id),
                 )
                 log.info(f"Mailing {mailing_id} completed: sent={sent_total}, failed={failed_total}")
+                # Schedule read status check after 10 minutes
+                check_read_status.apply_async(
+                    args=[mailing_id],
+                    countdown=600,
+                )
                 break
 
         for aid in used_account_ids:
@@ -234,9 +239,9 @@ async def _send_dm(account_id: str, username: str, text: str) -> dict:
 
     try:
         entity = await client.get_entity(username)
-        await client.send_message(entity, text)
+        msg = await client.send_message(entity, text)
         _set_status(account_id, "online")
-        return {"status": "ok"}
+        return {"status": "ok", "message_id": str(msg.id)}
     except Exception as e:
         error_name = type(e).__name__
         if "FloodWaitError" in error_name or "flood" in str(e).lower():
@@ -249,3 +254,89 @@ async def _send_dm(account_id: str, username: str, text: str) -> dict:
         else:
             log.error(f"DM send error: {e}")
             return {"status": "error", "error": str(e)[:200]}
+
+
+# ── Read status checker ──────────────────────────────────────────────
+
+@celery.task(name="app.tasks.mailer.check_read_status", queue="poster")
+def check_read_status(mailing_id: str):
+    """Check read status for all sent recipients of a mailing.
+
+    Runs ~10 min after mailing completes. Uses Telethon to check each message.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_check_read_async(mailing_id))
+    finally:
+        loop.close()
+
+
+async def _check_read_async(mailing_id: str):
+    import asyncpg
+    from app.telegram_client import get_client, disconnect_client
+
+    db_url = _get_db_url()
+    conn = await asyncpg.connect(db_url)
+    try:
+        # Group sent recipients by account (need to know which account sent which)
+        # We stored account_id nowhere explicitly, so we find it from account_pool
+        recipients = await conn.fetch(
+            "SELECT id, username, message_id FROM mailing_recipients "
+            "WHERE mailing_id = $1 AND status = 'sent' AND message_id IS NOT NULL",
+            uuid_mod.UUID(mailing_id),
+        )
+        if not recipients:
+            log.info(f"check_read: no sent recipients with message_id for {mailing_id}")
+            return
+
+        # Get all accounts for this mailing's tenant
+        mailing = await conn.fetchrow(
+            "SELECT tenant_id, platform FROM mailings WHERE id = $1",
+            uuid_mod.UUID(mailing_id),
+        )
+        if not mailing:
+            return
+
+        accounts = await conn.fetch(
+            "SELECT id FROM account_pool WHERE tenant_id = $1 AND platform = $2",
+            mailing["tenant_id"], mailing["platform"].value if hasattr(mailing["platform"], "value") else str(mailing["platform"]),
+        )
+
+        read_count = 0
+        for account in accounts:
+            account_id = str(account["id"])
+            client = await get_client(account_id)
+            if client is None:
+                continue
+
+            try:
+                for r in recipients:
+                    try:
+                        msg_id = int(r["message_id"])
+                        entity = await client.get_entity(r["username"])
+                        messages = await client.get_messages(entity, ids=[msg_id])
+                        if messages and messages[0] and messages[0].out and messages[0].read:
+                            await conn.execute(
+                                "UPDATE mailing_recipients SET status = 'read' WHERE id = $1 AND status = 'sent'",
+                                r["id"],
+                            )
+                            read_count += 1
+                        await asyncio.sleep(0.5)  # rate limit
+                    except Exception as e:
+                        log.debug(f"check_read: error checking {r['username']}: {e}")
+                        continue
+            finally:
+                try:
+                    await disconnect_client(account_id)
+                except Exception:
+                    pass
+
+        if read_count > 0:
+            await conn.execute(
+                "UPDATE mailings SET read_count = read_count + $1 WHERE id = $2",
+                read_count, uuid_mod.UUID(mailing_id),
+            )
+            log.info(f"check_read: mailing {mailing_id} — {read_count} messages marked as read")
+
+    finally:
+        await conn.close()

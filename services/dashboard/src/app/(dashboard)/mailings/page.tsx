@@ -22,6 +22,7 @@ type Mailing = {
   status: string;
   total_count: number;
   sent_count: number;
+  read_count: number;
   failed_count: number;
   delay_seconds: number;
   created_at: string | null;
@@ -189,6 +190,7 @@ export default function MailingsPage() {
               </div>
               <div className="flex gap-2 text-xs text-zinc-500">
                 <span className="text-emerald-400">{m.sent_count} {t("mailings.sent")}</span>
+                <span className="text-sky-400">{m.read_count || 0} {t("mailings.read")}</span>
                 <span className="text-rose-400">{m.failed_count} {t("mailings.failed")}</span>
                 <span>{m.total_count - m.sent_count - m.failed_count} {t("mailings.pending")}</span>
               </div>
@@ -328,10 +330,14 @@ export default function MailingsPage() {
             <div className="w-full bg-zinc-800 rounded-full h-2.5">
               <div className="bg-emerald-500 h-2.5 rounded-full transition-all" style={{ width: `${progress(detail)}%` }} />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div className="bg-zinc-800 rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-emerald-400">{detail.sent_count}</p>
                 <p className="text-xs text-zinc-500">{t("mailings.sent")}</p>
+              </div>
+              <div className="bg-zinc-800 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-sky-400">{detail.read_count || 0}</p>
+                <p className="text-xs text-zinc-500">{t("mailings.read")}</p>
               </div>
               <div className="bg-zinc-800 rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-rose-400">{detail.failed_count}</p>
@@ -342,6 +348,21 @@ export default function MailingsPage() {
                 <p className="text-xs text-zinc-500">{t("mailings.total")}</p>
               </div>
             </div>
+            {detail.status === "completed" && detail.sent_count > 0 && (
+              <button onClick={async () => {
+                if (!auth?.token) return;
+                try {
+                  await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site"}/api/v1/mailings/${detail.id}/check-read`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${auth.token}` },
+                  });
+                  toast(t("mailings.readCheckScheduled"), "success");
+                } catch { toast(t("mailings.readCheckFailed"), "error"); }
+              }}
+                className="w-full py-2 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-lg text-sm hover:bg-sky-500/20 transition">
+                {t("mailings.checkReads")}
+              </button>
+            )}
             <div>
               <h3 className="text-xs text-zinc-500 mb-2">{t("mailings.message")}</h3>
               <div className="bg-zinc-800 rounded-lg p-3 text-sm text-zinc-300 whitespace-pre-wrap">{detail.message_text}</div>

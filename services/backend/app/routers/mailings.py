@@ -225,6 +225,28 @@ async def stop_mailing(
     return {"status": "completed"}
 
 
+@router.post("/{mailing_id}/check-read")
+async def check_read(
+    mailing_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually trigger read status check for a completed mailing."""
+    from app.celery_app import celery as celery_app
+
+    q = select(Mailing).where(
+        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.tenant_id == current_user.tenant_id,
+    )
+    result = await db.execute(q)
+    mailing = result.scalar_one_or_none()
+    if not mailing:
+        raise HTTPException(404, "Mailing not found")
+
+    celery_app.send_task("app.tasks.mailer.check_read_status", args=[mailing_id])
+    return {"status": "check_scheduled"}
+
+
 @router.delete("/{mailing_id}")
 async def delete_mailing(
     mailing_id: str,
@@ -257,6 +279,7 @@ def _mailing_to_dict(m: Mailing) -> dict:
         "status": m.status.value if hasattr(m.status, "value") else m.status,
         "total_count": m.total_count,
         "sent_count": m.sent_count,
+        "read_count": m.read_count,
         "failed_count": m.failed_count,
         "delay_seconds": m.delay_seconds,
         "created_at": m.created_at.isoformat() if m.created_at else None,

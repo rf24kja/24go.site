@@ -350,6 +350,7 @@ class MailingStatus(str, enum.Enum):
 class MailingRecipientStatus(str, enum.Enum):
     pending = "pending"
     sent = "sent"
+    read = "read"
     failed = "failed"
     blocked = "blocked"
 
@@ -365,6 +366,7 @@ class Mailing(Base):
     status = Column(Enum(MailingStatus, name="mailing_status"), nullable=False, default=MailingStatus.draft)
     total_count = Column(Integer, nullable=False, default=0)
     sent_count = Column(Integer, nullable=False, default=0)
+    read_count = Column(Integer, nullable=False, default=0)
     failed_count = Column(Integer, nullable=False, default=0)
     delay_seconds = Column(Integer, nullable=False, default=30)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -387,6 +389,7 @@ class MailingRecipient(Base):
     first_name = Column(String(255), nullable=True)
     status = Column(Enum(MailingRecipientStatus, name="mailing_recipient_status"), nullable=False, default=MailingRecipientStatus.pending)
     error_message = Column(Text, nullable=True)
+    message_id = Column(String(64), nullable=True)
     sent_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
