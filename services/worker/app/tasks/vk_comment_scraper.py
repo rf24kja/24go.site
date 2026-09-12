@@ -35,8 +35,8 @@ def scrape_vk_comments(self, tenant_id: str, account_id: str,
     loop = asyncio.new_event_loop()
     try:
         result = loop.run_until_complete(
-            _scrape_vk_and_classify(tenant_id, account_id, group_id,
-                                    int(post_id), source_target_id)
+            _scrape_with_semaphore(tenant_id, account_id, group_id,
+                                   int(post_id), source_target_id)
         )
     except Exception as e:
         log.error(f"scrape_vk_comments failed: {e}")
@@ -45,6 +45,33 @@ def scrape_vk_comments(self, tenant_id: str, account_id: str,
         loop.close()
 
     return result
+
+
+async def _scrape_with_semaphore(tenant_id, account_id, group_id, post_id, source_target_id):
+    """Acquire per-tenant semaphore (max 3 concurrent scrapes) before scraping."""
+    import redis.asyncio as aioredis
+    from app.config import REDIS_URL
+    r = aioredis.from_url(REDIS_URL, decode_responses=True)
+    sem_key = f"vk:scrape_sem:{tenant_id}"
+    try:
+        count = int(await r.get(sem_key) or 0)
+        if count >= 3:
+            log.warning(f"Scrape semaphore full for {tenant_id}, skipping")
+            return {"status": "skipped", "reason": "concurrency_limit"}
+        await r.incr(sem_key)
+        await r.expire(sem_key, 300)
+    finally:
+        await r.aclose()
+
+    try:
+        return await _scrape_vk_and_classify(tenant_id, account_id, group_id,
+                                              post_id, source_target_id)
+    finally:
+        r2 = aioredis.from_url(REDIS_URL, decode_responses=True)
+        try:
+            await r2.decr(sem_key)
+        finally:
+            await r2.aclose()
 
 
 async def _is_already_scraped(tenant_id: str, cache_key: str) -> bool:
@@ -126,23 +153,34 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
             thread = comment.get("thread", {})
             thread_count = thread.get("count", 0)
             if thread_count > 0:
-                # Fetch replies (max 100)
-                try:
-                    reply_response = await asyncio.get_event_loop().run_in_executor(
-                        None,
-                        lambda cid=comment["id"]: vk.wall.getComments(
-                            owner_id=owner_id,
-                            post_id=post_id,
-                            start_comment_id=cid,
-                            count=min(thread_count, 100),
-                            sort="asc",
-                            need_likes=1,
-                        ),
-                    )
-                    all_with_replies.extend(reply_response.get("items", []))
-                except Exception as e:
-                    log.debug(f"Failed to fetch thread replies for comment {comment['id']}: {e}")
-                await asyncio.sleep(0.5)  # ponytail: pause between thread fetches
+                # Fetch replies — VK returns max 10 per start_comment_id call
+                reply_offset = 0
+                while reply_offset < thread_count:
+                    try:
+                        batch_size = min(thread_count - reply_offset, 10)
+                        reply_response = await asyncio.get_event_loop().run_in_executor(
+                            None,
+                            lambda cid=comment["id"], o=reply_offset, c=batch_size: vk.wall.getComments(
+                                owner_id=owner_id,
+                                post_id=post_id,
+                                start_comment_id=cid,
+                                count=c,
+                                offset=o,
+                                sort="asc",
+                                need_likes=1,
+                            ),
+                        )
+                        reply_items = reply_response.get("items", [])
+                        if not reply_items:
+                            break
+                        all_with_replies.extend(reply_items)
+                        reply_offset += len(reply_items)
+                        if len(reply_items) < batch_size:
+                            break
+                        await asyncio.sleep(0.5)
+                    except Exception as e:
+                        log.debug(f"Failed to fetch thread replies for comment {comment['id']}: {e}")
+                        break
 
         # Batch-fetch all user info
         user_ids = list({str(c.get("from_id", 0)) for c in all_with_replies if c.get("from_id", 0) > 0})

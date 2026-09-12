@@ -13,6 +13,7 @@ import asyncpg
 import httpx
 
 from app.config import DATABASE_URL
+from app.db_pool import get_pool, fetchrow, execute
 DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")  # asyncpg needs plain postgresql://
 from app.llm_classifier import classify_message
 from app.webhooks import notify_lead_captured
@@ -91,29 +92,25 @@ async def process_incoming_message(
     # 3. Upsert into leads table (ON CONFLICT for race-safe upsert)
     lead_id = None
     try:
-        conn = await asyncpg.connect(DATABASE_URL)
-        try:
-            row = await conn.fetchrow(
-                INSERT_SQL,
-                uuid.uuid4(),
-                uuid.UUID(tenant_id),
-                platform,
-                uuid.UUID(target_id) if target_id and target_id.strip() else None,
-                uuid.UUID(account_id) if account_id and account_id.strip() else None,
-                user_handle,
-                user_full_name or "",
-                geo_tag,
-                message_text,
-                intent_score,
-                dialog_url,
-                source,
-                post_id,
-            )
-            lead_id = str(row["id"])
+        row = await fetchrow(
+            INSERT_SQL,
+            uuid.uuid4(),
+            uuid.UUID(tenant_id),
+            platform,
+            uuid.UUID(target_id) if target_id and target_id.strip() else None,
+            uuid.UUID(account_id) if account_id and account_id.strip() else None,
+            user_handle,
+            user_full_name or "",
+            geo_tag,
+            message_text,
+            intent_score,
+            dialog_url,
+            source,
+            post_id,
+        )
+        lead_id = str(row["id"])
 
-            log.info(f"Lead upserted: {lead_id} intent={intent_score}")
-        finally:
-            await conn.close()
+        log.info(f"Lead upserted: {lead_id} intent={intent_score}")
     except Exception as e:
         log.error(f"Lead upsert failed: {e}")
         return {"status": "error", "error": str(e)}
@@ -249,28 +246,27 @@ async def _track_lead_variant(tenant_id: str, post_id: str):
     Looks up the posting_log by message_id (post_id) to find the campaign,
     then increments the matching variant's leads count.
     """
-    conn = await asyncpg.connect(DATABASE_URL)
-    try:
-        # Find the campaign from the posting log
-        row = await conn.fetchrow(
-            "SELECT campaign_id FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
-            post_id, uuid.UUID(tenant_id),
-        )
-        if not row or not row["campaign_id"]:
-            return
+    from app.db_pool import fetchrow as pool_fetchrow
+    # Find the campaign from the posting log
+    row = await pool_fetchrow(
+        "SELECT campaign_id FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
+        post_id, uuid.UUID(tenant_id),
+    )
+    if not row or not row["campaign_id"]:
+        return
 
-        campaign = await conn.fetchrow(
-            "SELECT ab_enabled, ab_variants FROM campaigns WHERE id = $1 AND tenant_id = $2",
-            row["campaign_id"], uuid.UUID(tenant_id),
-        )
-        if not campaign or not campaign["ab_enabled"] or not campaign["ab_variants"]:
-            return
+    campaign = await pool_fetchrow(
+        "SELECT ab_enabled, ab_variants FROM campaigns WHERE id = $1 AND tenant_id = $2",
+        row["campaign_id"], uuid.UUID(tenant_id),
+    )
+    if not campaign or not campaign["ab_enabled"] or not campaign["ab_variants"]:
+        return
 
-        # Find the rendered text in posting_logs to match variant
-        log_row = await conn.fetchrow(
-            "SELECT rendered_text FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
-            post_id, uuid.UUID(tenant_id),
-        )
+    # Find the rendered text in posting_logs to match variant
+    log_row = await pool_fetchrow(
+        "SELECT rendered_text FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
+        post_id, uuid.UUID(tenant_id),
+    )
         if not log_row:
             return
 
@@ -287,9 +283,8 @@ async def _track_lead_variant(tenant_id: str, post_id: str):
 
         if matched:
             import json
-            await conn.execute(
+            from app.db_pool import execute as pool_execute
+            await pool_execute(
                 "UPDATE campaigns SET ab_variants = $1 WHERE id = $2",
                 json.dumps(variants), row["campaign_id"],
             )
-    finally:
-        await conn.close()

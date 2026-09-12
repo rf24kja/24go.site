@@ -178,10 +178,23 @@ class WarmupManager:
         return self._redis
 
     async def get_stage(self, account_id: str) -> int:
-        """Get current warmup stage (0 = not started, 1-3 = warming up, 4 = fully warmed up)."""
+        """Get current warmup stage (0 = not started, 1-3 = warming up, 4 = fully warmed up).
+
+        Safety valve: if stuck at stage 0 for > 48h, auto-advance to 1.
+        """
         r = await self._get_redis()
         stage = await r.get(f"warmup:{account_id}:stage")
-        return int(stage) if stage else 0
+        stage = int(stage) if stage else 0
+        if stage == 0:
+            created = await r.get(f"warmup:{account_id}:created_at")
+            if not created:
+                await r.set(f"warmup:{account_id}:created_at", str(time.time()))
+            elif time.time() - float(created) > 172800:  # 48h
+                log.info(f"Warmup safety valve: advancing {account_id} from stage 0 to 1")
+                await r.set(f"warmup:{account_id}:stage", "1")
+                await r.set(f"warmup:{account_id}:last_advance", str(time.time()))
+                return 1
+        return stage
 
     async def get_daily_limit(self, account_id: str, config: dict) -> int:
         """Get the daily action limit based on warmup stage."""

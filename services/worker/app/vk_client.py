@@ -88,21 +88,14 @@ def _decrypt(ciphertext: str) -> str:
 
 async def load_vk_token(account_id: str) -> str | None:
     """Load and decrypt VK group token from account_sessions table."""
-    conn_url = DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(conn_url)
-    try:
-        row = await conn.fetchrow(
-            "SELECT session_data FROM account_sessions WHERE account_id = $1",
-            __import__("uuid").UUID(account_id),
-        )
-        if row is None:
-            return None
-        return _decrypt(row["session_data"])
-    except Exception as e:
-        log.error(f"Failed to load VK token for {account_id}: {e}")
+    from .db_pool import fetchrow
+    row = await fetchrow(
+        "SELECT session_data FROM account_sessions WHERE account_id = $1",
+        __import__("uuid").UUID(account_id),
+    )
+    if row is None:
         return None
-    finally:
-        await conn.close()
+    return _decrypt(row["session_data"])
 
 
 # ── Rate Limiting ───────────────────────────────────────────────────────

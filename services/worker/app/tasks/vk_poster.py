@@ -71,10 +71,11 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
                            campaign_id: str, target_id: str) -> dict:
     from app.vk_client import (
         get_vk_group_session_for, check_rate_limit, check_warmup,
-        record_action, random_delay, handle_flood_wait, _handle_vk_error,
+        record_action, wait_for_rate_limit, handle_flood_wait, _handle_vk_error,
     )
     from app.config import DATABASE_URL
-    import asyncpg, uuid
+    from app.db_pool import execute as pool_execute
+    import uuid
 
     # Warmup check
     if not await check_warmup(account_id, "wall_post"):
@@ -84,7 +85,8 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
     if not await check_rate_limit(account_id, "wall_post"):
         return {"status": "error", "error": "rate_limited"}
 
-    await random_delay()
+    # ponytail: short jitter only — rate limiter handles cooldown via Redis
+    await asyncio.sleep(random.uniform(1, 3))
 
     vk_session = await get_vk_group_session_for(account_id)
     if vk_session is None:
@@ -106,23 +108,18 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         log.info(f"VK post published: group={group_id} post={post_id}")
 
         # Save to posting_logs
-        conn_url = DATABASE_URL.replace("+asyncpg", "")
-        conn = await asyncpg.connect(conn_url)
-        try:
-            await conn.execute(
-                """INSERT INTO posting_logs (id, tenant_id, campaign_id, target_id,
-                   account_id, rendered_text, utm_url, status, message_id, executed_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, '', 'published', $7, NOW())""",
-                uuid.uuid4(),
-                uuid.UUID(tenant_id),
-                uuid.UUID(campaign_id) if campaign_id else None,
-                uuid.UUID(target_id) if target_id else None,
-                uuid.UUID(account_id),
-                text[:2000],
-                str(post_id),
-            )
-        finally:
-            await conn.close()
+        await pool_execute(
+            """INSERT INTO posting_logs (id, tenant_id, campaign_id, target_id,
+               account_id, rendered_text, utm_url, status, message_id, executed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, '', 'published', $7, NOW())""",
+            uuid.uuid4(),
+            uuid.UUID(tenant_id),
+            uuid.UUID(campaign_id) if campaign_id else None,
+            uuid.UUID(target_id) if target_id else None,
+            uuid.UUID(account_id),
+            text[:2000],
+            str(post_id),
+        )
 
         # Trigger comment scraper after 2min
         try:

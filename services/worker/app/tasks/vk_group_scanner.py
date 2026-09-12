@@ -59,7 +59,8 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
     )
     from app.lead_pipeline import process_incoming_message
     from app.config import DATABASE_URL
-    import httpx, asyncpg
+    from app.db_pool import execute as pool_execute
+    import httpx
 
     vk_session = await get_vk_group_session_for(account_id)
     if vk_session is None:
@@ -69,15 +70,10 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
     # Update DB status
     if monitor_group_id:
         try:
-            conn_url = DATABASE_URL.replace("+asyncpg", "")
-            conn = await asyncpg.connect(conn_url)
-            try:
-                await conn.execute(
-                    "UPDATE monitored_groups SET status = 'scanning', last_scan_at = NOW() WHERE id = $1",
-                    uuid.UUID(monitor_group_id),
-                )
-            finally:
-                await conn.close()
+            await pool_execute(
+                "UPDATE monitored_groups SET status = 'scanning', last_scan_at = NOW() WHERE id = $1",
+                uuid.UUID(monitor_group_id),
+            )
         except Exception:
             pass
 
@@ -190,15 +186,10 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
     finally:
         if monitor_group_id:
             try:
-                conn_url = DATABASE_URL.replace("+asyncpg", "")
-                conn = await asyncpg.connect(conn_url)
-                try:
-                    await conn.execute(
-                        "UPDATE monitored_groups SET status = 'idle' WHERE id = $1",
-                        uuid.UUID(monitor_group_id),
-                    )
-                finally:
-                    await conn.close()
+                await pool_execute(
+                    "UPDATE monitored_groups SET status = 'idle' WHERE id = $1",
+                    uuid.UUID(monitor_group_id),
+                )
             except Exception:
                 pass
         log.info(f"VK Group scanner stopped: {group_id}")

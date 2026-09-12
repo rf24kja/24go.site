@@ -69,6 +69,11 @@ celery.conf.update(
             "schedule": crontab(hour=10, minute=0),
             "options": {"queue": "billing"},
         },
+        "vk-health-check": {
+            "task": "app.tasks.vk_health_check.check_vk_listeners",
+            "schedule": crontab(minute="*/5"),
+            "options": {"queue": "warmup"},
+        },
     },
 )
 
