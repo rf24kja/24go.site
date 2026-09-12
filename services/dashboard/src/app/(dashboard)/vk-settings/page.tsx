@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTenantSettings, updateSettingsSection, resetSettingsSection } from "@/lib/api";
+import { getTenantSettings, updateSettingsSection, resetSettingsSection, bulkImportVkAccounts } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { FieldHint } from "@/components/FieldHint";
 import { Cog, UsersGroup, ExternalLink, Shield, TrendingUp, Bot, type IconProps } from "@/components/Icons";
@@ -345,23 +345,42 @@ function ProxiesSection({ t, settings, onSave, onReset, saving }: any) {
 }
 
 function BulkAccountsSection({ t, settings, onSave, onReset, saving }: any) {
+  const { auth } = useAuth();
   const [jsonText, setJsonText] = useState("");
-  const [importResult, setImportResult] = useState<{ success: number; errors: string[] } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; failed: number; errors: string[] } | null>(null);
 
-  const handleImport = () => {
+  const handleImport = async () => {
+    if (!auth?.token) return;
     try {
       const accounts = JSON.parse(jsonText);
       if (!Array.isArray(accounts)) throw new Error(t("vkSettings.expectedArray"));
-      const errors: string[] = [];
-      let success = 0;
+      // Client-side validation
+      const validAccounts: { group_id: number; token: string }[] = [];
+      const clientErrors: string[] = [];
       accounts.forEach((acc: any, i: number) => {
         if (!acc.group_id || !acc.token) {
-          errors.push(t("vkSettings.accountMissingFields", { n: i + 1 }));
-        } else { success++; }
+          clientErrors.push(t("vkSettings.accountMissingFields", { n: i + 1 }));
+        } else {
+          validAccounts.push({ group_id: Number(acc.group_id), token: acc.token });
+        }
       });
-      setImportResult({ success, errors });
+      if (clientErrors.length) {
+        setImportResult({ imported: 0, failed: clientErrors.length, errors: clientErrors });
+        return;
+      }
+      // Call actual backend import API
+      setImporting(true);
+      const result = await bulkImportVkAccounts(auth.token, validAccounts);
+      setImportResult({
+        imported: result.imported || 0,
+        failed: result.failed || 0,
+        errors: (result.results || []).filter((r: any) => r.status === "failed").map((r: any) => `${r.identifier}: ${r.error}`),
+      });
     } catch (e: any) {
-      setImportResult({ success: 0, errors: [e.message] });
+      setImportResult({ imported: 0, failed: 1, errors: [e.message] });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -378,19 +397,19 @@ function BulkAccountsSection({ t, settings, onSave, onReset, saving }: any) {
       <Field label={t("vkSettings.pasteJson")} hint={t("hints.vk.bulkImport")}>
         <Textarea value={jsonText} onChange={setJsonText} placeholder='[{"group_id": 123, "token": "..."}]' rows={8} />
       </Field>
-      <button onClick={handleImport} disabled={!jsonText.trim()}
+      <button onClick={handleImport} disabled={!jsonText.trim() || importing}
         className="px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg text-sm hover:bg-zinc-600 disabled:opacity-50">
-        {t("vkSettings.parsePreview")}
+        {importing ? t("vkSettings.importing") : t("vkSettings.import")}
       </button>
       {importResult && (
         <div className={`px-4 py-3 rounded-lg text-sm ${importResult.errors.length ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>
-          <p>{t("vkSettings.accountsReady", { count: importResult.success })}</p>
+          {importResult.imported > 0 && <p>{t("vkSettings.imported", { count: importResult.imported })}</p>}
+          {importResult.failed > 0 && <p>{t("vkSettings.failed", { count: importResult.failed })}</p>}
           {importResult.errors.length > 0 && (
             <ul className="mt-1 text-xs text-rose-400">{importResult.errors.map((e, i) => <li key={i}>• {e}</li>)}</ul>
           )}
         </div>
       )}
-      <SectionActions onSave={() => onSave({ bulk_accounts: jsonText })} onReset={onReset} saving={saving} t={t} />
     </div>
   );
 }

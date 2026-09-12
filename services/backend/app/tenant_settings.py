@@ -147,6 +147,35 @@ DEFAULTS = {
         "auto_delete_old_leads": False,
         "gdpr_mode": False,
     },
+    "vk": {
+        "service_token": "",
+        "app_id": "",
+        "community_tokens": [],
+        "rate_limits": {
+            "messages_per_hour": 30,
+            "wall_posts_per_hour": 10,
+            "comments_per_hour": 20,
+        },
+        "anti_ban": {
+            "enabled": True,
+            "warmup_enabled": True,
+            "jitter_enabled": True,
+        },
+        "proxies": {
+            "proxy_list": [],
+            "proxy_rotation": "round_robin",
+        },
+        "auto_reply": {
+            "enabled": False,
+            "reply_delay_seconds": 5,
+            "max_replies_per_hour": 10,
+        },
+        "posting": {
+            "enabled": True,
+            "spintax_enabled": True,
+            "spintax_max_depth": 10,
+        },
+    },
 }
 
 # Ponytail: migration — merge old llm+auto_reply into ai_auto_reply on first load
