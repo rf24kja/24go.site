@@ -489,11 +489,26 @@ export default function AccountsPage() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {acct.platform === "vkontakte" ? (
+                        {acct.platform === "vkontakte" && acct.status === "paused" ? (
                           <button onClick={() => { setVkModal(acct.id); setVkToken(""); setVkError(""); }}
                             className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
                             {t("accounts.connectVk")}
                           </button>
+                        ) : acct.platform === "vkontakte" ? (
+                          <>
+                            <button onClick={() => handleDelete(acct.id)}
+                              disabled={actionBusy === acct.id}
+                              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40 min-h-[36px]"
+                              title={t("accounts.delete")}>
+                              {t("accounts.delete")}
+                            </button>
+                            <button onClick={() => { setVkModal(acct.id); setVkToken(""); setVkError(""); }}
+                              disabled={actionBusy === acct.id}
+                              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-emerald-400 border border-zinc-700 rounded hover:border-emerald-500/30 transition disabled:opacity-40 min-h-[36px]"
+                              title={t("accounts.reconnect")}>
+                              {t("accounts.reconnect")}
+                            </button>
+                          </>
                         ) : !tgHasSession ? (
                             <button onClick={() => handleConnectStart(acct.id)}
                               className="px-3 py-1.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition min-h-[36px]">
