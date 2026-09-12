@@ -14,7 +14,7 @@ from jose import JWTError, jwt
 from app.config import settings
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
-from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools
+from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings
 
 # ── Startup guard ─────────────────────────────────────────────────────
 if not settings.JWT_SECRET:
@@ -290,7 +290,6 @@ app.include_router(balance.router)
 
 app.include_router(proxies.router)
 app.include_router(tools.router)
-from app.routers import mailings
 app.include_router(mailings.router)
 
 
