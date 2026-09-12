@@ -27,7 +27,8 @@ log = logging.getLogger(__name__)
              bind=True, max_retries=3, default_retry_delay=60)
 def post_to_vk(self, tenant_id: str, account_id: str,
                group_id: int, text: str, campaign_id: str = "",
-               target_id: str = ""):
+               target_id: str = "",
+               ab_enabled: bool = False, ab_variants: list = None):
     """Post a message to a VK community wall."""
     log.info(f"post_to_vk: tenant={tenant_id} group={group_id}")
 
@@ -35,6 +36,15 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
 
     rendered = _render_spintax(text, posting_cfg.get("spintax_max_depth", 10))
+
+    # A/B variant selection
+    selected_index = -1
+    if ab_enabled and ab_variants:
+        from app.tasks.poster import select_ab_variant
+        selected_variant, selected_index = select_ab_variant(ab_variants)
+        if selected_variant:
+            rendered = _render_spintax(selected_variant.get("text", text),
+                                       posting_cfg.get("spintax_max_depth", 10))
 
     loop = asyncio.new_event_loop()
     try:
@@ -110,8 +120,8 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         # Save to posting_logs
         await pool_execute(
             """INSERT INTO posting_logs (id, tenant_id, campaign_id, target_id,
-               account_id, rendered_text, utm_url, status, message_id, executed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, '', 'published', $7, NOW())""",
+               account_id, rendered_text, utm_url, status, message_id, variant_index, executed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, '', 'published', $7, $8, NOW())""",
             uuid.uuid4(),
             uuid.UUID(tenant_id),
             uuid.UUID(campaign_id) if campaign_id else None,
@@ -119,6 +129,7 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
             uuid.UUID(account_id),
             text[:2000],
             str(post_id),
+            selected_index if selected_index >= 0 else None,
         )
 
         # Trigger comment scraper after 2min

@@ -243,16 +243,14 @@ async def process_incoming_message(
 async def _track_lead_variant(tenant_id: str, post_id: str):
     """Increment lead count for the A/B variant that generated this lead.
 
-    Looks up the posting_log by message_id (post_id) to find the campaign,
-    then increments the matching variant's leads count.
+    Uses variant_index stored at post time for reliable matching.
     """
     from app.db_pool import fetchrow as pool_fetchrow
-    # Find the campaign from the posting log
     row = await pool_fetchrow(
-        "SELECT campaign_id FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
+        "SELECT campaign_id, variant_index FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
         post_id, uuid.UUID(tenant_id),
     )
-    if not row or not row["campaign_id"]:
+    if not row or not row["campaign_id"] or row["variant_index"] is None:
         return
 
     campaign = await pool_fetchrow(
@@ -262,29 +260,13 @@ async def _track_lead_variant(tenant_id: str, post_id: str):
     if not campaign or not campaign["ab_enabled"] or not campaign["ab_variants"]:
         return
 
-    # Find the rendered text in posting_logs to match variant
-    log_row = await pool_fetchrow(
-        "SELECT rendered_text FROM posting_logs WHERE message_id = $1 AND tenant_id = $2 LIMIT 1",
-        post_id, uuid.UUID(tenant_id),
-    )
-        if not log_row:
-            return
-
-        rendered = (log_row["rendered_text"] or "")[:200]
-        variants = list(campaign["ab_variants"])
-        matched = False
-        for v in variants:
-            # Match by checking if rendered text starts with variant text (first 100 chars)
-            variant_preview = (v.get("text") or "")[:100]
-            if variant_preview and rendered.startswith(variant_preview[:50]):
-                v["leads"] = v.get("leads", 0) + 1
-                matched = True
-                break
-
-        if matched:
-            import json
-            from app.db_pool import execute as pool_execute
-            await pool_execute(
-                "UPDATE campaigns SET ab_variants = $1 WHERE id = $2",
-                json.dumps(variants), row["campaign_id"],
-            )
+    variants = list(campaign["ab_variants"])
+    idx = row["variant_index"]
+    if 0 <= idx < len(variants):
+        variants[idx]["leads"] = variants[idx].get("leads", 0) + 1
+        import json
+        from app.db_pool import execute as pool_execute
+        await pool_execute(
+            "UPDATE campaigns SET ab_variants = $1 WHERE id = $2",
+            json.dumps(variants), row["campaign_id"],
+        )

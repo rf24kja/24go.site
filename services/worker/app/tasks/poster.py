@@ -21,20 +21,21 @@ from app.telegram_client import disconnect_client
 log = logging.getLogger(__name__)
 
 
-def select_ab_variant(variants: list) -> dict | None:
-    """Select a variant based on weights. Returns None if no variants."""
+def select_ab_variant(variants: list) -> tuple[dict | None, int]:
+    """Select a variant based on weights. Returns (variant, index)."""
     if not variants:
-        return None
+        return None, -1
     total = sum(v.get("weight", 50) for v in variants)
     if total == 0:
-        return random.choice(variants)
+        idx = random.randint(0, len(variants) - 1)
+        return variants[idx], idx
     r = random.randint(1, total)
     cumulative = 0
-    for v in variants:
+    for i, v in enumerate(variants):
         cumulative += v.get("weight", 50)
         if r <= cumulative:
-            return v
-    return variants[-1]
+            return v, i
+    return variants[-1], len(variants) - 1
 
 
 def render_spintax(text_template: str) -> str:
@@ -86,8 +87,9 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
         return {"status": "skipped", "reason": "invalid_uuid"}
 
     selected_variant = None
+    selected_index = -1
     if ab_enabled and ab_variants:
-        selected_variant = select_ab_variant(ab_variants)
+        selected_variant, selected_index = select_ab_variant(ab_variants)
         if selected_variant:
             base_text = selected_variant.get("text", base_text)
 
@@ -143,7 +145,8 @@ return 1
         if result.get("status") == "ok":
             # Save to posting_logs with message_id for comment scraper
             _save_posting_log(tenant_id, campaign_id, target_id, account_id,
-                              full_text, utm_url, result.get("message_id"))
+                              full_text, utm_url, result.get("message_id"),
+                              variant_index=selected_index)
 
             # Update A/B variant post count
             if selected_variant and ab_variants:
@@ -232,7 +235,7 @@ async def _send_message(account_id: str, target_channel: str, text: str) -> dict
 
 
 def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
-                      rendered_text, utm_url, message_id):
+                      rendered_text, utm_url, message_id, variant_index=-1):
     """Save posting record to DB for comment scraper tracking."""
     import uuid
     import asyncpg
@@ -247,8 +250,8 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
             await conn.execute(
                 """INSERT INTO posting_logs
                    (id, tenant_id, campaign_id, target_id, account_id,
-                    rendered_text, utm_url, status, message_id, executed_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'published', $8, NOW())""",
+                    rendered_text, utm_url, status, message_id, variant_index, executed_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'published', $8, $9, NOW())""",
                 uuid.uuid4(),
                 uuid.UUID(tenant_id),
                 uuid.UUID(campaign_id) if campaign_id else None,
@@ -257,6 +260,7 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
                 rendered_text[:2000],
                 utm_url,
                 message_id,
+                variant_index if variant_index >= 0 else None,
             )
         finally:
             await conn.close()
