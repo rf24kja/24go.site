@@ -110,7 +110,7 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
                     await _handle_event(event, tenant_id, account_id, group_id, vk_session)
 
             except Exception as e:
-                vk_err = _handle_vk_error(str(e))
+                vk_err = _handle_vk_error(e)
                 if vk_err.code == 921:
                     await handle_flood_wait(vk_err)
                 elif vk_err.code in (5, 7, 15, 113):
@@ -132,25 +132,25 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
         log.info(f"VK Listener disconnected for account {account_id}")
 
 
-# ── Groups LongPoll Event Types ─────────────────────────────────────────
+# ── Groups LongPoll Event Types (v5.199) ────────────────────────────────
 # VK Groups LP v2 event types:
-#   1  =uild conversation entry (ignore)
-#   4  =uild message (NEW_MESSAGE)
-#   5  =uild edit message
-#   7  =uild message incoming (in conversations)
-#   8  =uild user online
-#   9  =uild user offline
-#  10  =uild wall post
-#  12  =uild wall post restored
-#  13  =uild wall post deleted
-#  14  =uild comment added
-#  15  =uild comment edited
-#  16  =uild comment deleted
-#  33  =uild group change settings
-#  34  =uild group change photo
-#  35  =uild group change officers
-#  51  =uild group member join
-#  52  =uild group member leave
+#   1  = MESSAGE_FLAGS_REPLACE (flags changed on message)
+#   4  = MESSAGE_NEW (new message in community)
+#   5  = MESSAGE_EDIT (message edited)
+#   7  = MESSAGE_REPLY (new reply in conversation)
+#   8  = USER_ONLINE (user came online)
+#   9  = USER_OFFLINE (user went offline)
+#  10  = WALL_POST_NEW (new wall post)
+#  12  = WALL_POST_RESTORED (deleted wall post restored)
+#  13  = WALL_POST_DELETED (wall post deleted)
+#  14  = WALL_COMMENT_NEW (new wall comment)
+#  15  = WALL_COMMENT_EDIT (wall comment edited)
+#  16  = WALL_COMMENT_DELETED (wall comment deleted)
+#  33  = GROUP_CHANGE_SETTINGS (group settings changed)
+#  34  = GROUP_CHANGE_PHOTO (group photo changed)
+#  35  = GROUP_CHANGE_OFFICERS (group officers changed)
+#  51  = GROUP_MEMBER_JOIN (user joined group)
+#  52  = GROUP_MEMBER_LEAVE (user left group)
 
 async def _handle_event(event: list, tenant_id: str, account_id: str,
                         group_id: int, vk_session):
@@ -191,7 +191,7 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
         vk = vk_session.get_api()
         user_info = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: vk.users.get(user_ids=user_id, fields="screen_name")[0],
+            lambda: vk.users.get(user_ids=str(user_id), fields="screen_name")[0],
         )
         user_handle = f"@{user_info.get('screen_name', user_id)}"
         user_full = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip()

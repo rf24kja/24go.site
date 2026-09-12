@@ -173,8 +173,11 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
                         reply_items = reply_response.get("items", [])
                         if not reply_items:
                             break
+                        # VK returns the parent comment as first item — skip it
+                        if reply_offset == 0 and reply_items[0].get("id") == comment["id"]:
+                            reply_items = reply_items[1:]
                         all_with_replies.extend(reply_items)
-                        reply_offset += len(reply_items)
+                        reply_offset += len(reply_items) + (1 if reply_offset == 0 else 0)
                         if len(reply_items) < batch_size:
                             break
                         await asyncio.sleep(0.5)
@@ -247,7 +250,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
         }
 
     except Exception as e:
-        vk_err = _handle_vk_error(str(e))
+        vk_err = _handle_vk_error(e)
         if vk_err.code == 921:
             await handle_flood_wait(vk_err)
         log.error(f"VK comment scraping error: {e}")

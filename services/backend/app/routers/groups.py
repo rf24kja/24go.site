@@ -710,7 +710,7 @@ async def _discover_vk_groups(geo_tag: str, niche: str) -> list:
         return []
 
     try:
-        session = vk_api.VkApi(token=service_token)
+        session = vk_api.VkApi(token=service_token, api_version="5.199")
         vk = session.get_api()
 
         query = f"{geo_tag} {niche}".replace("_", " ")

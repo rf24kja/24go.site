@@ -33,7 +33,7 @@ async def _check_listeners():
     try:
         # Find all active VK accounts
         rows = await pool_fetch(
-            """SELECT ap.id, ap.tenant_id, ap.platform
+            """SELECT ap.id, ap.tenant_id, ap.platform, ap.account_identifier
                FROM account_pool ap
                WHERE ap.platform = 'vkontakte' AND ap.status IN ('active', 'warming_up')"""
         )
@@ -49,14 +49,11 @@ async def _check_listeners():
                 log.info(f"VK health check: restarting listener for {account_id}")
                 try:
                     from app.tasks.vk_listener import start_vk_listener
-                    meta = await pool_fetchrow(
-                        "SELECT group_id FROM account_pool WHERE id = $1",
-                        row["id"],
-                    )
-                    group_id = (meta or {}).get("group_id", 0)
-                    if group_id:
+                    # group_id is stored in account_identifier for VK accounts
+                    vk_gid = int(row["account_identifier"]) if row["account_identifier"] else 0
+                    if vk_gid:
                         start_vk_listener.apply_async(
-                            args=[tenant_id, account_id, group_id],
+                            args=[tenant_id, account_id, vk_gid],
                         )
                 except Exception as e:
                     log.error(f"Failed to restart VK listener for {account_id}: {e}")

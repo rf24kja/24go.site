@@ -142,7 +142,7 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                             vk = vk_session.get_api()
                             user_info = await loop.run_in_executor(
                                 None,
-                                lambda: vk.users.get(user_ids=user_id, fields="screen_name")[0],
+                                lambda: vk.users.get(user_ids=str(user_id), fields="screen_name")[0],
                             )
                             user_handle = f"@{user_info.get('screen_name', user_id)}"
                             user_full = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip()
@@ -167,7 +167,7 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                         await _mark_seen(dedup_key)
 
             except Exception as e:
-                vk_err = _handle_vk_error(str(e))
+                vk_err = _handle_vk_error(e)
                 if vk_err.code == 921:
                     await handle_flood_wait(vk_err)
                 elif vk_err.code in (5, 7, 15, 113):

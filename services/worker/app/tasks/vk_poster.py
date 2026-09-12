@@ -109,7 +109,7 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         response = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: vk.wall.post(owner_id=owner_id, message=text, from_group=1,
-                                 random_id=random.randint(0, 2**31)),
+                                 random_id=random.randint(0, 2**63)),
         )
 
         await record_action(account_id, "wall_post")
@@ -145,10 +145,10 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         return {"status": "ok", "post_id": post_id, "group_id": group_id}
 
     except Exception as e:
-        vk_err = _handle_vk_error(str(e))
+        vk_err = _handle_vk_error(e)
         if vk_err.code == 921:
             await handle_flood_wait(vk_err)
-        if vk_err.code in (900, 901, 300):
+        if vk_err.code in (300, 214):
             log.error(f"VK fatal error {vk_err.code}: {vk_err.message}")
             return {"status": "error", "error": f"vk_error_{vk_err.code}"}
         log.error(f"VK publish error: {e}")

@@ -325,7 +325,7 @@ async def bulk_import_vk_accounts(
         try:
             # Validate token via VK API
             import vk_api
-            session = vk_api.VkApi(token=token)
+            session = vk_api.VkApi(token=token, api_version="5.199")
             vk = session.get_api()
             groups = vk.groups.getById()
             if not groups:
@@ -1136,7 +1136,7 @@ async def connect_vk(
     # Validate token against VK API before storing
     import vk_api
     try:
-        session = vk_api.VkApi(token=body.group_token)
+        session = vk_api.VkApi(token=body.group_token, api_version="5.199")
         vk = session.get_api()
         groups = vk.groups.getById()
         if not groups:

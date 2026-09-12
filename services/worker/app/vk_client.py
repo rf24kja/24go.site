@@ -165,15 +165,21 @@ class VKError(Exception):
         super().__init__(f"VK error {code}: {message}")
 
 
-def _handle_vk_error(error_msg: str) -> VKError:
-    """Parse VK API error message and return VKError."""
-    # VK errors: {"error":{"error_code":921,"error_msg":"Flood control",...}}
+VK_API_VERSION = "5.199"
+
+
+def _handle_vk_error(exc) -> VKError:
+    """Extract VKError from vk_api exception or raw error message."""
+    import vk_api as _vk_api
+    if isinstance(exc, _vk_api.exceptions.ApiError):
+        return VKError(exc.code, str(exc)[:200], getattr(exc, 'wait', 0))
+    # Fallback for raw string errors
     import re
-    code_match = re.search(r"error_code['\"]:\s*(\d+)", str(error_msg))
-    wait_match = re.search(r"['\"]wait['\"]:\s*(\d+)", str(error_msg))
+    code_match = re.search(r"error_code['\"]:\s*(\d+)", str(exc))
+    wait_match = re.search(r"['\"]wait['\"]:\s*(\d+)", str(exc))
     code = int(code_match.group(1)) if code_match else 0
     wait = int(wait_match.group(1)) if wait_match else 0
-    return VKError(code, str(error_msg)[:200], wait)
+    return VKError(code, str(exc)[:200], wait)
 
 
 async def handle_flood_wait(vk_error: VKError) -> bool:
@@ -218,7 +224,7 @@ async def get_vk_group_session(account_id: str, group_token: str,
 
     try:
         proxy = _parse_proxy(proxy_url)
-        kwargs = {"token": group_token}
+        kwargs = {"token": group_token, "api_version": VK_API_VERSION}
         if proxy:
             kwargs.update(proxy)
         session = vk_api.VkApi(**kwargs)
@@ -248,7 +254,7 @@ async def get_vk_user_session(account_id: str, access_token: str) -> Optional[ob
         return cached
 
     try:
-        session = vk_api.VkApi(token=access_token)
+        session = vk_api.VkApi(token=access_token, api_version=VK_API_VERSION)
         _cache_put(account_id, session)
         return session
     except Exception as e:
@@ -267,9 +273,8 @@ async def validate_vk_token(group_token: str) -> dict:
     """Validate a VK community token. Returns {ok, group_name, group_id, permissions}."""
     import vk_api
     try:
-        session = vk_api.VkApi(token=group_token)
+        session = vk_api.VkApi(token=group_token, api_version=VK_API_VERSION)
         vk = session.get_api()
-        # Check which community this token belongs to
         groups = vk.groups.getById()
         if not groups:
             return {"ok": False, "error": "Token does not belong to any community"}
