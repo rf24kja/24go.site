@@ -18,16 +18,15 @@ import random
 import uuid as uuid_mod
 from datetime import datetime, timezone, timedelta
 
-import asyncpg
 from celery import shared_task
 
 from app.celery_app import celery
 from app.locks import acquire_account_lock, increment_daily_actions
-from app.config import WARMUP_LIMITS, DATABASE_URL
+from app.config import WARMUP_LIMITS
 from app.telegram_client import disconnect_client
+from app.db_pool import fetchrow as pool_fetchrow, fetch as pool_fetch, execute as pool_execute
 
 log = logging.getLogger(__name__)
-DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
 
 STAGE_DESCRIPTIONS = {
     1: "passive trust building — read feeds, emoji reactions",
@@ -86,20 +85,16 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     delay_max = warmup_cfg.get("random_delay_max_sec", 8)
 
     # Read current stage from DB
-    conn = await asyncpg.connect(DATABASE_URL)
-    try:
-        row = await conn.fetchrow(
-            "SELECT warmup_stage, status, created_at FROM account_pool WHERE id = $1",
-            _uuid(account_id),
-        )
-        if not row:
-            return {"status": "error", "error": "account not found"}
+    row = await pool_fetchrow(
+        "SELECT warmup_stage, status, created_at FROM account_pool WHERE id = $1",
+        _uuid(account_id),
+    )
+    if not row:
+        return {"status": "error", "error": "account not found"}
 
-        stage = row["warmup_stage"] or 1
-        account_status = row["status"]
-        created_at = row["created_at"]
-    finally:
-        await conn.close()
+    stage = row["warmup_stage"] or 1
+    account_status = row["status"]
+    created_at = row["created_at"]
 
     if account_status == "cooldown":
         return {"status": "skipped", "reason": "cooldown"}
@@ -188,14 +183,10 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
 
 async def _update_stage(account_id: str, new_stage: int):
     """Update warmup stage in DB."""
-    conn = await asyncpg.connect(DATABASE_URL)
-    try:
-        await conn.execute(
-            "UPDATE account_pool SET warmup_stage = $1 WHERE id = $2",
-            new_stage, _uuid(account_id),
-        )
-    finally:
-        await conn.close()
+    await pool_execute(
+        "UPDATE account_pool SET warmup_stage = $1 WHERE id = $2",
+        new_stage, _uuid(account_id),
+    )
 
 
 @celery.task(name="app.tasks.warmup.trigger_daily_warmup", queue="warmup")
@@ -221,15 +212,11 @@ def trigger_daily_warmup():
 
 async def _get_warming_accounts() -> list[tuple[str, str]]:
     """Get all accounts in warmup stage (status != active, != banned)."""
-    conn = await asyncpg.connect(DATABASE_URL)
-    try:
-        rows = await conn.fetch(
-            "SELECT tenant_id, id FROM account_pool WHERE status IN ('warming_up', 'active') "
-            "AND warmup_stage < 3"
-        )
-        return [(str(r["tenant_id"]), str(r["id"])) for r in rows]
-    finally:
-        await conn.close()
+    rows = await pool_fetch(
+        "SELECT tenant_id, id FROM account_pool WHERE status IN ('warming_up', 'active') "
+        "AND warmup_stage < 3"
+    )
+    return [(str(r["tenant_id"]), str(r["id"])) for r in rows]
 
 
 @celery.task(name="app.tasks.warmup.handle_flood_wait", queue="warmup")
@@ -255,15 +242,11 @@ def handle_flood_wait(tenant_id: str, account_id: str, wait_seconds: int = 14400
 
 async def _set_cooldown(account_id: str, wait_seconds: int):
     """Set account to cooldown status in DB."""
-    conn = await asyncpg.connect(DATABASE_URL)
-    try:
-        cooldown_until = datetime.now(timezone.utc) + timedelta(seconds=wait_seconds)
-        await conn.execute(
-            "UPDATE account_pool SET status = 'cooldown', cooldown_until = $1 WHERE id = $2",
-            cooldown_until, _uuid(account_id),
-        )
-    finally:
-        await conn.close()
+    cooldown_until = datetime.now(timezone.utc) + timedelta(seconds=wait_seconds)
+    await pool_execute(
+        "UPDATE account_pool SET status = 'cooldown', cooldown_until = $1 WHERE id = $2",
+        cooldown_until, _uuid(account_id),
+    )
 
 
 def _uuid(val: str):

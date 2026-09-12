@@ -26,17 +26,15 @@ def check_vk_listeners():
 
 async def _check_listeners():
     import redis.asyncio as aioredis
-    from app.config import REDIS_URL, DATABASE_URL
-    import asyncpg
+    from app.config import REDIS_URL
+    from app.db_pool import fetch as pool_fetch, fetchrow as pool_fetchrow
 
     r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    conn_url = DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(conn_url)
     try:
         # Find all active VK accounts
-        rows = await conn.fetch(
+        rows = await pool_fetch(
             """SELECT ap.id, ap.tenant_id, ap.platform
-               FROM account_pools ap
+               FROM account_pool ap
                WHERE ap.platform = 'vkontakte' AND ap.status IN ('active', 'warming_up')"""
         )
 
@@ -51,9 +49,8 @@ async def _check_listeners():
                 log.info(f"VK health check: restarting listener for {account_id}")
                 try:
                     from app.tasks.vk_listener import start_vk_listener
-                    # Get group_id from account_pools metadata
-                    meta = await conn.fetchrow(
-                        "SELECT group_id FROM account_pools WHERE id = $1",
+                    meta = await pool_fetchrow(
+                        "SELECT group_id FROM account_pool WHERE id = $1",
                         row["id"],
                     )
                     group_id = (meta or {}).get("group_id", 0)
@@ -64,5 +61,4 @@ async def _check_listeners():
                 except Exception as e:
                     log.error(f"Failed to restart VK listener for {account_id}: {e}")
     finally:
-        await conn.close()
         await r.aclose()

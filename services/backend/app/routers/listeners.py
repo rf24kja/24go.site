@@ -13,13 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import AccountPool, User
 from app.security import get_current_user
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/listeners", tags=["listeners"])
 log = logging.getLogger(__name__)
 
-# Track active task IDs per account for targeted revoke
-# ponytail: in-memory, single-process. Upgrade to Redis if multi-worker.
-_active_tasks: dict[str, str] = {}  # account_id -> task_id
+
+def _get_redis():
+    import redis.asyncio as aioredis
+    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 class ListenerStatus(BaseModel):
@@ -44,18 +46,23 @@ async def start_listener(
     if not account:
         raise HTTPException(404, "Account not found")
 
-    # Check if already running
-    if account_id in _active_tasks:
-        return ListenerStatus(account_id=account_id, status="already_running")
+    # Check if already running via Redis
+    r = _get_redis()
+    try:
+        existing = await r.get(f"listener_task:{account_id}")
+        if existing:
+            return ListenerStatus(account_id=account_id, status="already_running")
 
-    # Dispatch to listener worker
-    from app.celery_app import celery
-    task = celery.send_task(
-        "app.tasks.listener.start_lead_listener",
-        args=[str(current_user.tenant_id), account_id],
-        queue="listener",
-    )
-    _active_tasks[account_id] = task.id
+        # Dispatch to listener worker
+        from app.celery_app import celery
+        task = celery.send_task(
+            "app.tasks.listener.start_lead_listener",
+            args=[str(current_user.tenant_id), account_id],
+            queue="listener",
+        )
+        await r.set(f"listener_task:{account_id}", task.id, ex=86400)
+    finally:
+        await r.aclose()
 
     log.info(f"Listener started for account {account_id} (task={task.id})")
     return ListenerStatus(account_id=account_id, status="started")
@@ -67,15 +74,20 @@ async def stop_listener(
     current_user: User = Depends(get_current_user),
 ):
     """Stop a running listener. Revokes the specific Celery task."""
-    task_id = _active_tasks.pop(account_id, None)
+    r = _get_redis()
+    try:
+        task_id = await r.get(f"listener_task:{account_id}")
+        if task_id:
+            await r.delete(f"listener_task:{account_id}")
 
-    from app.celery_app import celery
-    if task_id:
-        celery.control.revoke(task_id, terminate=True)
-        log.info(f"Revoked task {task_id} for account {account_id}")
-    else:
-        # No tracked task — try to revoke any task with matching args
-        log.warning(f"No tracked task for account {account_id}, cannot targeted revoke")
+        from app.celery_app import celery
+        if task_id:
+            celery.control.revoke(task_id, terminate=True)
+            log.info(f"Revoked task {task_id} for account {account_id}")
+        else:
+            log.warning(f"No tracked task for account {account_id}, cannot targeted revoke")
+    finally:
+        await r.aclose()
 
     return {"status": "stopped", "account_id": account_id}
 
@@ -101,10 +113,16 @@ async def listener_status(
             "pid": info.get("pid"),
         })
 
-    # Also return which accounts have active listeners
-    active_workers = [
-        {"account_id": aid, "task_id": tid, "status": "active"}
-        for aid, tid in _active_tasks.items()
-    ]
+    # Get active listeners from Redis
+    r = _get_redis()
+    try:
+        keys = await r.keys("listener_task:*")
+        active_workers = []
+        for key in keys:
+            aid = key.split(":", 1)[1]
+            tid = await r.get(key)
+            active_workers.append({"account_id": aid, "task_id": tid, "status": "active"})
+    finally:
+        await r.aclose()
 
     return {"workers": workers, "active_workers": active_workers}

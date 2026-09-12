@@ -23,7 +23,7 @@ import redis
 log = logging.getLogger(__name__)
 
 # ── Config ───────────────────────────────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
+DATABASE_URL = os.environ["DATABASE_URL"]
 DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
 TG_API_ID = int(os.getenv("TG_API_ID", "0"))
 TG_API_HASH = os.getenv("TG_API_HASH", "")

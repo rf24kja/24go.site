@@ -238,32 +238,25 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
                       rendered_text, utm_url, message_id, variant_index=-1):
     """Save posting record to DB for comment scraper tracking."""
     import uuid
-    import asyncpg
-    import os
-
-    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
-    db_url = db_url.replace("+asyncpg", "")
+    import asyncio
 
     async def _insert():
-        conn = await asyncpg.connect(db_url)
-        try:
-            await conn.execute(
-                """INSERT INTO posting_logs
-                   (id, tenant_id, campaign_id, target_id, account_id,
-                    rendered_text, utm_url, status, message_id, variant_index, executed_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'published', $8, $9, NOW())""",
-                uuid.uuid4(),
-                uuid.UUID(tenant_id),
-                uuid.UUID(campaign_id) if campaign_id else None,
-                uuid.UUID(target_id) if target_id else None,
-                uuid.UUID(account_id) if account_id else None,
-                rendered_text[:2000],
-                utm_url,
-                message_id,
-                variant_index if variant_index >= 0 else None,
-            )
-        finally:
-            await conn.close()
+        from app.db_pool import execute as pool_execute
+        await pool_execute(
+            """INSERT INTO posting_logs
+               (id, tenant_id, campaign_id, target_id, account_id,
+                rendered_text, utm_url, status, message_id, variant_index, executed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'published', $8, $9, NOW())""",
+            uuid.uuid4(),
+            uuid.UUID(tenant_id),
+            uuid.UUID(campaign_id) if campaign_id else None,
+            uuid.UUID(target_id) if target_id else None,
+            uuid.UUID(account_id) if account_id else None,
+            rendered_text[:2000],
+            utm_url,
+            message_id,
+            variant_index if variant_index >= 0 else None,
+        )
 
     loop = asyncio.new_event_loop()
     try:
@@ -274,25 +267,18 @@ def _save_posting_log(tenant_id, campaign_id, target_id, account_id,
 
 def _update_variant_stats(tenant_id: str, campaign_id: str, variants: list):
     """Update A/B variant post counts in campaigns table."""
-    import asyncpg
-    import os
     import json
     import uuid
-
-    db_url = os.getenv("DATABASE_URL", "postgresql://app_user:secure_password@postgres:5432/app_db")
-    db_url = db_url.replace("+asyncpg", "")
+    import asyncio
 
     async def _update():
-        conn = await asyncpg.connect(db_url)
-        try:
-            await conn.execute(
-                "UPDATE campaigns SET ab_variants = $1 WHERE id = $2 AND tenant_id = $3",
-                json.dumps(variants),
-                uuid.UUID(campaign_id),
-                uuid.UUID(tenant_id),
-            )
-        finally:
-            await conn.close()
+        from app.db_pool import execute as pool_execute
+        await pool_execute(
+            "UPDATE campaigns SET ab_variants = $1 WHERE id = $2 AND tenant_id = $3",
+            json.dumps(variants),
+            uuid.UUID(campaign_id),
+            uuid.UUID(tenant_id),
+        )
 
     loop = asyncio.new_event_loop()
     try:

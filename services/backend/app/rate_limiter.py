@@ -4,7 +4,6 @@ Uses sliding window counter per tenant. Limits defined in plan tiers.
 """
 import time
 import logging
-import asyncpg
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -62,17 +61,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if plan is None:
                 plan = "trial"
                 try:
-                    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
-                    conn = await asyncpg.connect(conn_url)
-                    try:
-                        row = await conn.fetchrow(
-                            "SELECT plan FROM subscriptions WHERE tenant_id = $1",
-                            tenant_id,
+                    from app.database import async_session
+                    async with async_session() as session:
+                        row = await session.execute(
+                            "SELECT plan FROM subscriptions WHERE tenant_id = :tid",
+                            {"tid": tenant_id},
                         )
+                        row = row.mappings().first()
                         if row:
                             plan = row["plan"]
-                    finally:
-                        await conn.close()
                 except Exception:
                     pass
                 request.state.plan = plan

@@ -72,13 +72,7 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
     log.info(f"VK Listener connected for group {group_id}, waiting for events...")
     await _set_vk_status(account_id, "online")
 
-    # ponytail: cached Redis connection for heartbeat
-    _heartbeat_redis = None
-
     async def _heartbeat():
-        nonlocal _heartbeat_redis
-        import redis
-        import os
         while True:
             await asyncio.sleep(30)
             await _set_vk_status(account_id, "online")

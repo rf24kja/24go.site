@@ -141,7 +141,7 @@ async def process_incoming_message(
             from app.notifications import notify_hot_lead
             await notify_hot_lead(tenant_id, lead_payload, tenant_cfg)
         except Exception as e:
-            log.debug(f"Email notify failed (non-blocking): {e}")
+            log.warning(f"Email notify failed (non-blocking): {e}")
 
         # Telegram/Slack notifications
         try:

@@ -67,11 +67,11 @@ async def _scrape_with_semaphore(tenant_id, account_id, group_id, post_id, sourc
         return await _scrape_vk_and_classify(tenant_id, account_id, group_id,
                                               post_id, source_target_id)
     finally:
-        r2 = aioredis.from_url(REDIS_URL, decode_responses=True)
+        r_dec = aioredis.from_url(REDIS_URL, decode_responses=True)
         try:
-            await r2.decr(sem_key)
+            await r_dec.decr(sem_key)
         finally:
-            await r2.aclose()
+            await r_dec.aclose()
 
 
 async def _is_already_scraped(tenant_id: str, cache_key: str) -> bool:

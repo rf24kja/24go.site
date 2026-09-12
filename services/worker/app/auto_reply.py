@@ -7,7 +7,7 @@ import re
 import time
 
 import httpx
-import redis
+import redis.asyncio as aioredis
 
 log = logging.getLogger(__name__)
 
@@ -20,27 +20,26 @@ _LLM_ENDPOINTS = {
 }
 
 
-def _get_rate_limit_redis() -> redis.Redis:
-    return redis.Redis.from_url(
+async def _check_and_increment_rate_limit(tenant_id: str, max_per_hour: int) -> bool:
+    """Check rate limit using Redis sorted set. Returns True if allowed."""
+    r = aioredis.from_url(
         os.getenv("CELERY_BROKER_URL", "redis://redis:6379/1"),
         decode_responses=True,
     )
-
-
-def _check_and_increment_rate_limit(tenant_id: str, max_per_hour: int) -> bool:
-    """Check rate limit using Redis sorted set. Returns True if allowed."""
-    r = _get_rate_limit_redis()
-    key = f"auto_reply_rate:{tenant_id}"
-    now = time.time()
-    hour_ago = now - 3600
-    pipe = r.pipeline()
-    pipe.zremrangebyscore(key, 0, hour_ago)
-    pipe.zadd(key, {str(now): now})
-    pipe.zcard(key)
-    pipe.expire(key, 3600)
-    results = pipe.execute()
-    count = results[2]
-    return count <= max_per_hour
+    try:
+        key = f"auto_reply_rate:{tenant_id}"
+        now = time.time()
+        hour_ago = now - 3600
+        pipe = r.pipeline()
+        pipe.zremrangebyscore(key, 0, hour_ago)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, 3600)
+        results = await pipe.execute()
+        count = results[2]
+        return count <= max_per_hour
+    finally:
+        await r.aclose()
 
 
 def _is_within_work_hours(start_hour: int, end_hour: int, timezone_str: str = "UTC") -> bool:
@@ -155,7 +154,7 @@ async def send_auto_reply(
         return
 
     max_per_hour = ai_config.get("max_replies_per_hour", 10)
-    if not _check_and_increment_rate_limit(tenant_id, max_per_hour):
+    if not await _check_and_increment_rate_limit(tenant_id, max_per_hour):
         log.warning(f"Auto-reply rate limit reached for tenant {tenant_id}")
         return
 

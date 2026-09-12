@@ -5,9 +5,12 @@ Rate limiting, account rotation, cooldowns, and warmup.
 
 import asyncio
 import json
+import logging
 import random
 import time
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 import redis.asyncio as aioredis
 

@@ -1,8 +1,8 @@
 """Worker configuration and shared constants."""
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://app_user:secure_password@postgres:5432/app_db")
-REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/1")
+DATABASE_URL = os.environ["DATABASE_URL"]
+REDIS_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/1")
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
 
 # Account warmup limits per stage

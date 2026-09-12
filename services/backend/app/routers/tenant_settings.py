@@ -91,9 +91,11 @@ async def test_webhook(
     # SSRF protection: block internal/private URLs
     from urllib.parse import urlparse
     import ipaddress
+    import socket
     parsed = urlparse(body.url)
     hostname = parsed.hostname or ""
-    blocked = ["localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"]
+    blocked = ["localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254",
+               "metadata.google.internal", "[::1]", "0:0:0:0:0:0:0:1"]
     if hostname in blocked:
         raise HTTPException(400, "Internal URLs are not allowed")
     try:
@@ -103,6 +105,16 @@ async def test_webhook(
     except ValueError:
         if hostname.endswith(".internal") or hostname.endswith(".local"):
             raise HTTPException(400, "Internal domains are not allowed")
+
+    # Resolve hostname and check resolved IPs (DNS rebinding protection)
+    try:
+        resolved = socket.getaddrinfo(hostname, None)
+        for _, _, _, _, sockaddr in resolved:
+            resolved_ip = ipaddress.ip_address(sockaddr[0])
+            if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_link_local:
+                raise HTTPException(400, "URL resolves to private/internal IP")
+    except (socket.gaierror, OSError):
+        pass  # DNS resolution failed — let httpx handle it
 
     test_payload = {
         "event": "webhook.test",

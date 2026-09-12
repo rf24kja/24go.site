@@ -312,9 +312,10 @@ async def health():
 
     # Redis check
     try:
-        import redis as _redis
-        r = _redis.from_url(settings.REDIS_URL, socket_timeout=3)
-        r.ping()
+        import redis.asyncio as _aioredis
+        r = _aioredis.from_url(settings.REDIS_URL, socket_timeout=3)
+        await r.ping()
+        await r.aclose()
         checks["redis"] = "ok"
     except Exception:
         checks["redis"] = "error"
