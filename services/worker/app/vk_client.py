@@ -10,6 +10,7 @@ import base64
 import logging
 import os
 import random
+import threading
 import time
 from typing import Optional
 
@@ -20,28 +21,37 @@ from .anti_ban import get_rate_limiter, get_account_rotation, get_warmup_manager
 
 log = logging.getLogger(__name__)
 
-# ponytail: session cache with TTL + max size
+# ponytail: session cache with TTL + max size + threading lock
 _vk_sessions: dict = {}  # key → (session, created_at)
 _VK_SESSION_TTL = 3600  # 1 hour
 _VK_SESSION_MAX = 100
+_session_lock = threading.Lock()
 
 
 def _cache_get(key: str):
-    entry = _vk_sessions.get(key)
-    if entry is None:
-        return None
-    session, ts = entry
-    if time.time() - ts > _VK_SESSION_TTL:
-        _vk_sessions.pop(key, None)
-        return None
-    return session
+    with _session_lock:
+        entry = _vk_sessions.get(key)
+        if entry is None:
+            return None
+        session, ts = entry
+        if time.time() - ts > _VK_SESSION_TTL:
+            _vk_sessions.pop(key, None)
+            return None
+        return session
 
 
 def _cache_put(key: str, session):
-    if len(_vk_sessions) >= _VK_SESSION_MAX:
-        oldest = min(_vk_sessions, key=lambda k: _vk_sessions[k][1])
-        _vk_sessions.pop(oldest, None)
-    _vk_sessions[key] = (session, time.time())
+    with _session_lock:
+        if len(_vk_sessions) >= _VK_SESSION_MAX:
+            oldest = min(_vk_sessions, key=lambda k: _vk_sessions[k][1])
+            _vk_sessions.pop(oldest, None)
+        _vk_sessions[key] = (session, time.time())
+
+
+def _cache_invalidate(key: str):
+    with _session_lock:
+        _vk_sessions.pop(key, None)
+        _vk_sessions.pop(f"group_{key}", None)
 
 VK_RATE_LIMITS = {
     "messages": {"max_per_hour": 30, "max_per_day": 300},
@@ -254,8 +264,7 @@ async def get_vk_user_session(account_id: str, access_token: str) -> Optional[ob
 
 
 def disconnect_vk(account_id: str) -> None:
-    _vk_sessions.pop(account_id, None)
-    _vk_sessions.pop(f"group_{account_id}", None)
+    _cache_invalidate(account_id)
     log.info(f"VK sessions cleared for account {account_id}")
 
 

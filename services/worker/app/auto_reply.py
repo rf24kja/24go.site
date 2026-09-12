@@ -123,12 +123,12 @@ async def send_auto_reply(
     intent: str,
     message_text: str,
     ai_config: dict,
+    platform: str = "telegram",
 ):
     """Send an auto-reply based on ai_auto_reply config."""
     if not ai_config.get("reply_enabled"):
         return
 
-    platform = "telegram"
     channels = ai_config.get("channels", {})
     if not channels.get(platform, True):
         return

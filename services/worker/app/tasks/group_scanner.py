@@ -13,6 +13,7 @@ Flow:
 import asyncio
 import logging
 import time
+import uuid
 
 from celery import shared_task
 from app.celery_app import celery
@@ -70,7 +71,7 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
                 try:
                     await conn.execute(
                         "UPDATE monitored_groups SET status = 'error' WHERE id = $1",
-                        __import__('uuid').UUID(monitor_group_id),
+                        uuid.UUID(monitor_group_id),
                     )
                 finally:
                     await conn.close()
@@ -95,7 +96,7 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
                 try:
                     await conn.execute(
                         "UPDATE monitored_groups SET status = 'error' WHERE id = $1",
-                        __import__('uuid').UUID(monitor_group_id),
+                        uuid.UUID(monitor_group_id),
                     )
                 finally:
                     await conn.close()
@@ -111,7 +112,7 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
             try:
                 await conn.execute(
                     "UPDATE monitored_groups SET status = 'scanning', last_scan_at = NOW() WHERE id = $1",
-                    __import__('uuid').UUID(monitor_group_id),
+                    uuid.UUID(monitor_group_id),
                 )
             finally:
                 await conn.close()
@@ -204,7 +205,7 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
                 try:
                     await conn.execute(
                         "UPDATE monitored_groups SET status = 'idle' WHERE id = $1",
-                        __import__('uuid').UUID(monitor_group_id),
+                        uuid.UUID(monitor_group_id),
                     )
                 finally:
                     await conn.close()

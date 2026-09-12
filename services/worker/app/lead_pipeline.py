@@ -66,7 +66,11 @@ async def process_incoming_message(
     from app.tenant_settings import get_tenant_settings_from_db
     tenant_cfg = await get_tenant_settings_from_db(tenant_id)
     ai_cfg = tenant_cfg.get("ai_auto_reply", {})
-    classification = await classify_message(message_text, geo_tag, ai_cfg=ai_cfg)
+    try:
+        classification = await classify_message(message_text, geo_tag, ai_cfg=ai_cfg)
+    except Exception as e:
+        log.error(f"Classification failed, defaulting to COLD: {e}")
+        classification = {"intent_score": "COLD", "confidence": 0.0}
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL
@@ -173,6 +177,7 @@ async def process_incoming_message(
                 intent=intent_score,
                 message_text=message_text,
                 ai_config=ai_cfg,
+                platform=platform,
             ))
             task.add_done_callback(lambda t: t.exception() and log.error(f"Auto-reply error: {t.exception()}"))
     except Exception as e:

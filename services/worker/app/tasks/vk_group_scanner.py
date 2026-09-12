@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 
 from celery import shared_task
 from app.celery_app import celery
@@ -39,6 +40,8 @@ def start_vk_group_scanner(self, tenant_id: str, account_id: str,
             _run_vk_group_scanner(self, tenant_id, account_id,
                                   group_id, monitor_group_id)
         )
+    except asyncio.CancelledError:
+        log.info(f"VK Group scanner cancelled for {group_id}")
     except Exception as e:
         log.error(f"VK group scanner crashed: {e}")
         raise self.retry(exc=e)
@@ -71,12 +74,14 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
             try:
                 await conn.execute(
                     "UPDATE monitored_groups SET status = 'scanning', last_scan_at = NOW() WHERE id = $1",
-                    __import__('uuid').UUID(monitor_group_id),
+                    uuid.UUID(monitor_group_id),
                 )
             finally:
                 await conn.close()
         except Exception:
             pass
+
+    loop = asyncio.get_event_loop()
 
     # Groups LongPoll server
     lp = await loop.run_in_executor(
@@ -103,11 +108,14 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
 
                 if raw.get("failed"):
                     log.warning(f"VK LongPoll failed ({raw['failed']}), reconnecting...")
-                    lp = await loop.run_in_executor(
-                        None, lambda: get_longpoll_server(vk_session, group_id)
-                    )
-                    if lp:
-                        lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
+                    if raw["failed"] == 1:
+                        pass  # Keep old ts, VK will replay events
+                    else:
+                        lp = await loop.run_in_executor(
+                            None, lambda: get_longpoll_server(vk_session, group_id)
+                        )
+                        if lp:
+                            lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
                     continue
 
                 lp_ts = raw.get("ts", lp_ts)
@@ -129,7 +137,6 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                         dedup_key = f"vk:scanner:{account_id}:{message_id}:{peer_id}"
                         if await _is_duplicate(dedup_key):
                             continue
-                        await _mark_seen(dedup_key)
 
                         user_id = peer_id if peer_id > 0 else 0
                         if user_id <= 0:
@@ -161,11 +168,17 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                             source="group",
                         )
                         log.info(f"VK Group lead: {result.get('intent_score')} from {user_handle}")
+                        await _mark_seen(dedup_key)
 
             except Exception as e:
                 vk_err = _handle_vk_error(str(e))
                 if vk_err.code == 921:
                     await handle_flood_wait(vk_err)
+                elif vk_err.code in (5, 7, 15, 113):
+                    log.error(f"VK auth error {vk_err.code}: token revoked — stopping scanner")
+                    from app.vk_client import disconnect_vk
+                    disconnect_vk(account_id)
+                    return
                 log.error(f"VK Group scanner error: {e}, reconnecting in 5s...")
                 await asyncio.sleep(5)
                 lp = await loop.run_in_executor(
@@ -182,7 +195,7 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                 try:
                     await conn.execute(
                         "UPDATE monitored_groups SET status = 'idle' WHERE id = $1",
-                        __import__('uuid').UUID(monitor_group_id),
+                        uuid.UUID(monitor_group_id),
                     )
                 finally:
                     await conn.close()
@@ -191,21 +204,22 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
         log.info(f"VK Group scanner stopped: {group_id}")
 
 
+_dedup_redis = None
+
+async def _get_dedup_redis():
+    global _dedup_redis
+    if _dedup_redis is None:
+        import redis.asyncio as aioredis
+        from app.config import REDIS_URL
+        _dedup_redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    return _dedup_redis
+
+
 async def _is_duplicate(key: str) -> bool:
-    import redis.asyncio as aioredis
-    from app.config import REDIS_URL
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        return await r.exists(key)
-    finally:
-        await r.aclose()
+    r = await _get_dedup_redis()
+    return await r.exists(key)
 
 
 async def _mark_seen(key: str) -> None:
-    import redis.asyncio as aioredis
-    from app.config import REDIS_URL
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        await r.set(key, "1", ex=3600)
-    finally:
-        await r.aclose()
+    r = await _get_dedup_redis()
+    await r.set(key, "1", ex=3600)

@@ -15,15 +15,13 @@ import redis.asyncio as aioredis
 class RateLimiter:
     """Atomic rate limiter backed by Redis Lua scripts."""
 
-    # Lua: INCR both keys, check limits, DECR if over — all atomic
+    # Lua: INCR both keys, check limits, return 0 if over (don't DECR — accept the wasted count)
     _CHECK_AND_LIMIT = """
     local hourly = redis.call('INCR', KEYS[1])
     redis.call('EXPIRE', KEYS[1], 3600)
     local daily = redis.call('INCR', KEYS[2])
     redis.call('EXPIRE', KEYS[2], 86400)
     if hourly > tonumber(ARGV[1]) or daily > tonumber(ARGV[2]) then
-        redis.call('DECR', KEYS[1])
-        redis.call('DECR', KEYS[2])
         return 0
     end
     return 1

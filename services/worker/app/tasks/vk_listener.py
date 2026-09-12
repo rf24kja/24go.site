@@ -35,6 +35,8 @@ def start_vk_listener(self, tenant_id: str, account_id: str,
         loop.run_until_complete(
             _run_vk_listener(self, tenant_id, account_id, group_id)
         )
+    except asyncio.CancelledError:
+        log.info(f"VK Listener cancelled for {account_id}")
     except Exception as e:
         log.error(f"VK Listener crashed: {e}")
         raise self.retry(exc=e)
@@ -97,11 +99,14 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
 
                 if raw.get("failed"):
                     log.warning(f"VK LongPoll failed ({raw['failed']}), reconnecting...")
-                    lp = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: get_longpoll_server(vk_session, group_id)
-                    )
-                    if lp:
-                        lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
+                    if raw["failed"] == 1:
+                        pass  # Keep old ts, VK will replay events
+                    else:
+                        lp = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: get_longpoll_server(vk_session, group_id)
+                        )
+                        if lp:
+                            lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
                     continue
 
                 lp_ts = raw.get("ts", lp_ts)
@@ -114,6 +119,11 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
                 vk_err = _handle_vk_error(str(e))
                 if vk_err.code == 921:
                     await handle_flood_wait(vk_err)
+                elif vk_err.code in (5, 7, 15, 113):
+                    log.error(f"VK auth error {vk_err.code}: token revoked or invalid — stopping listener")
+                    from app.vk_client import disconnect_vk
+                    disconnect_vk(account_id)
+                    return
                 log.error(f"VK LongPoll error: {e}, reconnecting in 5s...")
                 await asyncio.sleep(5)
                 lp = await asyncio.get_event_loop().run_in_executor(
@@ -177,7 +187,6 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
     dedup_key = f"vk:msg:{account_id}:{message_id}:{peer_id}"
     if await _is_duplicate(dedup_key):
         return
-    await _mark_seen(dedup_key)
 
     # Get sender info — peer_id is user_id for PMs
     user_id = peer_id if peer_id > 0 else 0
@@ -211,6 +220,7 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
             source="dm",
         )
         log.info(f"VK Lead: {result.get('intent_score')} from {user_handle}")
+        await _mark_seen(dedup_key)
     except Exception as e:
         log.error(f"VK lead pipeline error: {e}")
 
@@ -250,6 +260,6 @@ async def _set_vk_status(account_id: str, status: str) -> None:
             "status": status,
             "updated_at": time.time(),
             "platform": "vkontakte",
-        }), ex=300)
+        }), ex=90)
     except Exception as e:
         log.warning(f"Failed to set VK status: {e}")

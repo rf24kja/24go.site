@@ -1179,6 +1179,15 @@ async def connect_vk(
     account.status = "active"
     await db.commit()
 
+    # Auto-dispatch VK listener
+    try:
+        from app.tasks.vk_listener import start_vk_listener
+        start_vk_listener.apply_async(
+            args=[str(current_user.tenant_id), str(account_id), body.group_id],
+        )
+    except Exception as e:
+        log.warning(f"Failed to auto-dispatch VK listener: {e}")
+
     log.info(f"VK connected for account {account_id}, group={body.group_id} ({g['name']})")
     conn = await asyncpg.connect(conn_url)
     try:
