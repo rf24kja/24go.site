@@ -20,8 +20,28 @@ from .anti_ban import get_rate_limiter, get_account_rotation, get_warmup_manager
 
 log = logging.getLogger(__name__)
 
-# ponytail: in-memory session cache, no TTL. OK for single-worker.
-_vk_sessions: dict = {}
+# ponytail: session cache with TTL + max size
+_vk_sessions: dict = {}  # key → (session, created_at)
+_VK_SESSION_TTL = 3600  # 1 hour
+_VK_SESSION_MAX = 100
+
+
+def _cache_get(key: str):
+    entry = _vk_sessions.get(key)
+    if entry is None:
+        return None
+    session, ts = entry
+    if time.time() - ts > _VK_SESSION_TTL:
+        _vk_sessions.pop(key, None)
+        return None
+    return session
+
+
+def _cache_put(key: str, session):
+    if len(_vk_sessions) >= _VK_SESSION_MAX:
+        oldest = min(_vk_sessions, key=lambda k: _vk_sessions[k][1])
+        _vk_sessions.pop(oldest, None)
+    _vk_sessions[key] = (session, time.time())
 
 VK_RATE_LIMITS = {
     "messages": {"max_per_hour": 30, "max_per_day": 300},
@@ -187,8 +207,9 @@ async def get_vk_group_session(account_id: str, group_token: str,
     import vk_api
 
     cache_key = f"group_{account_id}"
-    if cache_key in _vk_sessions:
-        return _vk_sessions[cache_key]
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         proxy = _parse_proxy(proxy_url)
@@ -196,7 +217,7 @@ async def get_vk_group_session(account_id: str, group_token: str,
         if proxy:
             kwargs.update(proxy)
         session = vk_api.VkApi(**kwargs)
-        _vk_sessions[cache_key] = session
+        _cache_put(cache_key, session)
         log.info(f"VK group session created for account {account_id}")
         return session
     except Exception as e:
@@ -217,12 +238,13 @@ async def get_vk_group_session_for(account_id: str) -> Optional[object]:
 async def get_vk_user_session(account_id: str, access_token: str) -> Optional[object]:
     import vk_api
 
-    if account_id in _vk_sessions:
-        return _vk_sessions[account_id]
+    cached = _cache_get(account_id)
+    if cached is not None:
+        return cached
 
     try:
         session = vk_api.VkApi(token=access_token)
-        _vk_sessions[account_id] = session
+        _cache_put(account_id, session)
         return session
     except Exception as e:
         log.error(f"VK user session creation failed: {e}")
