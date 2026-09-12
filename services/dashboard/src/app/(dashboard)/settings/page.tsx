@@ -699,7 +699,7 @@ function TgStatSection({ settings, defaults, onSave, onReset, saving }: any) {
             <Select value={cfg.default_country || "ru"} onChange={(v) => set("default_country", v)}
               options={[
                 { value: "ru", label: "Россия" },
-                { value: "all", label: "All" },
+                { value: "all", label: t("settings.allCountries") },
                 { value: "th", label: "Thailand" },
                 { value: "kz", label: "Kazakhstan" },
               ]} />

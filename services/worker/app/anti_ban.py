@@ -13,47 +13,52 @@ import redis.asyncio as aioredis
 
 
 class RateLimiter:
-    """Token-bucket rate limiter backed by Redis."""
+    """Atomic rate limiter backed by Redis Lua scripts."""
+
+    # Lua: INCR both keys, check limits, DECR if over — all atomic
+    _CHECK_AND_LIMIT = """
+    local hourly = redis.call('INCR', KEYS[1])
+    redis.call('EXPIRE', KEYS[1], 3600)
+    local daily = redis.call('INCR', KEYS[2])
+    redis.call('EXPIRE', KEYS[2], 86400)
+    if hourly > tonumber(ARGV[1]) or daily > tonumber(ARGV[2]) then
+        redis.call('DECR', KEYS[1])
+        redis.call('DECR', KEYS[2])
+        return 0
+    end
+    return 1
+    """
 
     def __init__(self, redis_url: str):
         self.redis_url = redis_url
         self._redis: Optional[aioredis.Redis] = None
+        self._check_script: Optional[aioredis.client.Script] = None
 
     async def _get_redis(self) -> aioredis.Redis:
         if self._redis is None:
             self._redis = aioredis.from_url(self.redis_url, decode_responses=True)
         return self._redis
 
-    async def is_allowed(self, account_id: str, action_type: str, limits: dict) -> bool:
-        """Check if an action is allowed for this account."""
-        r = await self._get_redis()
-        now = int(time.time())
+    async def _get_check_script(self):
+        if self._check_script is None:
+            r = await self._get_redis()
+            self._check_script = r.register_script(self._CHECK_AND_LIMIT)
+        return self._check_script
 
+    async def is_allowed(self, account_id: str, action_type: str, limits: dict) -> bool:
+        """Check if an action is allowed — atomic INCR+check+DECR."""
+        r = await self._get_redis()
         hourly_key = f"rate:{account_id}:{action_type}:hourly"
         daily_key = f"rate:{account_id}:{action_type}:daily"
-
-        pipe = r.pipeline()
-        pipe.incr(hourly_key)
-        pipe.expire(hourly_key, 3600)
-        pipe.incr(daily_key)
-        pipe.expire(daily_key, 86400)
-        results = await pipe.execute()
-
-        hourly_count = results[0]
-        daily_count = results[2]
-
         max_per_hour = limits.get("max_per_hour", 30)
         max_per_day = limits.get("max_per_day", 300)
 
-        if hourly_count > max_per_hour or daily_count > max_per_day:
-            # Revert the increment
-            pipe2 = r.pipeline()
-            pipe2.decr(hourly_key)
-            pipe2.decr(daily_key)
-            await pipe2.execute()
-            return False
-
-        return True
+        script = await self._get_check_script()
+        result = await script(
+            keys=[hourly_key, daily_key],
+            args=[max_per_hour, max_per_day],
+        )
+        return result == 1
 
     async def wait_if_needed(self, account_id: str, action_type: str, limits: dict) -> float:
         """Wait until an action is allowed. Returns the wait time in seconds."""
