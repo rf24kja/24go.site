@@ -2791,5 +2791,11 @@
     "targets.error": "Error",
     "targets.close": "Close",
     "targets.joinFailed": "Join failed",
-    "targets.loadPostsFailed": "Failed to load posts"
+    "targets.loadPostsFailed": "Failed to load posts",
+    "analytics.count": "Count",
+    "health.unknown": "unknown",
+    "health.viaProxy": "via proxy",
+    "health.defaultVersion": "0.3.0",
+    "campaigns.emoji": "Emoji",
+    "campaigns.variant": "Variant"
 }

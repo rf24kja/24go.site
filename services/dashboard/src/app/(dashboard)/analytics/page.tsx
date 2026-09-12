@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
         {/* Conversion Funnel */}
         <div>
           <h2 className="text-sm font-medium text-zinc-400 mb-3">{t("analytics.conversionFunnel")}</h2>
-          <GlassBarChart data={funnelData} bars={[{ key: "value", name: "Count", color: "slate" }]} />
+          <GlassBarChart data={funnelData} bars={[{ key: "value", name: t("analytics.count"), color: "slate" }]} />
         </div>
 
         {/* Intent Distribution */}

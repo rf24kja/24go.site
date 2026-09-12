@@ -333,7 +333,7 @@ export default function CampaignsPage() {
                   <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:bg-zinc-700 transition">
                     <Smile size={14} />
-                    {form.emoji || "Emoji"}
+                    {form.emoji || t("campaigns.emoji")}
                   </button>
                   {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg p-2 z-10 grid grid-cols-6 sm:grid-cols-8 gap-1 max-w-[280px] sm:w-72 shadow-xl">
@@ -461,8 +461,8 @@ export default function CampaignsPage() {
                         ab_enabled: enabled,
                         ab_variants: enabled && form.ab_variants.length === 0
                           ? [
-                              { name: "Variant A", text: form.base_text, weight: 50, posts: 0, leads: 0 },
-                              { name: "Variant B", text: "", weight: 50, posts: 0, leads: 0 },
+                              { name: `${t("campaigns.variant")} A`, text: form.base_text, weight: 50, posts: 0, leads: 0 },
+                              { name: `${t("campaigns.variant")} B`, text: "", weight: 50, posts: 0, leads: 0 },
                             ]
                           : form.ab_variants,
                       });
@@ -519,7 +519,7 @@ export default function CampaignsPage() {
                     {form.ab_variants.length < 4 && (
                       <button type="button" onClick={() => setForm({
                         ...form,
-                        ab_variants: [...form.ab_variants, { name: `Variant ${String.fromCharCode(65 + form.ab_variants.length)}`, text: "", weight: 50, posts: 0, leads: 0 }],
+                        ab_variants: [...form.ab_variants, { name: `${t("campaigns.variant")} ${String.fromCharCode(65 + form.ab_variants.length)}`, text: "", weight: 50, posts: 0, leads: 0 }],
                       })}
                         className="w-full py-1.5 border border-dashed border-zinc-700 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition">
                         + {t("campaigns.addVariant")}

@@ -45,9 +45,9 @@ export default function HealthPage() {
       setSystemInfo(sysInfo);
       const active = listenerData?.active_workers || [];
       setWorkers(active.map((w: any) => ({
-        name: w.worker_name || w.name || "unknown",
+        name: w.worker_name || w.name || t("health.unknown"),
         status: "running" as const,
-        queue: w.queues?.[0] || "unknown",
+        queue: w.queues?.[0] || t("health.unknown"),
         active_tasks: w.active_tasks || 0,
       })));
     }).catch(() => {}).finally(() => setLoading(false));
@@ -114,7 +114,7 @@ export default function HealthPage() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-zinc-500">{t("health.apiVersion")}</span>
-            <span className="text-zinc-300 ml-2">{health?.api_version || "0.3.0"}</span>
+            <span className="text-zinc-300 ml-2">{health?.api_version || t("health.defaultVersion")}</span>
           </div>
           <div>
             <span className="text-zinc-500">{t("health.dashboard")}</span>
@@ -122,7 +122,7 @@ export default function HealthPage() {
           </div>
           <div>
             <span className="text-zinc-500">{t("health.apiLabel")}</span>
-            <span className="text-zinc-300 ml-2">{apiBase || "via proxy"}</span>
+            <span className="text-zinc-300 ml-2">{apiBase || t("health.viaProxy")}</span>
           </div>
           <div>
             <span className="text-zinc-500">{t("health.bot")}</span>
@@ -136,6 +136,7 @@ export default function HealthPage() {
 }
 
 function StatusCard({ label, status, value }: { label: string; status?: "healthy" | "error" | "unknown"; value?: string }) {
+  const { t } = useI18n();
   const colors = {
     healthy: "text-emerald-400",
     error: "text-rose-400",
@@ -147,7 +148,7 @@ function StatusCard({ label, status, value }: { label: string; status?: "healthy
       {status ? (
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-emerald-400" : status === "error" ? "bg-rose-400" : "bg-zinc-500"}`} />
-          <span className={`text-sm font-medium ${colors[status]}`}>{status}</span>
+          <span className={`text-sm font-medium ${colors[status]}`}>{t(`health.status.${status}`)}</span>
         </div>
       ) : (
         <p className="text-sm text-zinc-300">{value}</p>

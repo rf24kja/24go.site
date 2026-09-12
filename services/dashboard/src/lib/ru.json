@@ -2791,5 +2791,11 @@
     "targets.error": "Ошибка",
     "targets.close": "Закрыть",
     "targets.joinFailed": "Ошибка вступления",
-    "targets.loadPostsFailed": "Ошибка загрузки постов"
+    "targets.loadPostsFailed": "Ошибка загрузки постов",
+    "analytics.count": "Количество",
+    "health.unknown": "неизвестно",
+    "health.viaProxy": "через прокси",
+    "health.defaultVersion": "0.3.0",
+    "campaigns.emoji": "Эмодзи",
+    "campaigns.variant": "Вариант"
 }
