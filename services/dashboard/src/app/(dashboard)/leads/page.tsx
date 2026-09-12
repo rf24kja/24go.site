@@ -39,10 +39,10 @@ const INTENT_STYLES: Record<string, string> = {
 };
 
 const COLUMNS = [
-  { key: "new", label: "New", color: "border-sky-500/30" },
-  { key: "in_progress", label: "In Progress", color: "border-amber-500/30" },
-  { key: "converted", label: "Converted", color: "border-emerald-500/30" },
-  { key: "rejected", label: "Rejected", color: "border-zinc-500/30" },
+  { key: "new", color: "border-sky-500/30" },
+  { key: "in_progress", color: "border-amber-500/30" },
+  { key: "converted", color: "border-emerald-500/30" },
+  { key: "rejected", color: "border-zinc-500/30" },
 ] as const;
 
 const STATUS_OPTIONS = ["new", "in_progress", "converted", "rejected"] as const;

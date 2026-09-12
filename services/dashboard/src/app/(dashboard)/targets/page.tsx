@@ -374,11 +374,11 @@ export default function TargetsPage() {
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Channel</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">Subscribers</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colChannel")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colSubscribers")}</th>
                 <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">ER</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">Country</th>
-                <th className="text-left px-4 py-3 text-zinc-400 font-medium">Actions</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colCountry")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActionsTgstat")}</th>
               </tr>
             </thead>
             <tbody>
@@ -543,21 +543,21 @@ export default function TargetsPage() {
               <div className="flex gap-1 bg-zinc-800 rounded-lg p-0.5">
                 <button onClick={() => setCountMode("list")}
                   className={`px-3 py-1 text-xs rounded-md transition ${countMode === "list" ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}>
-                  Recent Posts
+                  {t("targets.recentPosts")}
                 </button>
                 <button onClick={() => setCountMode("manual")}
                   className={`px-3 py-1 text-xs rounded-md transition ${countMode === "manual" ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}>
-                  Manual ID
+                  {t("targets.manualId")}
                 </button>
               </div>
             </div>
 
             {countMode === "list" ? (
               <div className="space-y-2">
-                <p className="text-xs text-zinc-500">Select a post to scrape comments from:</p>
+                <p className="text-xs text-zinc-500">{t("targets.selectPostToScrape")}</p>
                 <div className="max-h-80 overflow-y-auto space-y-1 border border-zinc-800 rounded-lg p-2">
                   {recentPosts.length === 0 && !postsLoading && (
-                    <p className="text-xs text-zinc-600 text-center py-4">No posts found</p>
+                    <p className="text-xs text-zinc-600 text-center py-4">{t("targets.noPostsFound")}</p>
                   )}
                   {recentPosts.map((post) => (
                     <button key={post.id}
@@ -568,18 +568,18 @@ export default function TargetsPage() {
                           : "bg-zinc-800/50 border-transparent text-zinc-400 hover:bg-zinc-800"
                       }`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate flex-1">{post.text || `(no text) — #${post.id}`}</span>
-                        <span className="text-zinc-600 shrink-0">{post.views.toLocaleString()} views</span>
+                        <span className="truncate flex-1">{post.text || t("targets.noTextPost", { id: post.id })}</span>
+                        <span className="text-zinc-600 shrink-0">{post.views.toLocaleString()} {t("targets.views")}</span>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-zinc-600">
                         <span>#{post.id}</span>
                         {post.date && <span>{new Date(post.date).toLocaleDateString()}</span>}
-                        {post.comments > 0 && <span>{post.comments} comments</span>}
+                        {post.comments > 0 && <span>{post.comments} {t("targets.comments")}</span>}
                       </div>
                     </button>
                   ))}
                   {postsLoading && (
-                    <p className="text-xs text-zinc-600 text-center py-2">Loading...</p>
+                    <p className="text-xs text-zinc-600 text-center py-2">{t("targets.loading")}</p>
                   )}
                 </div>
                 {hasMorePosts && !postsLoading && recentPosts.length > 0 && (

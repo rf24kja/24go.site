@@ -99,8 +99,8 @@ export default function AuditPage() {
       {/* Owner badge */}
       {isOwner && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg w-fit">
-          <span className="text-amber-400 text-sm font-medium">Owner Mode</span>
-          <span className="text-amber-500/60 text-xs">Cross-tenant view</span>
+          <span className="text-amber-400 text-sm font-medium">{t("audit.ownerMode")}</span>
+          <span className="text-amber-500/60 text-xs">{t("audit.crossTenantView")}</span>
         </div>
       )}
 
@@ -112,10 +112,10 @@ export default function AuditPage() {
       {isOwner && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Total Events", value: stats.total, color: "text-zinc-100" },
-            { label: "Active Users", value: stats.users, color: "text-sky-400" },
-            { label: "Tenants", value: stats.tenants, color: "text-violet-400" },
-            { label: "Today", value: stats.today, color: "text-emerald-400" },
+            { label: t("audit.totalEvents"), value: stats.total, color: "text-zinc-100" },
+            { label: t("audit.activeUsers"), value: stats.users, color: "text-sky-400" },
+            { label: t("audit.tenants"), value: stats.tenants, color: "text-violet-400" },
+            { label: t("audit.today"), value: stats.today, color: "text-emerald-400" },
           ].map((s) => (
             <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
               <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
@@ -149,22 +149,22 @@ export default function AuditPage() {
 
             <div className="flex flex-wrap gap-3 items-end">
               <div>
-                <label className="text-[10px] text-zinc-500 block mb-1">From</label>
+                <label className="text-[10px] text-zinc-500 block mb-1">{t("audit.from")}</label>
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
                   className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-300" />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-500 block mb-1">To</label>
+                <label className="text-[10px] text-zinc-500 block mb-1">{t("audit.to")}</label>
                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                   className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-300" />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-500 block mb-1">Search user</label>
-                <input type="text" placeholder="email or name..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)}
+                <label className="text-[10px] text-zinc-500 block mb-1">{t("audit.searchUser")}</label>
+                <input type="text" placeholder={t("audit.searchPlaceholder")} value={searchUser} onChange={(e) => setSearchUser(e.target.value)}
                   className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-300 w-48" />
               </div>
               <button onClick={() => { setDateFrom(""); setDateTo(""); setSearchUser(""); setActionFilter("all"); }}
-                className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300">Reset</button>
+                className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300">{t("audit.reset")}</button>
             </div>
           </>
         )}
@@ -175,13 +175,13 @@ export default function AuditPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Time</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Action</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Entity</th>
-              {isOwner && <th className="text-left px-4 py-3 text-zinc-400 font-medium">User</th>}
-              {isOwner && <th className="text-left px-4 py-3 text-zinc-400 font-medium">Tenant</th>}
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">Details</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">IP</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colTime")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colAction")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colEntity")}</th>
+              {isOwner && <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colUser")}</th>}
+              {isOwner && <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colTenant")}</th>}
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colDetails")}</th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("audit.colIp")}</th>
             </tr>
           </thead>
           <tbody>
@@ -247,19 +247,19 @@ export default function AuditPage() {
                       <td colSpan={isOwner ? 7 : 5} className="px-4 py-3 bg-zinc-800/50">
                         <div className="space-y-1 text-xs">
                           <div className="text-zinc-400">
-                            <span className="text-zinc-500">Entity ID:</span>{" "}
+                            <span className="text-zinc-500">{t("audit.entityId")}</span>{" "}
                             <span className="font-mono text-zinc-300">{e.entity_id || "—"}</span>
                           </div>
                           {e.user_id && (
                             <div className="text-zinc-400">
-                              <span className="text-zinc-500">User ID:</span>{" "}
+                              <span className="text-zinc-500">{t("audit.userId")}</span>{" "}
                               <span className="font-mono text-zinc-300">{e.user_id}</span>
                               {e.user_name && <span className="text-zinc-500 ml-2">({e.user_name})</span>}
                             </div>
                           )}
                           {e.tenant_id && (
                             <div className="text-zinc-400">
-                              <span className="text-zinc-500">Tenant ID:</span>{" "}
+                              <span className="text-zinc-500">{t("audit.tenantId")}</span>{" "}
                               <span className="font-mono text-zinc-300">{e.tenant_id}</span>
                             </div>
                           )}
@@ -289,8 +289,8 @@ export default function AuditPage() {
       {/* Access denied for non-owner */}
       {!isOwner && (
         <div className="text-center py-12 text-zinc-500">
-          <p className="text-sm">Full audit log requires owner access.</p>
-          <p className="text-xs mt-1">Contact your administrator for access.</p>
+          <p className="text-sm">{t("audit.ownerRequired")}</p>
+          <p className="text-xs mt-1">{t("audit.contactAdmin")}</p>
         </div>
       )}
     </div>
