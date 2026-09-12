@@ -166,7 +166,7 @@ async def process_incoming_message(
         ai_cfg = tenant_cfg.get("ai_auto_reply", {})
         if ai_cfg.get("reply_enabled"):
             from app.auto_reply import send_auto_reply
-            asyncio.create_task(send_auto_reply(
+            task = asyncio.create_task(send_auto_reply(
                 account_id=str(account_id),
                 tenant_id=str(tenant_id),
                 user_handle=user_handle,
@@ -174,6 +174,7 @@ async def process_incoming_message(
                 message_text=message_text,
                 ai_config=ai_cfg,
             ))
+            task.add_done_callback(lambda t: t.exception() and log.error(f"Auto-reply error: {t.exception()}"))
     except Exception as e:
         log.debug(f"Auto-reply dispatch failed (non-blocking): {e}")
 
@@ -182,7 +183,7 @@ async def process_incoming_message(
         webhook_cfg = tenant_cfg.get("webhooks", {})
         if webhook_cfg.get("enabled"):
             from app.webhook_dispatcher import dispatch_lead_webhooks
-            asyncio.create_task(dispatch_lead_webhooks(
+            task = asyncio.create_task(dispatch_lead_webhooks(
                 tenant_id=str(tenant_id),
                 lead_data={
                     "id": lead_id,
@@ -195,6 +196,7 @@ async def process_incoming_message(
                 },
                 webhook_config=webhook_cfg,
             ))
+            task.add_done_callback(lambda t: t.exception() and log.error(f"Webhook error: {t.exception()}"))
     except Exception as e:
         log.debug(f"Webhook dispatch failed (non-blocking): {e}")
 

@@ -65,10 +65,12 @@ def _get_fernet():
 def _decrypt(ciphertext: str) -> str:
     f = _get_fernet()
     if f is None:
+        log.warning("No ENCRYPTION_KEY set — tokens stored as plaintext")
         return ciphertext
     try:
         return f.decrypt(ciphertext.encode()).decode()
     except Exception:
+        log.error("Decryption failed — wrong ENCRYPTION_KEY or corrupted data")
         return ciphertext
 
 
@@ -189,7 +191,7 @@ def _parse_proxy(proxy_url: str | None) -> dict | None:
     # vk_api expects: {"proxy_type": "socks5", "proxy": "host:port", "proxy_user": "...", "proxy_pass": "..."}
     from urllib.parse import urlparse
     p = urlparse(proxy_url)
-    proxy_type = p.scheme.replace("socks", "socks5")  # socks4→socks5
+    proxy_type = "socks5" if p.scheme.startswith("socks") else p.scheme
     result = {
         "proxy_type": proxy_type,
         "proxy": f"{p.hostname}:{p.port or 1080}",

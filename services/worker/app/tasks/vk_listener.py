@@ -59,14 +59,16 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
         return
 
     # Get Groups Long Poll server (NOT messages.getLongPollServer)
-    lp = get_longpoll_server(vk_session, group_id)
+    lp = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: get_longpoll_server(vk_session, group_id)
+    )
     if lp is None:
         return
 
     lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
 
     log.info(f"VK Listener connected for group {group_id}, waiting for events...")
-    _set_vk_status(account_id, "online")
+    await _set_vk_status(account_id, "online")
 
     # ponytail: cached Redis connection for heartbeat
     _heartbeat_redis = None
@@ -77,7 +79,7 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
         import os
         while True:
             await asyncio.sleep(30)
-            _set_vk_status(account_id, "online")
+            await _set_vk_status(account_id, "online")
 
     heartbeat_task = asyncio.create_task(_heartbeat())
 
@@ -95,7 +97,9 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
 
                 if raw.get("failed"):
                     log.warning(f"VK LongPoll failed ({raw['failed']}), reconnecting...")
-                    lp = get_longpoll_server(vk_session, group_id)
+                    lp = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: get_longpoll_server(vk_session, group_id)
+                    )
                     if lp:
                         lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
                     continue
@@ -112,13 +116,15 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
                     await handle_flood_wait(vk_err)
                 log.error(f"VK LongPoll error: {e}, reconnecting in 5s...")
                 await asyncio.sleep(5)
-                lp = get_longpoll_server(vk_session, group_id)
+                lp = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: get_longpoll_server(vk_session, group_id)
+                )
                 if lp:
                     lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
 
     finally:
         heartbeat_task.cancel()
-        _set_vk_status(account_id, "offline")
+        await _set_vk_status(account_id, "offline")
         log.info(f"VK Listener disconnected for account {account_id}")
 
 
@@ -154,14 +160,13 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
     if event_type != 4:
         return
 
-    # VK Groups LP type 4 format: [4, flags, peer_id, timestamp, text, extras...]
-    # peer_id for group conversations = 2000000000 + chat_id
-    # peer_id for user PM = user_id directly
-    flags = event[1]
+    # VK Groups LP v2 type 4: [4, message_id, flags, peer_id, timestamp, text, ...]
+    message_id = event[1]
+    flags = event[2]
     peer_id = event[3]
     text = event[5] if len(event) > 5 else ""
 
-    # Skip outgoing messages (bit 2 = 0x2)
+    # Skip outgoing messages (flag bit 1 = outbox)
     if flags & 2:
         return
     # Skip service messages
@@ -169,7 +174,7 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
         return
 
     # Dedup via Redis
-    dedup_key = f"vk:msg:{account_id}:{event[1]}:{peer_id}"
+    dedup_key = f"vk:msg:{account_id}:{message_id}:{peer_id}"
     if await _is_duplicate(dedup_key):
         return
     await _mark_seen(dedup_key)
@@ -212,46 +217,39 @@ async def _handle_event(event: list, tenant_id: str, account_id: str,
 
 # ── Redis Dedup ─────────────────────────────────────────────────────────
 
+_dedup_redis = None
+
+async def _get_dedup_redis():
+    global _dedup_redis
+    if _dedup_redis is None:
+        import redis.asyncio as aioredis
+        from app.config import REDIS_URL
+        _dedup_redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    return _dedup_redis
+
+
 async def _is_duplicate(key: str) -> bool:
     """Check Redis for duplicate event (1-hour window)."""
-    import redis.asyncio as aioredis
-    from app.config import REDIS_URL
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        return await r.exists(key)
-    finally:
-        await r.aclose()
+    r = await _get_dedup_redis()
+    return await r.exists(key)
 
 
 async def _mark_seen(key: str) -> None:
     """Mark event as seen in Redis with 1-hour TTL."""
-    import redis.asyncio as aioredis
-    from app.config import REDIS_URL
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        await r.set(key, "1", ex=3600)
-    finally:
-        await r.aclose()
+    r = await _get_dedup_redis()
+    await r.set(key, "1", ex=3600)
 
 
 # ── Status ──────────────────────────────────────────────────────────────
 
-def _set_vk_status(account_id: str, status: str) -> None:
+async def _set_vk_status(account_id: str, status: str) -> None:
     """Set VK connection status in Redis with TTL."""
-    import redis
-    import os
     try:
-        _set_vk_status._conn = getattr(_set_vk_status, '_conn', None)
-        if _set_vk_status._conn is None:
-            _set_vk_status._conn = redis.Redis.from_url(
-                os.getenv("REDIS_URL", "redis://redis:6379/0"),
-                decode_responses=True,
-            )
-        _set_vk_status._conn.setex(f"vk_status:{account_id}", 300, json.dumps({
+        r = await _get_dedup_redis()
+        await r.set(f"vk_status:{account_id}", json.dumps({
             "status": status,
             "updated_at": time.time(),
             "platform": "vkontakte",
-        }))
+        }), ex=300)
     except Exception as e:
         log.warning(f"Failed to set VK status: {e}")
-        _set_vk_status._conn = None

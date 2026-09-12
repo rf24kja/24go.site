@@ -79,7 +79,9 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
             pass
 
     # Groups LongPoll server
-    lp = get_longpoll_server(vk_session, group_id)
+    lp = await loop.run_in_executor(
+        None, lambda: get_longpoll_server(vk_session, group_id)
+    )
     if lp is None:
         return
 
@@ -101,7 +103,9 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
 
                 if raw.get("failed"):
                     log.warning(f"VK LongPoll failed ({raw['failed']}), reconnecting...")
-                    lp = get_longpoll_server(vk_session, group_id)
+                    lp = await loop.run_in_executor(
+                        None, lambda: get_longpoll_server(vk_session, group_id)
+                    )
                     if lp:
                         lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
                     continue
@@ -111,7 +115,8 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
 
                 for event in updates:
                     if event[0] == 4:
-                        flags = event[1]
+                        message_id = event[1]
+                        flags = event[2]
                         peer_id = event[3]
                         text = event[5] if len(event) > 5 else ""
 
@@ -121,7 +126,7 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                             continue
 
                         # Redis dedup
-                        dedup_key = f"vk:scanner:{account_id}:{event[1]}:{peer_id}"
+                        dedup_key = f"vk:scanner:{account_id}:{message_id}:{peer_id}"
                         if await _is_duplicate(dedup_key):
                             continue
                         await _mark_seen(dedup_key)
@@ -154,7 +159,6 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                             message_text=text,
                             geo_tag="",
                             source="group",
-                            post_id=str(event[1]),
                         )
                         log.info(f"VK Group lead: {result.get('intent_score')} from {user_handle}")
 
@@ -164,7 +168,9 @@ async def _run_vk_group_scanner(task, tenant_id: str, account_id: str,
                     await handle_flood_wait(vk_err)
                 log.error(f"VK Group scanner error: {e}, reconnecting in 5s...")
                 await asyncio.sleep(5)
-                lp = get_longpoll_server(vk_session, group_id)
+                lp = await loop.run_in_executor(
+                    None, lambda: get_longpoll_server(vk_session, group_id)
+                )
                 if lp:
                     lp_server, lp_key, lp_ts = lp["server"], lp["key"], lp["ts"]
 

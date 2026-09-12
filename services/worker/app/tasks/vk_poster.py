@@ -48,6 +48,9 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     finally:
         loop.close()
 
+    if result.get("error", "").startswith("vk_error_921"):
+        raise self.retry(exc=Exception(result["error"]))
+
     return result
 
 
@@ -137,7 +140,6 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         vk_err = _handle_vk_error(str(e))
         if vk_err.code == 921:
             await handle_flood_wait(vk_err)
-            raise self.retry(exc=e)
         if vk_err.code in (900, 901, 300):
             log.error(f"VK fatal error {vk_err.code}: {vk_err.message}")
             return {"status": "error", "error": f"vk_error_{vk_err.code}"}

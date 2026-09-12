@@ -306,6 +306,9 @@ async def bulk_import_vk_accounts(
 
     Validates each token via VK API, creates AccountPool + account_sessions.
     """
+    if len(body.accounts) > 50:
+        raise HTTPException(400, "Max 50 accounts per import request")
+
     results = []
     imported = 0
     failed = 0

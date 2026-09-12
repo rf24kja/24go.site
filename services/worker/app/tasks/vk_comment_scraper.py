@@ -48,27 +48,25 @@ def scrape_vk_comments(self, tenant_id: str, account_id: str,
 
 
 async def _is_already_scraped(tenant_id: str, cache_key: str) -> bool:
-    """Check Redis set for dedup."""
-    import redis.asyncio as aioredis
-    from app.config import REDIS_URL
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
-    try:
-        return await r.sismember(f"{_DEDUP_PREFIX}{tenant_id}", cache_key)
-    finally:
-        await r.aclose()
-
-
-async def _mark_scraped(tenant_id: str, cache_key: str) -> None:
-    """Add to Redis dedup set with 7-day TTL."""
+    """Atomic check-and-set dedup via Redis SETNX."""
     import redis.asyncio as aioredis
     from app.config import REDIS_URL
     r = aioredis.from_url(REDIS_URL, decode_responses=True)
     try:
         key = f"{_DEDUP_PREFIX}{tenant_id}"
-        await r.sadd(key, cache_key)
-        await r.expire(key, 604800)  # 7 days
+        # SETNX returns True if the key was set (new), False if already exists
+        added = await r.sadd(key, cache_key)
+        if added:
+            await r.expire(key, 604800)  # 7 days
+            return False  # Not scraped — we just claimed it
+        return True  # Already scraped
     finally:
         await r.aclose()
+
+
+async def _mark_scraped(tenant_id: str, cache_key: str) -> None:
+    """No-op — _is_already_scraped already does SETNX atomically."""
+    pass
 
 
 async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
@@ -116,6 +114,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
             offset += len(items)
             if len(items) < batch_count:
                 break  # No more comments
+            await asyncio.sleep(1)  # ponytail: pause between paginated calls
 
         if not all_comments:
             return {"status": "ok", "comments_found": 0, "leads_created": 0}
@@ -143,6 +142,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
                     all_with_replies.extend(reply_response.get("items", []))
                 except Exception as e:
                     log.debug(f"Failed to fetch thread replies for comment {comment['id']}: {e}")
+                await asyncio.sleep(0.5)  # ponytail: pause between thread fetches
 
         # Batch-fetch all user info
         user_ids = list({str(c.get("from_id", 0)) for c in all_with_replies if c.get("from_id", 0) > 0})
@@ -175,7 +175,6 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
             cache_key = f"vk_{group_id}:{post_id}:{comment['id']}"
             if await _is_already_scraped(tenant_id, cache_key):
                 continue
-            await _mark_scraped(tenant_id, cache_key)
 
             # User info from batch map
             if user_id in user_map:
