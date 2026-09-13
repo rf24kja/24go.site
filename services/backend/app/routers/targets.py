@@ -380,7 +380,7 @@ async def recent_posts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fetch recent posts from a Telegram channel for comment scraping."""
+    """Fetch recent posts from a channel/group for comment scraping (Telegram or VK)."""
     import asyncio
 
     result = await db.execute(
@@ -390,17 +390,62 @@ async def recent_posts(
     if not target:
         raise HTTPException(404, "Target not found")
 
+    platform = target.platform if hasattr(target, 'platform') else "telegram"
+
     acct_result = await db.execute(
         select(AccountPool).where(
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == platform,
             AccountPool.status == "active",
         ).limit(1)
     )
     account = acct_result.scalar_one_or_none()
     if not account:
-        raise HTTPException(400, "No active Telegram account found")
+        raise HTTPException(400, f"No active {platform} account found")
 
-    # Fetch posts via Telethon in a background thread
+    # VK: fetch wall posts via VK API
+    if platform == "vkontakte":
+        try:
+            from datetime import datetime, timezone
+            import vk_api
+            import asyncpg
+            from app.crypto import decrypt as dec
+            from app.config import settings as cfg
+
+            conn = await asyncpg.connect(cfg.DATABASE_URL.replace("+asyncpg", ""))
+            try:
+                row = await conn.fetchrow(
+                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                    account.id,
+                )
+                if not row:
+                    return {"posts": [], "total": 0, "offset": offset, "limit": limit}
+                token = dec(row["session_data"])
+            finally:
+                await conn.close()
+
+            session = vk_api.VkApi(token=token, api_version="5.199")
+            vk = session.get_api()
+            group_id = int(target.target_id_code) if target.target_id_code.isdigit() else 0
+            if not group_id:
+                raise HTTPException(400, "Invalid VK group ID")
+
+            wall = vk.wall.get(owner_id=-group_id, count=limit, offset=offset)
+            posts = []
+            for item in wall.get("items", []):
+                posts.append({
+                    "id": item["id"],
+                    "text": (item.get("text", "") or "")[:200],
+                    "date": datetime.fromtimestamp(item["date"], tz=timezone.utc).isoformat() if item.get("date") else None,
+                    "views": item.get("views", {}).get("count", 0),
+                    "comments": item.get("comments", {}).get("count", 0),
+                })
+            return {"posts": posts, "total": wall.get("count", 0), "offset": offset, "limit": limit}
+        except Exception as e:
+            log.error(f"VK recent posts fetch failed: {e}")
+            raise HTTPException(500, f"Failed to fetch VK posts: {e}")
+
+    # Telegram: fetch via Telethon
     async def _fetch():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
@@ -471,7 +516,7 @@ async def scrape_comments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Trigger comment scraping on a specific post. Dispatches async Celery task."""
+    """Trigger comment scraping on a specific post. Dispatches async Celery task (Telegram or VK)."""
     result = await db.execute(
         select(Target).where(Target.id == target_id, Target.tenant_id == current_user.tenant_id)
     )
@@ -479,30 +524,46 @@ async def scrape_comments(
     if not target:
         raise HTTPException(404, "Target not found")
 
-    # Find an active account with a session for this tenant
+    platform = target.platform if hasattr(target, 'platform') else "telegram"
+
+    # Find an active account with a session for this tenant (matching platform)
     acct_result = await db.execute(
         select(AccountPool).where(
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == platform,
             AccountPool.status == "active",
         ).limit(1)
     )
     account = acct_result.scalar_one_or_none()
     if not account:
-        raise HTTPException(400, "No active Telegram account found. Connect an account first.")
+        raise HTTPException(400, f"No active {platform} account found. Connect an account first.")
 
-    # Dispatch Celery task
+    # Dispatch Celery task — VK or Telegram
     from app.celery_app import celery
-    task = celery.send_task(
-        "app.tasks.comment_scraper.scrape_comments",
-        args=[
-            str(current_user.tenant_id),
-            str(account.id),
-            target.target_id_code,
-            body.post_id,
-            str(target_id),
-        ],
-        queue="parser",
-    )
+    if platform == "vkontakte":
+        task = celery.send_task(
+            "app.tasks.vk_comment_scraper.scrape_vk_comments",
+            args=[
+                str(current_user.tenant_id),
+                str(account.id),
+                target.target_id_code,
+                body.post_id,
+                str(target_id),
+            ],
+            queue="parser",
+        )
+    else:
+        task = celery.send_task(
+            "app.tasks.comment_scraper.scrape_comments",
+            args=[
+                str(current_user.tenant_id),
+                str(account.id),
+                target.target_id_code,
+                body.post_id,
+                str(target_id),
+            ],
+            queue="parser",
+        )
 
     # Update last_parsed_at
     from datetime import datetime, timezone

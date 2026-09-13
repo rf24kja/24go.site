@@ -96,7 +96,7 @@ async def _run():
                 import json as _json
                 target_geos = _json.loads(target_geos)
             target = await conn.fetchrow(
-                "SELECT id, target_id_code, title FROM targets "
+                "SELECT id, target_id_code, title, platform FROM targets "
                 "WHERE tenant_id = $1 AND is_active = true "
                 "AND (geo_tag = ANY($2) OR $2 = '{}') "
                 "ORDER BY random() LIMIT 1",
@@ -106,13 +106,16 @@ async def _run():
             if not target:
                 continue
 
-            # ── Pick an available account ──────────────────────────────
+            platform = target.get("platform", "telegram")
+
+            # ── Pick an available account (matching platform) ────────
             account = await conn.fetchrow(
                 "SELECT id, account_identifier FROM account_pool "
-                "WHERE tenant_id = $1 AND status = 'active' "
+                "WHERE tenant_id = $1 AND status = 'active' AND platform = $2 "
                 "AND actions_today < daily_action_limit "
                 "ORDER BY random() LIMIT 1",
                 c["tenant_id"],
+                platform,
             )
             if not account:
                 continue
@@ -122,29 +125,52 @@ async def _run():
             posting_cfg = (await get_tenant_settings_from_db(str(c["tenant_id"]))).get("posting", {})
             utm_source = posting_cfg.get("utm_source", "leadgen")
             utm_medium = posting_cfg.get("utm_medium", "post")
-            utm_url = (
-                f"https://t.me/{target['target_id_code']}"
-                f"?utm_source={utm_source}&utm_medium={utm_medium}"
-                f"&utm_campaign={c['id']}"
-            )
 
-            celery.send_task(
-                "app.tasks.poster.publish_post",
-                args=[
-                    str(c["tenant_id"]),
-                    str(c["id"]),
-                    str(target["id"]),
-                    str(account["id"]),
-                    c["base_text"],  # raw spintax template — poster renders
-                    utm_url,
-                    f"@{target['target_id_code']}",  # target_channel for Telethon
-                ],
-                kwargs={
-                    "ab_enabled": c.get("ab_enabled", False),
-                    "ab_variants": c.get("ab_variants") or [],
-                },
-                queue="poster",
-            )
+            if platform == "vkontakte":
+                utm_url = (
+                    f"https://vk.com/public{target['target_id_code']}"
+                    f"?utm_source={utm_source}&utm_medium={utm_medium}"
+                    f"&utm_campaign={c['id']}"
+                )
+                celery.send_task(
+                    "app.tasks.vk_poster.post_to_vk",
+                    args=[
+                        str(c["tenant_id"]),
+                        str(c["id"]),
+                        str(target["id"]),
+                        str(account["id"]),
+                        c["base_text"],
+                        utm_url,
+                    ],
+                    kwargs={
+                        "ab_enabled": c.get("ab_enabled", False),
+                        "ab_variants": c.get("ab_variants") or [],
+                    },
+                    queue="poster",
+                )
+            else:
+                utm_url = (
+                    f"https://t.me/{target['target_id_code']}"
+                    f"?utm_source={utm_source}&utm_medium={utm_medium}"
+                    f"&utm_campaign={c['id']}"
+                )
+                celery.send_task(
+                    "app.tasks.poster.publish_post",
+                    args=[
+                        str(c["tenant_id"]),
+                        str(c["id"]),
+                        str(target["id"]),
+                        str(account["id"]),
+                        c["base_text"],
+                        utm_url,
+                        f"@{target['target_id_code']}",
+                    ],
+                    kwargs={
+                        "ab_enabled": c.get("ab_enabled", False),
+                        "ab_variants": c.get("ab_variants") or [],
+                    },
+                    queue="poster",
+                )
 
             # Update last_posted_at
             await conn.execute(

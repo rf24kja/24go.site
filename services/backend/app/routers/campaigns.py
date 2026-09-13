@@ -189,36 +189,58 @@ async def run_campaign_now(
     if not t:
         raise HTTPException(400, "No active targets found. Add targets first.")
 
-    # Find an available account
+    platform = t.platform if hasattr(t, 'platform') else "telegram"
+
+    # Find an available account (matching platform)
     acc = await db.execute(
         select(_models.AccountPool).where(
             _models.AccountPool.tenant_id == current_user.tenant_id,
+            _models.AccountPool.platform == platform,
             _models.AccountPool.status == "active",
         ).order_by(_func.random()).limit(1)
     )
     a = acc.scalar_one_or_none()
     if not a:
-        raise HTTPException(400, "No active accounts. Connect an account first.")
+        raise HTTPException(400, f"No active {platform} accounts. Connect an account first.")
 
     # Dispatch to poster worker
     from app.celery_app import celery
-    celery.send_task(
-        "app.tasks.poster.publish_post",
-        args=[
-            str(current_user.tenant_id),
-            str(campaign.id),
-            str(t.id),
-            str(a.id),
-            campaign.base_text,
-            f"https://t.me/{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}",
-            f"@{t.target_id_code}",
-        ],
-        kwargs={
-            "ab_enabled": campaign.ab_enabled or False,
-            "ab_variants": campaign.ab_variants or [],
-        },
-        queue="poster",
-    )
+    if platform == "vkontakte":
+        utm_url = f"https://vk.com/public{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}"
+        celery.send_task(
+            "app.tasks.vk_poster.post_to_vk",
+            args=[
+                str(current_user.tenant_id),
+                str(campaign.id),
+                str(t.id),
+                str(a.id),
+                campaign.base_text,
+                utm_url,
+            ],
+            kwargs={
+                "ab_enabled": campaign.ab_enabled or False,
+                "ab_variants": campaign.ab_variants or [],
+            },
+            queue="poster",
+        )
+    else:
+        celery.send_task(
+            "app.tasks.poster.publish_post",
+            args=[
+                str(current_user.tenant_id),
+                str(campaign.id),
+                str(t.id),
+                str(a.id),
+                campaign.base_text,
+                f"https://t.me/{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}",
+                f"@{t.target_id_code}",
+            ],
+            kwargs={
+                "ab_enabled": campaign.ab_enabled or False,
+                "ab_variants": campaign.ab_variants or [],
+            },
+            queue="poster",
+        )
 
     await log_event(
         url=settings.DATABASE_URL.replace("+asyncpg", ""),

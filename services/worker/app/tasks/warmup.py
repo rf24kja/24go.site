@@ -211,10 +211,10 @@ def trigger_daily_warmup():
 
 
 async def _get_warming_accounts() -> list[tuple[str, str]]:
-    """Get all accounts in warmup stage (status != active, != banned)."""
+    """Get all Telegram accounts in warmup stage (excludes VK — VK uses token auth, no warmup)."""
     rows = await pool_fetch(
         "SELECT tenant_id, id FROM account_pool WHERE status IN ('warming_up', 'active') "
-        "AND warmup_stage < 3"
+        "AND warmup_stage < 3 AND platform = 'telegram'"
     )
     return [(str(r["tenant_id"]), str(r["id"])) for r in rows]
 

@@ -75,7 +75,7 @@ async def dispatch_poster(
             current_user.tenant_id,
         )
         target = await conn.fetchrow(
-            "SELECT target_id_code FROM targets WHERE id = $1 AND tenant_id = $2",
+            "SELECT target_id_code, platform FROM targets WHERE id = $1 AND tenant_id = $2",
             _uuid.UUID(body.target_id),
             current_user.tenant_id,
         )
@@ -87,21 +87,36 @@ async def dispatch_poster(
     if not target:
         raise HTTPException(404, "Target not found")
 
-    utm_url = f"https://t.me/{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={body.campaign_id}"
-
-    task = _celery.send_task(
-        "app.tasks.poster.publish_post",
-        args=[
-            str(current_user.tenant_id),
-            body.campaign_id,
-            body.target_id,
-            body.account_id,
-            row["base_text"],
-            utm_url,
-            f"@{target['target_id_code']}",
-        ],
-        queue="poster",
-    )
+    platform = target.get("platform", "telegram")
+    if platform == "vkontakte":
+        utm_url = f"https://vk.com/public{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={body.campaign_id}"
+        task = _celery.send_task(
+            "app.tasks.vk_poster.post_to_vk",
+            args=[
+                str(current_user.tenant_id),
+                body.campaign_id,
+                body.target_id,
+                body.account_id,
+                row["base_text"],
+                utm_url,
+            ],
+            queue="poster",
+        )
+    else:
+        utm_url = f"https://t.me/{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={body.campaign_id}"
+        task = _celery.send_task(
+            "app.tasks.poster.publish_post",
+            args=[
+                str(current_user.tenant_id),
+                body.campaign_id,
+                body.target_id,
+                body.account_id,
+                row["base_text"],
+                utm_url,
+                f"@{target['target_id_code']}",
+            ],
+            queue="poster",
+        )
     return {"status": "dispatched", "task_id": task.id}
 
 

@@ -184,23 +184,55 @@ async def send_auto_reply(
         return
 
     try:
-        from app.telegram_client import get_client
-        client = await get_client(account_id)
-        if not client:
-            log.warning(f"No Telegram client for account {account_id}")
-            return
+        if platform == "vkontakte":
+            # VK: send via vk_api using group token
+            import asyncpg
+            from app.telegram_client import _decrypt
+            from app.config import DATABASE_URL as _DB_URL
 
-        if user_handle.startswith("@"):
-            entity = await client.get_entity(user_handle[1:])
-        else:
-            entity = await client.get_entity(int(user_handle))
+            conn = await asyncpg.connect(_DB_URL.replace("+asyncpg", ""))
+            try:
+                row = await conn.fetchrow(
+                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                    __import__("uuid", fromlist=["UUID"]).UUID(account_id),
+                )
+                if not row:
+                    log.warning(f"No VK session for account {account_id}")
+                    return
+                token = _decrypt(row["session_data"])
+            finally:
+                await conn.close()
 
-        if entity:
-            await client.send_message(entity, reply_text)
-            log.info(f"Auto-reply sent to {user_handle} for tenant {tenant_id} "
+            import vk_api
+            session = vk_api.VkApi(token=token, api_version="5.199")
+            vk = session.get_api()
+            # user_handle for VK is the peer_id (numeric)
+            peer_id = int(user_handle) if str(user_handle).lstrip("-").isdigit() else 0
+            if not peer_id:
+                log.warning(f"Invalid VK peer_id: {user_handle}")
+                return
+            vk.messages.send(peer_id=peer_id, message=reply_text, random_id=__import__("random").randint(0, 2**31))
+            log.info(f"VK auto-reply sent to {user_handle} for tenant {tenant_id} "
                      f"({'AI' if use_ai else 'template'})")
         else:
-            log.warning(f"Could not resolve entity for {user_handle}")
+            # Telegram: send via Telethon
+            from app.telegram_client import get_client
+            client = await get_client(account_id)
+            if not client:
+                log.warning(f"No Telegram client for account {account_id}")
+                return
+
+            if user_handle.startswith("@"):
+                entity = await client.get_entity(user_handle[1:])
+            else:
+                entity = await client.get_entity(int(user_handle))
+
+            if entity:
+                await client.send_message(entity, reply_text)
+                log.info(f"Auto-reply sent to {user_handle} for tenant {tenant_id} "
+                         f"({'AI' if use_ai else 'template'})")
+            else:
+                log.warning(f"Could not resolve entity for {user_handle}")
 
     except Exception as e:
         log.warning(f"Auto-reply failed for {user_handle}: {e}")
