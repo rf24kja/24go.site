@@ -124,9 +124,67 @@ async def check_membership(
     if not target:
         raise HTTPException(404, "Target not found")
 
+    # VK: group token can verify access via groups.getById (not membership in TG sense)
+    if target.platform == "vkontakte":
+        vk_accounts_result = await db.execute(
+            select(AccountPool).where(
+                AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.platform == "vkontakte",
+                AccountPool.status == "active",
+            )
+        )
+        vk_accounts = vk_accounts_result.scalars().all()
+        if not vk_accounts:
+            raise HTTPException(400, "No active VK accounts")
+
+        try:
+            import vk_api
+            import asyncpg
+            from app.crypto import decrypt as dec
+
+            group_id = int(target.target_id_code) if target.target_id_code.isdigit() else 0
+            if not group_id:
+                raise HTTPException(400, "Invalid VK group ID in target")
+
+            for acct in vk_accounts:
+                conn = await asyncpg.connect(settings.DATABASE_URL.replace("+asyncpg", ""))
+                try:
+                    row = await conn.fetchrow(
+                        "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                        acct.id,
+                    )
+                    if not row:
+                        continue
+                    token = dec(row["session_data"])
+                finally:
+                    await conn.close()
+
+                try:
+                    session = vk_api.VkApi(token=token, api_version="5.199")
+                    vk = session.get_api()
+                    groups = vk.groups.getById(group_id=group_id)
+                    if groups:
+                        target.is_joined = True
+                        await db.commit()
+                        return {"is_joined": True, "group_name": groups[0].get("name", "")}
+                except Exception:
+                    continue
+
+            # No account could access the group
+            target.is_joined = False
+            await db.commit()
+            return {"is_joined": False, "reason": "no_vk_account_has_access"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.error(f"VK membership check failed: {e}")
+            raise HTTPException(500, f"Check failed: {e}")
+
+    # Telegram: check via Telethon
     acct_result = await db.execute(
         select(AccountPool).where(
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == "telegram",
             AccountPool.status == "active",
         )
     )
@@ -209,11 +267,23 @@ async def join_target(
     if not target:
         raise HTTPException(404, "Target not found")
 
+    # VK: group tokens can't join groups — need manual action
+    if target.platform == "vkontakte":
+        group_id = int(target.target_id_code) if target.target_id_code.isdigit() else 0
+        return {
+            "join_results": [{
+                "status": "manual_action_required",
+                "message": f"VK groups require manual join. Open https://vk.com/public{group_id} and add your community to monitored groups via VK settings.",
+            }],
+            "any_joined": False,
+        }
+
     if body.account_ids:
         acct_result = await db.execute(
             select(AccountPool).where(
                 AccountPool.id.in_(body.account_ids),
                 AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.platform == "telegram",
                 AccountPool.status == "active",
             )
         )
@@ -221,6 +291,7 @@ async def join_target(
         acct_result = await db.execute(
             select(AccountPool).where(
                 AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.platform == "telegram",
                 AccountPool.status == "active",
             )
         )

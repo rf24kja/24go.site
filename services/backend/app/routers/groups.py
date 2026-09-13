@@ -213,6 +213,35 @@ async def add_group(
         except Exception as e:
             log.debug(f"Could not fetch group info: {e}")
 
+    # For VK, fetch group info via VK API
+    if body.platform == "vkontakte" and body.group_identifier.startswith("vk_"):
+        try:
+            import vk_api
+            group_id_str = body.group_identifier.replace("vk_", "")
+            # Get VK service token from account
+            import asyncpg
+            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
+            conn = await asyncpg.connect(conn_url)
+            try:
+                from app.crypto import decrypt as dec
+                row = await conn.fetchrow(
+                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
+                    _uuid.UUID(body.account_id),
+                )
+                if row:
+                    token = dec(row["session_data"])
+                    session = vk_api.VkApi(token=token, api_version="5.199")
+                    vk = session.get_api()
+                    groups = vk.groups.getById(group_id=int(group_id_str))
+                    if groups:
+                        g = groups[0]
+                        title = g.get("name")
+                        members_count = g.get("members_count", 0)
+            finally:
+                await conn.close()
+        except Exception as e:
+            log.debug(f"Could not fetch VK group info: {e}")
+
     # Create monitored group
     group = MonitoredGroup(
         tenant_id=current_user.tenant_id,
