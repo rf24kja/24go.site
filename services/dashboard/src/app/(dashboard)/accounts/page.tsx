@@ -100,13 +100,13 @@ export default function AccountsPage() {
       setListeners((listeners_ as any)?.active_workers ?? []);
       setProxies(Array.isArray(proxyList) ? proxyList : []);
 
-      // Fetch TG status only for Telegram accounts
+      // Fetch connection status for all accounts
       const statuses: Record<string, TgStatus> = {};
-      const tgItems = items.filter((acct: any) => acct.platform === "telegram");
+      const statusItems = items.filter((acct: any) => acct.platform === "telegram" || acct.platform === "vkontakte");
       const results = await Promise.allSettled(
-        tgItems.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
+        statusItems.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
       );
-      tgItems.forEach((acct: any, i: number) => {
+      statusItems.forEach((acct: any, i: number) => {
         const r = results[i];
         statuses[acct.id] = r.status === "fulfilled" ? r.value : { has_session: false, connected: false, tg_status: "unknown" };
       });

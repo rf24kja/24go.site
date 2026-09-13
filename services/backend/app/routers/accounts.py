@@ -953,13 +953,13 @@ async def delete_account(
 
 
 @router.post("/{account_id}/disconnect")
-async def disconnect_telegram(
+async def disconnect_account(
     account_id: UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Disconnect Telegram client and delete session."""
+    """Disconnect account (Telegram or VK) and delete session."""
     result = await db.execute(
         select(AccountPool).where(
             AccountPool.id == account_id,
@@ -970,9 +970,22 @@ async def disconnect_telegram(
     if not account:
         raise HTTPException(404, "Account not found")
 
+    platform = account.platform.value if hasattr(account.platform, 'value') else str(account.platform)
+
     # Stop listener if running
     from app.celery_app import celery
     celery.control.revoke(f"listener-{account_id}", terminate=True, signal="SIGTERM")
+
+    # Also revoke VK listener by task name
+    if platform == "vkontakte":
+        import redis as _redis, json as _json
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+        vk_task_id = r.get(f"listener_task:{account_id}")
+        if vk_task_id:
+            celery.control.revoke(vk_task_id, terminate=True, signal="SIGTERM")
+            r.delete(f"listener_task:{account_id}")
+        # Clear VK status
+        r.delete(f"vk_status:{account_id}")
 
     # Delete session from DB
     import uuid as _uuid
@@ -989,8 +1002,8 @@ async def disconnect_telegram(
     account.status = "paused"
     await db.commit()
 
-    log.info(f"Telegram disconnected for account {account_id}")
-    return {"status": "disconnected", "account_id": str(account_id)}
+    log.info(f"{platform} disconnected for account {account_id}")
+    return {"status": "disconnected", "account_id": str(account_id), "platform": platform}
 
 
 @router.get("/{account_id}/tg-status")
@@ -999,9 +1012,9 @@ async def telegram_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get Telegram connection status for an account.
+    """Get connection status for an account (Telegram or VK).
 
-    Returns: { connected: bool, status: str, has_session: bool }
+    Returns: { connected: bool, status: str, has_session: bool, platform: str }
     """
     result = await db.execute(
         select(AccountPool).where(
@@ -1012,6 +1025,8 @@ async def telegram_status(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(404, "Account not found")
+
+    platform = account.platform.value if hasattr(account.platform, 'value') else str(account.platform)
 
     # Check if session exists in DB
     import uuid as _uuid
@@ -1026,25 +1041,27 @@ async def telegram_status(
     finally:
         await conn.close()
 
-    # Check Redis status
+    # Check Redis status — VK uses vk_status, Telegram uses tg_status
     import redis
     import json
     r = redis.Redis.from_url(
         settings.REDIS_URL.replace("rediss://", "redis://"),
         decode_responses=True,
     )
-    raw = r.get(f"tg_status:{account_id}")
-    tg_status = json.loads(raw) if raw else {"status": "unknown"}
+    status_key = f"vk_status:{account_id}" if platform == "vkontakte" else f"tg_status:{account_id}"
+    raw = r.get(status_key)
+    platform_status = json.loads(raw) if raw else {"status": "unknown"}
 
     # If Redis has no status but DB has session, consider connected
-    connected = tg_status.get("status") == "online" or (has_session and tg_status.get("status") == "unknown")
+    connected = platform_status.get("status") == "online" or (has_session and platform_status.get("status") == "unknown")
 
     return {
         "account_id": str(account_id),
+        "platform": platform,
         "has_session": has_session,
         "connected": connected,
-        "tg_status": tg_status.get("status", "unknown") if has_session else "no_session",
-        "updated_at": tg_status.get("updated_at", 0),
+        "tg_status": platform_status.get("status", "unknown") if has_session else "no_session",
+        "updated_at": platform_status.get("updated_at", 0),
     }
 
 
@@ -1057,7 +1074,7 @@ async def reconnect_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Reconnect a paused account — restarts listener task."""
+    """Reconnect a paused account — restarts listener task (Telegram or VK)."""
     result = await db.execute(
         select(AccountPool).where(
             AccountPool.id == account_id,
@@ -1067,6 +1084,8 @@ async def reconnect_account(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(404, "Account not found")
+
+    platform = account.platform.value if hasattr(account.platform, 'value') else str(account.platform)
 
     # Check session exists
     import uuid as _uuid
@@ -1087,19 +1106,35 @@ async def reconnect_account(
         account.status = "active"
         await db.commit()
 
-    # Start listener
-    from app.tasks import start_listener_task
+    # Start appropriate listener
     from app.celery_app import celery
     celery.control.revoke(f"listener-{account_id}", terminate=True)
-    task = start_listener_task.delay(str(account_id))
 
-    # Set Redis status
-    import redis as _redis, json
-    r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
-    r.set(f"tg_status:{account_id}", json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
+    if platform == "vkontakte":
+        # VK: dispatch vk_listener with group_id from account_identifier
+        from app.tasks.vk_listener import start_vk_listener
+        vk_gid = int(account.account_identifier) if account.account_identifier else 0
+        task = start_vk_listener.apply_async(
+            args=[str(current_user.tenant_id), str(account_id), vk_gid],
+        )
+        # Set VK status
+        import redis as _redis, json as _json
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+        r.set(f"vk_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
+    else:
+        # Telegram: dispatch listener via Celery
+        task = celery.send_task(
+            "app.tasks.listener.start_lead_listener",
+            args=[str(current_user.tenant_id), str(account_id)],
+            queue="listener",
+        )
+        # Set TG status
+        import redis as _redis, json as _json
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+        r.set(f"tg_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
 
-    log.info(f"Account {account_id} reconnected (task={task.id})")
-    return {"status": "reconnected", "account_id": str(account_id), "task_id": task.id}
+    log.info(f"Account {account_id} reconnected ({platform}, task={task.id})")
+    return {"status": "reconnected", "account_id": str(account_id), "platform": platform, "task_id": task.id}
 
 
 # ── VKontakte Connection ───────────────────────────────────────────────

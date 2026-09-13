@@ -1,7 +1,7 @@
-"""Listener management API: start/stop Telegram listeners per account.
+"""Listener management API: start/stop listeners per account (Telegram or VK).
 
-Dispatches Celery tasks to the listener queue. The worker handles
-Telethon connection lifecycle.
+Dispatches Celery tasks to the appropriate queue. The worker handles
+connection lifecycle.
 """
 import logging
 import uuid as _uuid
@@ -35,7 +35,7 @@ async def start_listener(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Start a Telegram listener for a specific account."""
+    """Start a listener for a specific account (Telegram or VK)."""
     # Verify account belongs to this tenant
     q = select(AccountPool).where(
         AccountPool.id == _uuid.UUID(account_id),
@@ -46,6 +46,8 @@ async def start_listener(
     if not account:
         raise HTTPException(404, "Account not found")
 
+    platform = account.platform.value if hasattr(account.platform, 'value') else str(account.platform)
+
     # Check if already running via Redis
     r = _get_redis()
     try:
@@ -53,18 +55,25 @@ async def start_listener(
         if existing:
             return ListenerStatus(account_id=account_id, status="already_running")
 
-        # Dispatch to listener worker
+        # Dispatch to appropriate listener worker
         from app.celery_app import celery
-        task = celery.send_task(
-            "app.tasks.listener.start_lead_listener",
-            args=[str(current_user.tenant_id), account_id],
-            queue="listener",
-        )
+        if platform == "vkontakte":
+            from app.tasks.vk_listener import start_vk_listener
+            vk_gid = int(account.account_identifier) if account.account_identifier else 0
+            task = start_vk_listener.apply_async(
+                args=[str(current_user.tenant_id), account_id, vk_gid],
+            )
+        else:
+            task = celery.send_task(
+                "app.tasks.listener.start_lead_listener",
+                args=[str(current_user.tenant_id), account_id],
+                queue="listener",
+            )
         await r.set(f"listener_task:{account_id}", task.id, ex=86400)
     finally:
         await r.aclose()
 
-    log.info(f"Listener started for account {account_id} (task={task.id})")
+    log.info(f"{platform} listener started for account {account_id} (task={task.id})")
     return ListenerStatus(account_id=account_id, status="started")
 
 
