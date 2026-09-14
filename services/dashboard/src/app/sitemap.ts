@@ -24,6 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
     { url: `${base}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/features`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/tools`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/tools/roi-calculator`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/tools/group-analyzer`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },

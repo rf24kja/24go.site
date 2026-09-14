@@ -48,6 +48,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="alternate" type="application/rss+xml" title="24GO Blog RSS" href="https://www.24go.site/feed.xml" />
+        {/* Search engine verification — replace with your actual codes */}
+        <meta name="google-site-verification" content="YOUR_GOOGLE_CODE" />
+        <meta name="yandex-verification" content="YOUR_YANDEX_CODE" />
+        <meta name="msvalidate.01" content="YOUR_BING_CODE" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var u=new URL(window.location.href);var l=u.searchParams.get('locale');if(l==='ru'||l==='en')document.documentElement.lang=l;}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         <ErrorBoundary>

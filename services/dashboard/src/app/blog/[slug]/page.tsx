@@ -75,10 +75,12 @@ function md(text: string): string {
   html = html
     .replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-zinc-100 mt-8 mb-3">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-zinc-100 mt-10 mb-4 pb-2 border-b border-zinc-800">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold text-zinc-100 mb-6">$1</h1>')
+    .replace(/^# (.+)$/gm, '<h2 class="text-2xl font-bold text-zinc-100 mt-10 mb-4 pb-2 border-b border-zinc-800">$1</h2>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="text-zinc-200 font-semibold">$1</strong>')
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\[(.+?)\]\(([^)]+)\)/g, '<a href="$2" class="text-emerald-400 hover:underline">$1</a>')
+    // Remove stray <br/> before list items
+    .replace(/<br\/>\n?- /g, "\n- ")
     .replace(/^- (.+)$/gm, "<li>$1</li>")
     .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="list-disc pl-5 space-y-1 my-3">$1</ul>')
     .replace(/^(\d+)\. (.+)$/gm, '<oli>$2</oli>')
@@ -89,9 +91,9 @@ function md(text: string): string {
     .split("\n\n").map((p) => {
       const trimmed = p.trim();
       if (!trimmed) return "";
-      if (trimmed.startsWith("<h") || trimmed.startsWith("<ul") || trimmed.startsWith("<li") ||
+      if (trimmed.startsWith("<h") || trimmed.startsWith("<ul") || trimmed.startsWith("<ol") || trimmed.startsWith("<li") ||
           trimmed.startsWith("<pre") || trimmed.startsWith("<blockquote") || trimmed.startsWith("<table") ||
-          trimmed.startsWith("<div") || trimmed.startsWith("<hr") || trimmed.startsWith("<img") || trimmed.startsWith("<code")) return trimmed;
+          trimmed.startsWith("<div") || trimmed.startsWith("<hr") || trimmed.startsWith("<img") || trimmed.startsWith("<code") || trimmed.startsWith("<strong")) return trimmed;
       return "<p class='text-zinc-400 leading-relaxed my-3'>" + trimmed.replace(/\n/g, "<br/>") + "</p>";
     }).join("\n");
 
@@ -133,7 +135,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         description: post.excerpt || "",
       },
       alternates: {
-        canonical: `https://www.24go.site/blog/${post.slug}`,
+        canonical: `https://www.24go.site/blog/${post.slug}?locale=${locale}`,
         languages: {
           en: `https://www.24go.site/blog/${post.slug}?locale=en`,
           ru: `https://www.24go.site/blog/${post.slug}?locale=ru`,
