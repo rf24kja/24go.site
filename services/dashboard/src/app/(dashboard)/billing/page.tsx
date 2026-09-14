@@ -268,6 +268,43 @@ export default function BillingPage() {
           })}
         </div>
       </div>
+
+      {/* Service pricing */}
+      <div className="mt-8">
+        <h2 className="text-sm font-medium text-zinc-400 mb-4">{t("billing.serviceTitle")}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <h3 className="text-zinc-100 font-medium text-lg">{t("billing.serviceStandard")}</h3>
+            <p className="text-xs text-zinc-500 mt-1">{t("billing.serviceStandardDesc")}</p>
+            <div className="mt-2 mb-4">
+              <span className="text-3xl font-bold text-zinc-100">$150</span>
+              <span className="text-zinc-400 text-sm">{t("plans.perMonth")}</span>
+            </div>
+            <ul className="space-y-2 text-zinc-400 text-sm">
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceS1")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceS2")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceS3")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceS4")}</li>
+            </ul>
+            <p className="text-xs text-zinc-600 mt-4">{t("billing.serviceNote")}</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <h3 className="text-zinc-100 font-medium text-lg">{t("billing.serviceEnterprise")}</h3>
+            <p className="text-xs text-zinc-500 mt-1">{t("billing.serviceEnterpriseDesc")}</p>
+            <div className="mt-2 mb-4">
+              <span className="text-3xl font-bold text-zinc-100">$1,000</span>
+              <span className="text-zinc-400 text-sm">{t("billing.oneTime")}</span>
+            </div>
+            <ul className="space-y-2 text-zinc-400 text-sm">
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceE1")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceE2")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceE3")}</li>
+              <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span>{t("billing.serviceE4")}</li>
+            </ul>
+            <p className="text-xs text-zinc-600 mt-4">{t("billing.serviceNote")}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -104,7 +104,7 @@ const faq = [
   },
   {
     q: "How does 24GO compare to hiring a sales team?",
-    a: "A single SDR costs $3,000-5,000/month and can send 50-100 messages/day. 24GO starts at $75/month and can send 10,000+ messages/day across multiple accounts. That's 100x more outreach at 2-5% of the cost.",
+    a: "A single SDR costs $3,000-5,000/month and can send 50-100 messages/day. 24GO starts at $25/month and can send 10,000+ messages/day across multiple accounts. That's 100x more outreach at 0.5-1% of the cost.",
   },
   {
     q: "Is Telegram outreach legal?",

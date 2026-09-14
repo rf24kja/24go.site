@@ -94,10 +94,10 @@ export default function RoiCalculator() {
             <div className="text-sm text-zinc-500 mb-1">Recommended plan</div>
             <div className="text-lg font-bold text-emerald-400">
               {accounts <= 10
-                ? "Starter — $75/mo"
+                ? "Starter — $25/mo"
                 : accounts <= 50
-                  ? "Pro — $199/mo"
-                  : "Enterprise — $499/mo"}
+                  ? "Pro — $75/mo"
+                  : "Enterprise — $300/mo"}
             </div>
           </div>
         </div>
