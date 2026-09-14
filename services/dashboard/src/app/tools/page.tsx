@@ -6,7 +6,14 @@ export const metadata: Metadata = {
   title: "Free Telegram Marketing Tools — ROI Calculator, Group Analyzer, Account Checker | 24GO",
   description: "Free tools for Telegram marketers: ROI calculator, group analyzer, account health checker, integration guides, and step-by-step tutorials.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/tools" },
+  alternates: {
+    canonical: "https://www.24go.site/tools",
+    languages: {
+      en: "https://www.24go.site/tools?locale=en",
+      ru: "https://www.24go.site/tools?locale=ru",
+      "x-default": "https://www.24go.site/tools",
+    },
+  },
 };
 
 const tools = [

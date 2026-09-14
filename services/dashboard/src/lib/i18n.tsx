@@ -16,19 +16,53 @@ interface I18nCtx {
   t: (key: string, fallback?: string | TemplateParams) => string;
 }
 
+function detectLocale(): Lang {
+  if (typeof window === "undefined") return "en";
+
+  // 1. URL ?locale= param (highest priority — explicit user choice)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlLocale = params.get("locale");
+    if (urlLocale === "ru" || urlLocale === "en") return urlLocale;
+  } catch {}
+
+  // 2. NEXT_LOCALE cookie (set by middleware)
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=(en|ru)/);
+    if (match) return match[1] as Lang;
+  } catch {}
+
+  // 3. localStorage (remembered preference)
+  try {
+    const stored = localStorage.getItem("lang");
+    if (stored === "ru" || stored === "en") return stored;
+  } catch {}
+
+  // 4. Accept-Language header (browser setting)
+  try {
+    const nav = navigator.language || (navigator as any).userLanguage || "";
+    if (nav.toLowerCase().startsWith("ru")) return "ru";
+  } catch {}
+
+  return "en";
+}
+
 const Ctx = createContext<I18nCtx>({ lang: "en", setLang: () => {}, t: (k) => k });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("lang") as Lang) || "en";
-    }
-    return "en";
-  });
+  const [lang, setLangState] = useState<Lang>(detectLocale);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     localStorage.setItem("lang", l);
+    // Also update cookie so server-rendered pages get correct lang
+    document.cookie = `NEXT_LOCALE=${l}; path=/; max-age=31536000; samesite=lax`;
+    // Update URL ?locale= param for crawlers
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("locale", l);
+      window.history.replaceState({}, "", url.toString());
+    } catch {}
   }, []);
 
   const t = useCallback((key: string, fallback?: string | TemplateParams): string => {

@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   robots: "index, follow",
   alternates: {
     canonical: "https://www.24go.site/tools/account-checker",
+    languages: {
+      en: "https://www.24go.site/tools/account-checker?locale=en",
+      ru: "https://www.24go.site/tools/account-checker?locale=ru",
+      "x-default": "https://www.24go.site/tools/account-checker",
+    },
   },
 };
 

@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "Telegram → Google Sheets Integration — Auto-Export Leads | 24GO",
   description: "Export Telegram leads to Google Sheets automatically. Real-time sync, custom columns, and formula-ready data.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/integrations/google-sheets" },
+  alternates: {
+    canonical: "https://www.24go.site/integrations/google-sheets",
+    languages: {
+      en: "https://www.24go.site/integrations/google-sheets?locale=en",
+      ru: "https://www.24go.site/integrations/google-sheets?locale=ru",
+      "x-default": "https://www.24go.site/integrations/google-sheets",
+    },
+  },
 };
 
 export default function GoogleSheetsPage() {

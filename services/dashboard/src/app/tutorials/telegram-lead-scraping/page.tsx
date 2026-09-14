@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "How to Scrape Telegram Leads — Complete Guide (2026) | 24GO",
   description: "Step-by-step guide to collecting leads from Telegram groups. Extract usernames, messages, and intent data for B2B outreach.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/tutorials/telegram-lead-scraping" },
+  alternates: {
+    canonical: "https://www.24go.site/tutorials/telegram-lead-scraping",
+    languages: {
+      en: "https://www.24go.site/tutorials/telegram-lead-scraping?locale=en",
+      ru: "https://www.24go.site/tutorials/telegram-lead-scraping?locale=ru",
+      "x-default": "https://www.24go.site/tutorials/telegram-lead-scraping",
+    },
+  },
 };
 
 export default function LeadScrapingTutorial() {

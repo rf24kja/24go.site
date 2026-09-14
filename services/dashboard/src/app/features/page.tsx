@@ -5,7 +5,14 @@ import { Bot, Users, Send, Brain, BarChart3, Shield, Globe, Zap } from "lucide-r
 export const metadata: Metadata = {
   title: "Features — AI-Powered Lead Generation from Telegram & VK",
   description: "Explore 24GO features: AI lead qualification, automated campaigns, multi-account management, anti-ban protection, analytics, and integrations.",
-  alternates: { canonical: "https://www.24go.site/features" },
+  alternates: {
+    canonical: "https://www.24go.site/features",
+    languages: {
+      en: "https://www.24go.site/features?locale=en",
+      ru: "https://www.24go.site/features?locale=ru",
+      "x-default": "https://www.24go.site/features",
+    },
+  },
   robots: { index: true, follow: true },
 };
 

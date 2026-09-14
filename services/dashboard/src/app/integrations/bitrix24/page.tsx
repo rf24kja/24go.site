@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "Telegram → Bitrix24 Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into Bitrix24 CRM. Sync contacts, deals, and tasks with 24GO.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/integrations/bitrix24" },
+  alternates: {
+    canonical: "https://www.24go.site/integrations/bitrix24",
+    languages: {
+      en: "https://www.24go.site/integrations/bitrix24?locale=en",
+      ru: "https://www.24go.site/integrations/bitrix24?locale=ru",
+      "x-default": "https://www.24go.site/integrations/bitrix24",
+    },
+  },
 };
 
 export default function Bitrix24Page() {

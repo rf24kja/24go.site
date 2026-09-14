@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/Toast";
@@ -40,19 +41,32 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "https://www.24go.site",
+    languages: {
+      en: "https://www.24go.site?locale=en",
+      ru: "https://www.24go.site?locale=ru",
+      "x-default": "https://www.24go.site",
+    },
   },
 };
 
+function getLocale(): string {
+  try {
+    const c = cookies();
+    return c.get("NEXT_LOCALE")?.value || "en";
+  } catch {
+    return "en";
+  }
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = getLocale();
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang={locale} className="dark" suppressHydrationWarning>
       <head>
         <link rel="alternate" type="application/rss+xml" title="24GO Blog RSS" href="https://www.24go.site/feed.xml" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var u=new URL(window.location.href);var l=u.searchParams.get('locale');if(l==='ru'||l==='en')document.documentElement.lang=l;}catch(e){}})();`,
-          }}
-        />
+        <link rel="alternate" hrefLang="en" href="https://www.24go.site?locale=en" />
+        <link rel="alternate" hrefLang="ru" href="https://www.24go.site?locale=ru" />
+        <link rel="alternate" hrefLang="x-default" href="https://www.24go.site" />
       </head>
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         <ErrorBoundary>

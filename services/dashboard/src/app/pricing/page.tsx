@@ -4,7 +4,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Pricing — Lead Generation Plans for Telegram & VK",
   description: "Choose a plan for automated lead generation in Telegram and VK. Starter $25/mo, Pro $75/mo, Enterprise $300/mo. Full setup service available.",
-  alternates: { canonical: "https://www.24go.site/pricing" },
+  alternates: {
+    canonical: "https://www.24go.site/pricing",
+    languages: {
+      en: "https://www.24go.site/pricing?locale=en",
+      ru: "https://www.24go.site/pricing?locale=ru",
+      "x-default": "https://www.24go.site/pricing",
+    },
+  },
   robots: { index: true, follow: true },
 };
 

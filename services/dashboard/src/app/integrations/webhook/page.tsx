@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "Telegram Webhook Integration — Send Leads to Any System | 24GO",
   description: "Connect Telegram leads to any system via webhooks. Send data to Zapier, Make, n8n, or your custom API.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/integrations/webhook" },
+  alternates: {
+    canonical: "https://www.24go.site/integrations/webhook",
+    languages: {
+      en: "https://www.24go.site/integrations/webhook?locale=en",
+      ru: "https://www.24go.site/integrations/webhook?locale=ru",
+      "x-default": "https://www.24go.site/integrations/webhook",
+    },
+  },
 };
 
 export default function WebhookPage() {

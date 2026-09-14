@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "How to Warm Up Telegram Accounts — Complete Guide (2026) | 24GO",
   description: "Step-by-step guide to warming up Telegram accounts for mass outreach. Avoid bans and improve deliverability.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/tutorials/telegram-warmup" },
+  alternates: {
+    canonical: "https://www.24go.site/tutorials/telegram-warmup",
+    languages: {
+      en: "https://www.24go.site/tutorials/telegram-warmup?locale=en",
+      ru: "https://www.24go.site/tutorials/telegram-warmup?locale=ru",
+      "x-default": "https://www.24go.site/tutorials/telegram-warmup",
+    },
+  },
 };
 
 export default function WarmupTutorial() {

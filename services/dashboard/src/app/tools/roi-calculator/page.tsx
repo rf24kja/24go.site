@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   robots: "index, follow",
   alternates: {
     canonical: "https://www.24go.site/tools/roi-calculator",
+    languages: {
+      en: "https://www.24go.site/tools/roi-calculator?locale=en",
+      ru: "https://www.24go.site/tools/roi-calculator?locale=ru",
+      "x-default": "https://www.24go.site/tools/roi-calculator",
+    },
   },
 };
 

@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "Telegram → AmoCRM Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into AmoCRM. Sync contacts, deals, and conversation history with 24GO.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/integrations/amo-crm" },
+  alternates: {
+    canonical: "https://www.24go.site/integrations/amo-crm",
+    languages: {
+      en: "https://www.24go.site/integrations/amo-crm?locale=en",
+      ru: "https://www.24go.site/integrations/amo-crm?locale=ru",
+      "x-default": "https://www.24go.site/integrations/amo-crm",
+    },
+  },
 };
 
 export default function AmoCrmPage() {

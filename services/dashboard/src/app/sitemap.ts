@@ -1,44 +1,63 @@
 import type { MetadataRoute } from "next";
 
 const API = "https://api.24go.site";
+const BASE = "https://www.24go.site";
+const LOCALES = ["en", "ru"] as const;
 
 async function getBlogPosts(): Promise<MetadataRoute.Sitemap> {
   try {
     const res = await fetch(`${API}/api/v1/blog?limit=100`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.items || []).map((post: any) => ({
-      url: `https://www.24go.site/blog/${post.slug}`,
-      lastModified: new Date(post.created_at),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
+    const posts: MetadataRoute.Sitemap = [];
+    for (const post of data.items || []) {
+      for (const locale of LOCALES) {
+        posts.push({
+          url: `${BASE}/blog/${post.slug}?locale=${locale}`,
+          lastModified: new Date(post.created_at),
+          changeFrequency: "monthly" as const,
+          priority: 0.8,
+        });
+      }
+    }
+    return posts;
   } catch {
     return [];
   }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://www.24go.site";
-
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: base, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${base}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${base}/features`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${base}/tools`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${base}/tools/roi-calculator`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/tools/group-analyzer`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/tools/account-checker`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/integrations/amo-crm`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/integrations/google-sheets`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/integrations/hubspot`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/integrations/bitrix24`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/integrations/webhook`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/tutorials/telegram-auto-reply`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/tutorials/telegram-lead-scraping`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/tutorials/telegram-warmup`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+  const staticPaths = [
+    "/",
+    "/blog",
+    "/pricing",
+    "/features",
+    "/tools",
+    "/tools/roi-calculator",
+    "/tools/group-analyzer",
+    "/tools/account-checker",
+    "/integrations/amo-crm",
+    "/integrations/google-sheets",
+    "/integrations/hubspot",
+    "/integrations/bitrix24",
+    "/integrations/webhook",
+    "/tutorials/telegram-auto-reply",
+    "/tutorials/telegram-lead-scraping",
+    "/tutorials/telegram-warmup",
   ];
+
+  const staticPages: MetadataRoute.Sitemap = [];
+  for (const path of staticPaths) {
+    for (const locale of LOCALES) {
+      const sep = path.includes("?") ? "&" : "?";
+      staticPages.push({
+        url: path === "/" ? `${BASE}?locale=${locale}` : `${BASE}${path}${sep}locale=${locale}`,
+        lastModified: new Date(),
+        changeFrequency: path === "/" ? "weekly" : "monthly",
+        priority: path === "/" ? 1 : 0.8,
+      });
+    }
+  }
 
   const blogPages = await getBlogPosts();
 

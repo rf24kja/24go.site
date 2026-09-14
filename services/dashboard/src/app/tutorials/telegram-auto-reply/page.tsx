@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "How to Set Up Telegram Auto-Reply Bot — Complete Guide (2026) | 24GO",
   description: "Step-by-step guide to setting up automatic replies in Telegram. Respond to leads instantly with AI-powered or template replies.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/tutorials/telegram-auto-reply" },
+  alternates: {
+    canonical: "https://www.24go.site/tutorials/telegram-auto-reply",
+    languages: {
+      en: "https://www.24go.site/tutorials/telegram-auto-reply?locale=en",
+      ru: "https://www.24go.site/tutorials/telegram-auto-reply?locale=ru",
+      "x-default": "https://www.24go.site/tutorials/telegram-auto-reply",
+    },
+  },
 };
 
 export default function AutoReplyTutorial() {

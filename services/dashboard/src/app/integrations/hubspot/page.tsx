@@ -5,7 +5,14 @@ export const metadata: Metadata = {
   title: "Telegram → HubSpot Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into HubSpot CRM. Sync contacts, deals, and activity with 24GO.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/integrations/hubspot" },
+  alternates: {
+    canonical: "https://www.24go.site/integrations/hubspot",
+    languages: {
+      en: "https://www.24go.site/integrations/hubspot?locale=en",
+      ru: "https://www.24go.site/integrations/hubspot?locale=ru",
+      "x-default": "https://www.24go.site/integrations/hubspot",
+    },
+  },
 };
 
 export default function HubSpotPage() {
