@@ -30,6 +30,9 @@ log = logging.getLogger(__name__)
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_STARTER = os.getenv("STRIPE_PRICE_STARTER", "")  # price_xxx from Stripe Dashboard
+STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_PRO", "")
+STRIPE_PRICE_ENTERPRISE = os.getenv("STRIPE_PRICE_ENTERPRISE", "")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY", "")
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID", "")
 
@@ -177,17 +180,41 @@ async def create_checkout(
     raise HTTPException(400, "Unknown provider")
 
 
+def _plan_price_id(plan: str) -> str:
+    """Return Stripe Price ID from env (created in Stripe Dashboard)."""
+    return {
+        "starter": STRIPE_PRICE_STARTER,
+        "pro": STRIPE_PRICE_PRO,
+        "enterprise": STRIPE_PRICE_ENTERPRISE,
+    }.get(plan, "")
+
+
 def _plan_price(plan: str) -> int:
-    """Return monthly price in USD cents."""
-    return {"starter": 7500, "pro": 19900, "enterprise": 49900}.get(plan, 7500)
+    """Return monthly price in USD cents (fallback for ad-hoc price creation)."""
+    return {"starter": 2500, "pro": 7500, "enterprise": 30000}.get(plan, 2500)
 
 
 async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, email: str) -> str:
     """Create Stripe Checkout Session and return the URL."""
     if not STRIPE_SECRET_KEY or STRIPE_SECRET_KEY.startswith("sk_test_..."):
-        # Mock mode — return a fake checkout URL
         log.warning("Stripe not configured — returning mock checkout URL")
         return f"https://checkout.stripe.com/mock?plan={plan}&tenant={tenant_id}"
+
+    price_id = _plan_price_id(plan)
+    app_url = os.getenv("APP_URL", "https://www.24go.site")
+
+    # Use Price ID if configured (production), otherwise ad-hoc price (dev)
+    if price_id:
+        line_items = {"price": price_id, "quantity": "1"}
+    else:
+        log.warning(f"STRIPE_PRICE_{plan.upper()} not set — using ad-hoc price (dev only)")
+        line_items = {
+            "price_data[currency]": "usd",
+            "price_data[unit_amount]": str(price_usd),
+            "price_data[product_data][name]": f"24GO {plan.title()} Plan",
+            "price_data[recurring][interval]": "month",
+            "quantity": "1",
+        }
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -196,15 +223,11 @@ async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, ema
             data={
                 "mode": "subscription",
                 "customer_email": email,
-                "success_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing?success=true",
-                "cancel_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing?canceled=true",
+                "success_url": f"{app_url}/billing?success=true",
+                "cancel_url": f"{app_url}/billing?canceled=true",
                 "metadata[tenant_id]": tenant_id,
                 "metadata[plan_tier]": plan,
-                "line_items[0][price_data][currency]": "usd",
-                "line_items[0][price_data][unit_amount]": price_usd,
-                "line_items[0][price_data][product_data][name]": f"24GO {plan.title()} Plan",
-                "line_items[0][price_data][recurring][interval]": "month",
-                "line_items[0][quantity]": "1",
+                **{f"line_items[0][{k}]": v for k, v in line_items.items()},
             },
         )
         resp.raise_for_status()
