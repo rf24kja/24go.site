@@ -7,16 +7,16 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: {
-    default: "24GO — AI-Powered Lead Generation from Telegram & VK | SEO, Лиды, Клиенты",
-    template: "%s | 24GO",
+    default: "24GO.SITE — AI-Powered Lead Generation from Telegram & VK | SEO, Лиды, Клиенты",
+    template: "%s | 24GO.SITE",
   },
-  description: "Автоматическая лидогенерация в Telegram и ВКонтакте. AI-классификация лидов, парсинг групп, умные кампании. 24GO — платформа для увеличения продаж и поиска клиентов.",
+  description: "Автоматическая лидогенерация в Telegram и ВКонтакте. AI-классификация лидов, парсинг групп, умные кампании. 24GO.SITE — платформа для увеличения продаж и поиска клиентов.",
   keywords: "лидогенерация, лиды, lead generation, Telegram, VK, ВКонтакте, парсинг, SEO, клиенты, увеличить продажи, трафик, AI, автоматизация продаж",
   openGraph: {
-    title: "24GO — AI-Powered Lead Generation from Telegram & VK",
+    title: "24GO.SITE — AI-Powered Lead Generation from Telegram & VK",
     description: "Автоматическая лидогенерация в Telegram и ВКонтакте. AI-классификация лидов, парсинг групп, умные кампании.",
     url: "https://www.24go.site",
-    siteName: "24GO",
+    siteName: "24GO.SITE",
     locale: "en_US",
     type: "website",
     images: [
@@ -24,13 +24,13 @@ export const metadata: Metadata = {
         url: "https://www.24go.site/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "24GO — AI Lead Generation",
+        alt: "24GO.SITE — AI Lead Generation",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "24GO — AI-Powered Lead Generation from Telegram & VK",
+    title: "24GO.SITE — AI-Powered Lead Generation from Telegram & VK",
     description: "Автоматическая лидогенерация в Telegram и ВКонтакте.",
     images: ["https://www.24go.site/opengraph-image.png"],
   },

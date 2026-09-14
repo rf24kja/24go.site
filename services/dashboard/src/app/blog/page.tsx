@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { getPublicBlogPosts } from "@/lib/api";
 import BlogContent from "@/components/BlogList";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export async function generateMetadata({ searchParams }: { searchParams: { locale?: string } }): Promise<Metadata> {
   const locale = searchParams?.locale === "ru" ? "ru" : "en";
@@ -29,10 +31,16 @@ export default async function BlogPage({ searchParams }: { searchParams: { local
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <section className="py-12 px-6 lg:px-12 bg-zinc-900/30">
-        <div className="max-w-6xl mx-auto text-center">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <span className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></span>
-          </Link>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></span>
+            </Link>
+            <Suspense>
+              <LanguageSwitcher />
+            </Suspense>
+          </div>
+          <div className="text-center">
           <h1 className="text-4xl lg:text-5xl font-bold mb-4">
             {locale === "ru" ? "Блог" : "Blog"}
           </h1>
@@ -46,6 +54,7 @@ export default async function BlogPage({ searchParams }: { searchParams: { local
               {posts.length} {locale === "ru" ? "статей" : "articles"}
             </p>
           )}
+          </div>
         </div>
       </section>
 
