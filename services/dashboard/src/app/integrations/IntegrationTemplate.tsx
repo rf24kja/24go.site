@@ -9,9 +9,17 @@ interface IntegrationPageProps {
   steps: { title: string; desc: string }[];
   faq: { q: string; a: string }[];
   canonical: string;
+  locale?: string;
 }
 
-export default function IntegrationTemplate({ name, description, features, steps, faq, canonical }: IntegrationPageProps) {
+const labels = {
+  en: { badge: "Integration", howItWorks: "How It Works", features: "Features", faq: "FAQ", cta: "Start Connecting Telegram to" },
+  ru: { badge: "Интеграция", howItWorks: "Как это работает", features: "Возможности", faq: "Вопросы и ответы", cta: "Начать подключение Telegram к" },
+};
+
+export default function IntegrationTemplate({ name, description, features, steps, faq, canonical, locale = "en" }: IntegrationPageProps) {
+  const l = labels[locale === "ru" ? "ru" : "en"];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -29,14 +37,14 @@ export default function IntegrationTemplate({ name, description, features, steps
           <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex items-center gap-3">
             <Suspense><LanguageSwitcher /></Suspense>
-            <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">Start Free Trial</Link>
+            <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">{locale === "ru" ? "Попробовать бесплатно" : "Start Free Trial"}</Link>
           </div>
         </div>
       </header>
 
       <section className="py-16 px-6 lg:px-12 border-b border-zinc-800/50 bg-zinc-900/30">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20 mb-4">Integration</div>
+          <div className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20 mb-4">{l.badge}</div>
           <h1 className="text-4xl lg:text-5xl font-bold mb-4">Telegram → <span className="text-emerald-400">{name}</span></h1>
           <p className="text-zinc-400 text-lg max-w-2xl mx-auto">{description}</p>
         </div>
@@ -44,7 +52,7 @@ export default function IntegrationTemplate({ name, description, features, steps
 
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-16">
         <section>
-          <h2 className="text-2xl font-bold mb-6">How It Works</h2>
+          <h2 className="text-2xl font-bold mb-6">{l.howItWorks}</h2>
           <div className="space-y-4">
             {steps.map((s, i) => (
               <div key={i} className="flex gap-4 items-start">
@@ -59,7 +67,7 @@ export default function IntegrationTemplate({ name, description, features, steps
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold mb-6">Features</h2>
+          <h2 className="text-2xl font-bold mb-6">{l.features}</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             {features.map((f, i) => (
               <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
@@ -70,7 +78,7 @@ export default function IntegrationTemplate({ name, description, features, steps
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold mb-6">FAQ</h2>
+          <h2 className="text-2xl font-bold mb-6">{l.faq}</h2>
           <div className="space-y-4">
             {faq.map((item, i) => (
               <details key={i} className="group">
@@ -86,7 +94,7 @@ export default function IntegrationTemplate({ name, description, features, steps
 
         <section className="text-center">
           <Link href="/login" className="inline-block px-8 py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition">
-            Start Connecting Telegram to {name} →
+            {l.cta} {name} →
           </Link>
         </section>
       </main>
