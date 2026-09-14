@@ -3,62 +3,54 @@ import type { NextRequest } from "next/server";
 
 const LOCALES = ["en", "ru"] as const;
 const DEFAULT_LOCALE = "en";
-const COOKIE_NAME = "NEXT_LOCALE";
 
-function isValidLocale(pathname: string): boolean {
-  const first = pathname.split("/")[1];
-  return LOCALES.includes(first as any);
+function detectLocale(request: NextRequest): string {
+  const { pathname } = request.nextUrl;
+
+  // 1. URL ?locale= param (explicit choice)
+  const urlLocale = request.nextUrl.searchParams.get("locale");
+  if (urlLocale && LOCALES.includes(urlLocale as any)) return urlLocale;
+
+  // 2. Cookie (remembered preference)
+  const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
+  if (cookieLocale && LOCALES.includes(cookieLocale as any)) return cookieLocale;
+
+  // 3. Accept-Language header
+  const acceptLang = request.headers.get("accept-language") || "";
+  for (const loc of LOCALES) {
+    if (acceptLang.toLowerCase().startsWith(loc)) return loc;
+  }
+
+  return DEFAULT_LOCALE;
 }
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for internal Next.js paths, API routes, static files
+  // Skip internal paths, API routes, static files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.includes(".") // static files (favicon, robots, etc.)
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
 
-  // If URL already has locale prefix, set cookie and continue
-  if (isValidLocale(pathname)) {
-    const locale = pathname.split("/")[1];
-    const response = NextResponse.next();
-    response.cookies.set(COOKIE_NAME, locale, {
-      path: "/",
-      maxAge: 365 * 24 * 60 * 60, // 1 year
-      sameSite: "lax",
-    });
-    return response;
-  }
+  const locale = detectLocale(request);
 
-  // No locale prefix: detect from cookie → Accept-Language → default
-  const cookieLocale = request.cookies.get(COOKIE_NAME)?.value;
-  if (cookieLocale && LOCALES.includes(cookieLocale as any)) {
-    const response = NextResponse.next();
-    response.cookies.set(COOKIE_NAME, cookieLocale, { path: "/", maxAge: 365 * 24 * 60 * 60, sameSite: "lax" });
-    return response;
-  }
+  // Set locale as REQUEST header (readable by layout via headers())
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", locale);
 
-  // Try Accept-Language header
-  const acceptLang = request.headers.get("accept-language") || "";
-  let detected = DEFAULT_LOCALE;
-  for (const loc of LOCALES) {
-    if (acceptLang.toLowerCase().startsWith(loc)) {
-      detected = loc;
-      break;
-    }
-  }
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  // Set cookie and continue
-  const response = NextResponse.next();
-  response.cookies.set(COOKIE_NAME, detected, {
+  // Also set cookie for client-side reading
+  response.cookies.set("NEXT_LOCALE", locale, {
     path: "/",
     maxAge: 365 * 24 * 60 * 60,
     sameSite: "lax",
   });
+
   return response;
 }
 

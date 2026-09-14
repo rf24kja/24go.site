@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/Toast";
@@ -51,8 +51,7 @@ export const metadata: Metadata = {
 
 function getLocale(): string {
   try {
-    const c = cookies();
-    return c.get("NEXT_LOCALE")?.value || "en";
+    return headers().get("x-locale") || "en";
   } catch {
     return "en";
   }
