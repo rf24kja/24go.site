@@ -136,11 +136,11 @@ async def _run():
                     "app.tasks.vk_poster.post_to_vk",
                     args=[
                         str(c["tenant_id"]),
+                        str(account["id"]),
+                        int(target["target_id_code"].replace("vk_", "")),
+                        c["base_text"],
                         str(c["id"]),
                         str(target["id"]),
-                        str(account["id"]),
-                        c["base_text"],
-                        utm_url,
                     ],
                     kwargs={
                         "ab_enabled": c.get("ab_enabled", False),

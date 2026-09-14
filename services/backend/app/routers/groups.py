@@ -481,11 +481,17 @@ async def remove_group(
     if not group:
         raise HTTPException(404, "Group not found")
 
-    # Stop scanner first
-    task_id = _active_scanners.pop(str(group_id), None)
+    # Stop scanner first (same pattern as stop_group_scanner)
+    task_id = None
+    r = _get_redis()
+    raw = r.get(f"scanner:{group_id}")
+    if raw:
+        task_id = raw
+        _del_scanner(str(group_id))
+
     if task_id:
         from app.celery_app import celery
-        celery.control.revoke(task_id, terminate=True)
+        celery.control.revoke(task_id, terminate=True, signal="SIGTERM")
 
     group.is_active = False
     await db.commit()
