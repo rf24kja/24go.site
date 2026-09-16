@@ -1,7 +1,11 @@
-"""Celery application with 5 queues + Beat scheduler."""
+"""Celery application with 5 queues + Beat scheduler + Dead Letter Queue."""
 import os
+import logging
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import task_failure
+
+logger = logging.getLogger("dlq")
 
 celery = Celery(
     "leadgen_worker",
@@ -10,6 +14,11 @@ celery = Celery(
 )
 
 celery.conf.broker_connection_retry_on_startup = True
+
+# ponytail: DLQ — failed tasks logged with full context for manual retry
+@task_failure.connect
+def handle_task_failure(sender, task_id, exception, traceback, **kwargs):
+    logger.error(f"DLQ: task={sender.name} id={task_id} error={exception}")
 
 celery.conf.update(
     task_serializer="json",

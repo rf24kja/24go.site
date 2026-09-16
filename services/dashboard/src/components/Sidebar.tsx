@@ -12,7 +12,7 @@ import { usePlatform } from "@/lib/platform";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
-  Cog, LogOut, Cross, Menu, Pen, Send, Bot, Shield,
+  Cog, LogOut, Cross, Menu, Pen, Send, Bot, Shield, CheckCircle,
 } from "@/components/Icons";
 
 export function Sidebar() {
@@ -40,6 +40,7 @@ export function Sidebar() {
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
     { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
+    { href: "/onboarding", label: "Quick Start", icon: CheckCircle },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
@@ -58,6 +59,7 @@ export function Sidebar() {
     { href: "/campaigns", label: t("sidebar.vkCampaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.vkMailings"), icon: Send, feature: "mailings" },
     { href: "/blog-admin", label: t("sidebar.blog"), icon: Pen, feature: "blog-admin" },
+    { href: "/onboarding", label: "Quick Start", icon: CheckCircle },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },

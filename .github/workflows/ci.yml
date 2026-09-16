@@ -74,6 +74,7 @@ jobs:
 
   # ── Dashboard (Vercel) ──────────────────────────────────────────
   dashboard:
+    needs: test-frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,3 +89,18 @@ jobs:
         working-directory: services/dashboard
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: services/dashboard/package-lock.json
+      - run: npm ci
+      - run: npm test
