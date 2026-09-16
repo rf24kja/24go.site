@@ -95,12 +95,10 @@ services:
     build:
       context: ./services/worker
       dockerfile: Dockerfile
-    command: celery -A app.celery_app:celery flower --port=5555
+    command: celery -A app.celery_app:celery flower --port=5555 --basic_auth=admin:Fl0wer24go!
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "127.0.0.1:5555:5555"
     depends_on:
       redis:
         condition: service_healthy
@@ -111,6 +109,7 @@ services:
           cpus: "0.5"
     networks:
       - internal
+      - preyi_preyi_net
 
   # ── Worker Pools (one per queue) ─────────────────────────────────────
   worker-parser:
