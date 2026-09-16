@@ -155,13 +155,14 @@ async def list_api_keys(current_user: User = Depends(get_current_user)):
 async def create_api_key(body: ApiKeyCreate, current_user: User = Depends(get_current_user)):
     import asyncpg
     raw_key = f"24go_{_secrets.token_hex(32)}"
-    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    salt = _secrets.token_bytes(16)
+    key_hash = hashlib.pbkdf2_hmac('sha256', raw_key.encode(), salt, 100_000).hex()
     key_preview = raw_key[-8:]
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         await conn.execute(
             "INSERT INTO api_keys (id, tenant_id, user_id, name, key_hash, key_preview) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)",
-            current_user.tenant_id, current_user.id, body.name, key_hash, key_preview,
+            current_user.tenant_id, current_user.id, body.name, f"{salt.hex()}:{key_hash}", key_preview,
         )
     finally:
         await conn.close()
@@ -228,7 +229,10 @@ async def delete_account(body: DeleteAccountRequest, current_user: User = Depend
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         tenant_id = current_user.tenant_id
+        ALLOWED_TABLES = frozenset({"leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"})
         for table in ["leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"]:
+            if table not in ALLOWED_TABLES:
+                continue
             try:
                 await conn.execute(f"DELETE FROM {table} WHERE tenant_id = $1", tenant_id)
             except Exception:

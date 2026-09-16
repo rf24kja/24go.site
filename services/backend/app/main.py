@@ -88,6 +88,18 @@ app.add_middleware(TenantRLSMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
 
+# ── Security Headers ─────────────────────────────────────────────────
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if _is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    return response
+
+
 # ── WebSocket Hub ──────────────────────────────────────────────────────
 # ponytail: simple in-memory pub/sub, one process only. Add Redis pub/sub if multi-worker.
 

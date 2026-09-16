@@ -351,8 +351,21 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(body: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Send a password reset email. Always returns 200 to prevent email enumeration."""
+    # Rate limit: 3 requests per email per 5 minutes
+    try:
+        import redis as _redis
+        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+        key = f"reset:{body.email}"
+        count = r.incr(key)
+        if count == 1:
+            r.expire(key, 300)
+        if count > 3:
+            return {"message": "If the email exists, a reset link was sent."}
+    except Exception:
+        pass  # ponytail: if Redis down, skip rate limit (same as other rate limiters)
+
     import uuid as _uuid
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()

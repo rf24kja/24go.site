@@ -8,7 +8,7 @@ from app.config import settings
 
 
 class TenantRLSMiddleware(BaseHTTPMiddleware):
-    """Extract tenant_id from JWT and SET app.current_tenant for RLS."""
+    """Extract tenant_id from JWT and set on request.state for RLS."""
 
     async def dispatch(self, request: Request, call_next):
         tenant_id = None
@@ -21,6 +21,7 @@ class TenantRLSMiddleware(BaseHTTPMiddleware):
                     token,
                     settings.JWT_SECRET,
                     algorithms=[settings.JWT_ALGORITHM],
+                    audience="24go",
                 )
                 tenant_id = payload.get("tenant_id")
             except JWTError:

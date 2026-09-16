@@ -133,22 +133,13 @@ async def stripe_webhook(
         tenant_id = session["metadata"]["tenant_id"]
         amount_kopeks = int(session["metadata"]["amount_kopeks"])
 
-        # Credit balance
-        result = await db.execute(
-            select(UserBalance).where(UserBalance.tenant_id == uuid.UUID(tenant_id))
+        # Credit balance — atomic increment to prevent race conditions
+        await db.execute(
+            """INSERT INTO user_balances (id, tenant_id, balance_kopeks, total_spent_kopeks, total_queries)
+               VALUES (gen_random_uuid(), $1, $2, 0, 0)
+               ON CONFLICT (tenant_id) DO UPDATE SET balance_kopeks = user_balances.balance_kopeks + $2""",
+            uuid.UUID(tenant_id), amount_kopeks,
         )
-        balance = result.scalar_one_or_none()
-        if not balance:
-            balance = UserBalance(
-                id=uuid.uuid4(),
-                tenant_id=uuid.UUID(tenant_id),
-                balance_kopeks=0,
-                total_spent_kopeks=0,
-                total_queries=0,
-            )
-            db.add(balance)
-
-        balance.balance_kopeks += amount_kopeks
         await db.commit()
         log.info(f"Credited {amount_kopeks} kopeks to tenant {tenant_id}")
 

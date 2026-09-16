@@ -127,9 +127,11 @@ async def system_info(
     conn = await asyncpg.connect(url)
     try:
         # Count records
-        tables = ["leads", "campaigns", "targets", "account_pool", "subscriptions", "audit_log", "scoring_rules"]
+        ALLOWED_TABLES = frozenset({"leads", "campaigns", "targets", "account_pool", "subscriptions", "audit_log", "scoring_rules"})
         counts = {}
         for table in tables:
+            if table not in ALLOWED_TABLES:
+                continue
             try:
                 count = await conn.fetchval(f"SELECT COUNT(*) FROM {table} WHERE tenant_id = $1", current_user.tenant_id)
                 counts[table] = count
