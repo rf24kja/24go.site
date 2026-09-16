@@ -21,6 +21,7 @@ if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
 
 _is_production = os.getenv("ENVIRONMENT", "production").lower() == "production" and not os.getenv("DEBUG", "")
+_app_start_time = time.time()
 
 app = FastAPI(
     title="LeadGen Control Plane",
@@ -308,7 +309,13 @@ app.include_router(mailings.router)
 @app.get("/health")
 async def health():
     """Health check — returns status + dependency health."""
-    checks = {"status": "ok", "ws_connections": ws_manager.active_tenants()}
+    import time as _time
+    checks = {
+        "status": "ok",
+        "api_version": "1.0.0",
+        "uptime_seconds": int(_time.time() - _app_start_time),
+        "ws_connections": ws_manager.active_tenants(),
+    }
 
     # DB check — reuse SQLAlchemy pool
     try:
