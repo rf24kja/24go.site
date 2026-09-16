@@ -1,0 +1,84 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "instructions": [
+    "C:/Code/Plugins/ECC/.opencode/instructions/INSTRUCTIONS.md"
+  ],
+  "skills": {
+    "paths": [
+      "C:/Code/Plugins/ECC/skills"
+    ]
+  },
+  "agent": {
+    "build": {
+      "description": "Primary coding agent for development work",
+      "mode": "primary",
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "read": true,
+        "changed-files": true
+      }
+    },
+    "planner": {
+      "description": "Expert planning specialist for complex features and refactoring.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/planner.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "code-reviewer": {
+      "description": "Expert code review specialist. Reviews code for quality, security, and maintainability.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/code-reviewer.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "security-reviewer": {
+      "description": "Security vulnerability detection and remediation specialist.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/security-reviewer.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "python-reviewer": {
+      "description": "Python/FastAPI code review specialist.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/python-reviewer.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "database-reviewer": {
+      "description": "PostgreSQL/Supabase database review and optimization specialist.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/database-reviewer.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "tdd-guide": {
+      "description": "Test-driven development guide. Enforces write-tests-first methodology.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/tdd-guide.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    },
+    "build-error-resolver": {
+      "description": "Build error resolution specialist.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/build-error-resolver.txt}",
+      "tools": { "read": true, "bash": true, "write": true, "edit": true }
+    },
+    "refactor-cleaner": {
+      "description": "Dead code cleanup and refactoring specialist.",
+      "mode": "subagent",
+      "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/refactor-cleaner.txt}",
+      "tools": { "read": true, "bash": true, "write": false, "edit": false }
+    }
+  },
+  "command": {
+    "plan": { "path": "C:/Code/Plugins/ECC/.opencode/commands/plan.md" },
+    "tdd": { "path": "C:/Code/Plugins/ECC/.opencode/commands/tdd.md" },
+    "code-review": { "path": "C:/Code/Plugins/ECC/.opencode/commands/code-review.md" },
+    "security": { "path": "C:/Code/Plugins/ECC/.opencode/commands/security.md" },
+    "build-fix": { "path": "C:/Code/Plugins/ECC/.opencode/commands/build-fix.md" },
+    "refactor-clean": { "path": "C:/Code/Plugins/ECC/.opencode/commands/refactor-clean.md" },
+    "verify": { "path": "C:/Code/Plugins/ECC/.opencode/commands/verify.md" },
+    "test-coverage": { "path": "C:/Code/Plugins/ECC/.opencode/commands/test-coverage.md" },
+    "update-docs": { "path": "C:/Code/Plugins/ECC/.opencode/commands/update-docs.md" }
+  }
+}
