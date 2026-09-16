@@ -345,9 +345,10 @@ async def get_lead(
         audit_q = text(
             "SELECT action, old_value, new_value, created_at "
             "FROM audit_log WHERE entity_type = 'lead' AND entity_id = :eid "
+            "AND tenant_id = :tid "
             "ORDER BY created_at DESC LIMIT 50"
         )
-        audit_result = await db.execute(audit_q, {"eid": lead.id})
+        audit_result = await db.execute(audit_q, {"eid": lead.id, "tid": current_user.tenant_id})
         rows = audit_result.fetchall()
         events = [
             {

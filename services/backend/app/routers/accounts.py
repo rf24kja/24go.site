@@ -279,7 +279,7 @@ async def bulk_import_accounts(
             results.append({
                 "identifier": prefix,
                 "status": "failed",
-                "error": str(e)[:200],
+                "error": "Import failed — check account credentials",
             })
             log.error(f"bulk_import failed for {prefix}: {e}")
 
@@ -382,7 +382,7 @@ async def bulk_import_vk_accounts(
 
         except Exception as e:
             failed += 1
-            results.append({"identifier": str(group_id or i), "status": "failed", "error": str(e)[:200]})
+            results.append({"identifier": str(group_id or i), "status": "failed", "error": "Import failed"})
 
     if imported:
         await db.commit()
@@ -1183,7 +1183,7 @@ async def connect_vk(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, f"Invalid VK token: {str(e)[:200]}")
+        raise HTTPException(400, "Invalid VK token — check token permissions")
 
     # Store group token encrypted in session_data
     import uuid as _uuid

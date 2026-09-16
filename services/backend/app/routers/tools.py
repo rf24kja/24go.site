@@ -80,7 +80,7 @@ async def analyze_group(body: GroupAnalysisRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(502, f"Failed to fetch group info: {str(e)[:200]}")
+        raise HTTPException(502, "Failed to fetch group info")
 
 
 _analysis_client = None

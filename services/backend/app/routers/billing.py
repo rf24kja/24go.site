@@ -364,7 +364,8 @@ async def yookassa_webhook(request: Request):
             log.warning(f"YooKassa API verification failed: {type(e).__name__}: {e}")
             return JSONResponse(status_code=502, content={"error": "Verification failed"})
     else:
-        log.warning("YooKassa API verification skipped — missing credentials")
+        log.error("YooKassa webhook received but credentials not configured — rejecting")
+        return JSONResponse(status_code=500, content={"error": "YooKassa not configured"})
 
     # Validate required fields
     tenant_id = obj.get("metadata", {}).get("tenant_id")

@@ -162,7 +162,7 @@ async def test_proxy(proxy_id: UUID, db: AsyncSession = Depends(get_db), user: U
     except ImportError:
         return {"status": "error", "message": "pysocks not installed on server"}
     except Exception as e:
-        return {"status": "error", "message": str(e)[:200]}
+        return {"status": "error", "message": "Proxy connection failed"}
 
 
 # ── Bulk Import ─────────────────────────────────────────────────────

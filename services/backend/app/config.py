@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 
 
@@ -53,9 +54,18 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Startup guards for critical secrets
+import logging
+_log = logging.getLogger(__name__)
+
 if not settings.ENCRYPTION_KEY:
-    import logging
-    logging.getLogger(__name__).warning(
-        "ENCRYPTION_KEY not set — Telegram session data stored unencrypted! "
-        "Set ENCRYPTION_KEY in .env for production."
+    _log.critical(
+        "ENCRYPTION_KEY not set — Telegram session data stored UNENCRYPTED! "
+        "Set ENCRYPTION_KEY in .env. Refusing to start in production."
     )
+    if os.getenv("APP_ENV", "production") == "production":
+        raise RuntimeError("ENCRYPTION_KEY is required in production")
+
+if not settings.JWT_SECRET:
+    _log.critical("JWT_SECRET not set — authentication disabled!")
+    if os.getenv("APP_ENV", "production") == "production":
+        raise RuntimeError("JWT_SECRET is required in production")

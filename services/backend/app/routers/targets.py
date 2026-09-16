@@ -339,7 +339,7 @@ async def join_target(
                 await client.join_chat(entity)
                 results.append({"account_id": str(account.id), "status": "joined"})
             except Exception as e:
-                results.append({"account_id": str(account.id), "status": "error", "error": str(e)[:200]})
+                results.append({"account_id": str(account.id), "status": "error", "error": "Scrape failed"})
             finally:
                 await client.disconnect()
         return results, None
