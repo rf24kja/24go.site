@@ -111,3 +111,74 @@ async def owner_audit_log(
         entries.append(entry)
 
     return entries
+
+
+@router.get("/owner/users")
+async def owner_list_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Owner-only: list all users across all tenants."""
+    if current_user.email != OWNER_EMAIL:
+        from fastapi import HTTPException
+        raise HTTPException(403, "Owner access required")
+
+    query = text("""
+        SELECT
+            u.id, u.email, u.role, u.created_at,
+            t.id as tenant_id, t.company_name, t.plan, t.is_active
+        FROM users u
+        LEFT JOIN tenants t ON t.id = u.tenant_id
+        ORDER BY u.created_at DESC
+    """)
+    result = await db.execute(query)
+    rows = result.mappings().all()
+
+    users = []
+    for r in rows:
+        u = dict(r)
+        for k in ("id", "tenant_id"):
+            if u.get(k):
+                u[k] = str(u[k])
+        if hasattr(u.get("created_at"), "isoformat"):
+            u["created_at"] = u["created_at"].isoformat()
+        users.append(u)
+    return users
+
+
+@router.get("/owner/subscriptions")
+async def owner_list_subscriptions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Owner-only: list all subscriptions with usage and billing info."""
+    if current_user.email != OWNER_EMAIL:
+        from fastapi import HTTPException
+        raise HTTPException(403, "Owner access required")
+
+    query = text("""
+        SELECT
+            s.id, s.tenant_id, s.plan, s.status,
+            s.current_period_start, s.current_period_end,
+            s.monthly_posts_limit, s.monthly_posts_used,
+            s.token_credits_balance, s.created_at,
+            t.company_name,
+            (SELECT u.email FROM users u WHERE u.tenant_id = s.tenant_id AND u.role = 'owner' LIMIT 1) as owner_email
+        FROM subscriptions s
+        LEFT JOIN tenants t ON t.id = s.tenant_id
+        ORDER BY s.created_at DESC
+    """)
+    result = await db.execute(query)
+    rows = result.mappings().all()
+
+    subs = []
+    for r in rows:
+        s = dict(r)
+        for k in ("id", "tenant_id"):
+            if s.get(k):
+                s[k] = str(s[k])
+        for k in ("current_period_start", "current_period_end", "created_at"):
+            if hasattr(s.get(k), "isoformat"):
+                s[k] = s[k].isoformat()
+        subs.append(s)
+    return subs

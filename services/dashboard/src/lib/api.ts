@@ -424,6 +424,14 @@ export async function getOwnerAuditLog(token: string, params?: {
   return api<any[]>(`/api/v1/audit/owner${qs ? `?${qs}` : ""}`, { token });
 }
 
+export async function getOwnerUsers(token: string) {
+  return api<any[]>("/api/v1/audit/owner/users", { token });
+}
+
+export async function getOwnerSubscriptions(token: string) {
+  return api<any[]>("/api/v1/audit/owner/subscriptions", { token });
+}
+
 // ── Users ─────────────────────────────────────────────────────────────
 
 export async function getUsers(token: string) {

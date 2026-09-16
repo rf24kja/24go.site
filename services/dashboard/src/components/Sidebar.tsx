@@ -12,7 +12,7 @@ import { usePlatform } from "@/lib/platform";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
   Megaphone, CreditCard, UsersGroup, FileText, Heartbeat,
-  Cog, LogOut, Cross, Menu, Pen, Send, Bot,
+  Cog, LogOut, Cross, Menu, Pen, Send, Bot, Shield,
 } from "@/components/Icons";
 
 export function Sidebar() {
@@ -43,6 +43,7 @@ export function Sidebar() {
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
+    { href: "/admin", label: "Owner Dashboard", icon: Shield, ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
@@ -60,6 +61,7 @@ export function Sidebar() {
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/users", label: t("sidebar.team"), icon: UsersGroup, feature: "users" },
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
+    { href: "/admin", label: "Owner Dashboard", icon: Shield, ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
     { href: "/vk-settings", label: t("sidebar.vkSettings"), icon: Cog },
