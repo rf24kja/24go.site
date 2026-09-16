@@ -46,7 +46,7 @@
       "tools": { "read": true, "bash": true, "write": false, "edit": false }
     },
     "database-reviewer": {
-      "description": "PostgreSQL/Supabase database review and optimization specialist.",
+      "description": "PostgreSQL database review and optimization specialist.",
       "mode": "subagent",
       "prompt": "{file:C:/Code/Plugins/ECC/.opencode/prompts/agents/database-reviewer.txt}",
       "tools": { "read": true, "bash": true, "write": false, "edit": false }
@@ -71,14 +71,55 @@
     }
   },
   "command": {
-    "plan": { "path": "C:/Code/Plugins/ECC/.opencode/commands/plan.md" },
-    "tdd": { "path": "C:/Code/Plugins/ECC/.opencode/commands/tdd.md" },
-    "code-review": { "path": "C:/Code/Plugins/ECC/.opencode/commands/code-review.md" },
-    "security": { "path": "C:/Code/Plugins/ECC/.opencode/commands/security.md" },
-    "build-fix": { "path": "C:/Code/Plugins/ECC/.opencode/commands/build-fix.md" },
-    "refactor-clean": { "path": "C:/Code/Plugins/ECC/.opencode/commands/refactor-clean.md" },
-    "verify": { "path": "C:/Code/Plugins/ECC/.opencode/commands/verify.md" },
-    "test-coverage": { "path": "C:/Code/Plugins/ECC/.opencode/commands/test-coverage.md" },
-    "update-docs": { "path": "C:/Code/Plugins/ECC/.opencode/commands/update-docs.md" }
+    "plan": {
+      "description": "Create a detailed implementation plan for complex features",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/plan.md}\n\n$ARGUMENTS",
+      "agent": "planner",
+      "subtask": true
+    },
+    "tdd": {
+      "description": "Enforce TDD workflow with 80%+ test coverage",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/tdd.md}\n\n$ARGUMENTS",
+      "agent": "tdd-guide",
+      "subtask": true
+    },
+    "code-review": {
+      "description": "Review code for quality, security, and maintainability",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/code-review.md}\n\n$ARGUMENTS",
+      "agent": "code-reviewer",
+      "subtask": true
+    },
+    "security": {
+      "description": "Run comprehensive security review",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/security.md}\n\n$ARGUMENTS",
+      "agent": "security-reviewer",
+      "subtask": true
+    },
+    "build-fix": {
+      "description": "Fix build and TypeScript errors with minimal changes",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/build-fix.md}\n\n$ARGUMENTS",
+      "agent": "build-error-resolver",
+      "subtask": true
+    },
+    "refactor-clean": {
+      "description": "Remove dead code and consolidate duplicates",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/refactor-clean.md}\n\n$ARGUMENTS",
+      "agent": "refactor-cleaner",
+      "subtask": true
+    },
+    "verify": {
+      "description": "Run verification loop",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/verify.md}\n\n$ARGUMENTS"
+    },
+    "test-coverage": {
+      "description": "Analyze test coverage",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/test-coverage.md}\n\n$ARGUMENTS",
+      "agent": "tdd-guide",
+      "subtask": true
+    },
+    "update-docs": {
+      "description": "Update documentation",
+      "template": "{file:C:/Code/Plugins/ECC/.opencode/commands/update-docs.md}\n\n$ARGUMENTS"
+    }
   }
 }
