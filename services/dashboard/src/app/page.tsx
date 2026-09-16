@@ -68,17 +68,91 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "Organization",
-            name: "24GO",
-            url: "https://www.24go.site",
-            logo: "https://www.24go.site/opengraph-image.png",
-            description: "AI-Powered Lead Generation Platform for Telegram and VK",
-            sameAs: [],
-            contactPoint: {
-              "@type": "ContactPoint",
-              contactType: "customer service",
-              email: "rf24krsk@gmail.com",
-            },
+            "@type": "HowTo",
+            name: "How to generate leads with 24GO — 3 steps",
+            description: "Connect Telegram & VK accounts, set up targets, and let AI find and convert leads on autopilot.",
+            step: [
+              {
+                "@type": "HowToStep",
+                name: "Connect Telegram & VK accounts",
+                text: "Add your Telegram and VK accounts with dedicated proxies. 24GO handles warm-up, quotas, and anti-ban protection automatically.",
+                image: "https://www.24go.site/opengraph-image.png",
+              },
+              {
+                "@type": "HowToStep",
+                name: "Discover leads across Telegram & VK",
+                text: "Add target groups or VK communities, and 24GO scans them 24/7. AI classifies every message and identifies leads with purchase intent.",
+                image: "https://www.24go.site/opengraph-image.png",
+              },
+              {
+                "@type": "HowToStep",
+                name: "Convert to paying clients",
+                text: "Qualified leads appear in your Kanban pipeline. Export to CRM, push to webhooks, or auto-reply — your choice.",
+                image: "https://www.24go.site/opengraph-image.png",
+              },
+            ],
+            tool: [
+              { "@type": "SoftwareApplication", name: "24GO", url: "https://www.24go.site", applicationCategory: "BusinessApplication" },
+            ],
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+              {
+                "@type": "Question",
+                name: "What is 24GO?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "24GO is an AI-powered lead generation platform for Telegram and VK. It automatically scans groups and communities, classifies messages by purchase intent (HOT/WARM/COLD), and helps you convert leads into paying clients.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "How does 24GO find leads?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "24GO monitors public Telegram groups and VK communities 24/7. Our AI analyzes every message in real-time, identifies users with purchase intent based on keywords, context, and behavior patterns, and scores them as HOT, WARM, or COLD leads.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Do I need to provide my own Telegram/VK accounts?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Yes. You connect your own Telegram and VK accounts to 24GO. We never ask for your personal social media credentials — only dedicated accounts used for lead generation. All tokens are encrypted and stored securely.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Is 24GO safe for my accounts?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Yes. 24GO uses dedicated proxies per account, automatic warm-up, rate limiting, and anti-ban protection. Accounts are never over-used, and all activity mimics natural human behavior patterns.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "What integrations does 24GO support?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "24GO integrates with AmoCRM, HubSpot, Bitrix24, Google Sheets via webhooks and direct API. You can also export leads as CSV or use the REST API for custom integrations.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "How much does 24GO cost?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "24GO starts at $25/month for the Starter plan. There's a free 3-day trial with no credit card required. We also offer Pro ($75/mo) and Enterprise ($300/mo) plans with higher limits and priority support.",
+                },
+              },
+            ],
           }),
         }}
       />
@@ -184,24 +258,29 @@ export default function LandingPage() {
                     <span className="text-emerald-400 mt-0.5">✓</span>
                     <span>{t("landing.step1Point4")}</span>
                   </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-400 mt-0.5">✓</span>
+                    <span>{t("landing.step1Point5")}</span>
+                  </li>
                 </ul>
                 <Link href="/login" className="inline-flex items-center gap-2 mt-6 text-emerald-400 hover:text-emerald-300 text-sm font-medium transition">
                   {t("landing.step1Cta")} →
                 </Link>
               </div>
-              {/* Mockup: Accounts page */}
+              {/* Mockup: Accounts page — TG + VK */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-1 overflow-hidden">
                 <div className="bg-zinc-950 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-3 h-3 rounded-full bg-rose-500/80" />
                     <div className="w-3 h-3 rounded-full bg-amber-500/80" />
                     <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                    <span className="ml-2 text-xs text-zinc-600">24GO — Accounts</span>
+                    <span className="ml-2 text-xs text-zinc-600">24GO — Accounts (Telegram + VK)</span>
                   </div>
                   <div className="space-y-2">
-                    <MockRow phone="+7 900 *** 1234" status="active" statusColor="emerald" proxy="socks5://***" />
-                    <MockRow phone="+44 77 *** 5678" status="warming" statusColor="amber" proxy="socks5://***" />
-                    <MockRow phone="+1 212 *** 9012" status="active" statusColor="emerald" proxy="http://***" />
+                    <MockRow phone="+7 900 *** 1234" status="active" statusColor="emerald" proxy="socks5://***" platform="TG" />
+                    <MockRow phone="+44 77 *** 5678" status="warming" statusColor="amber" proxy="socks5://***" platform="TG" />
+                    <MockRow phone="VK: id789012" status="active" statusColor="emerald" proxy="socks5://***" platform="VK" />
+                    <MockRow phone="+1 212 *** 9012" status="active" statusColor="emerald" proxy="http://***" platform="TG" />
                   </div>
                   <div className="mt-3 flex gap-2">
                     <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs rounded-lg border border-emerald-500/20">{t("landing.mockupAddAccount")}</div>
@@ -222,11 +301,11 @@ export default function LandingPage() {
                     <div className="w-3 h-3 rounded-full bg-rose-500/80" />
                     <div className="w-3 h-3 rounded-full bg-amber-500/80" />
                     <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                    <span className="ml-2 text-xs text-zinc-600">24GO — Groups</span>
+                    <span className="ml-2 text-xs text-zinc-600">24GO — Groups (TG + VK)</span>
                   </div>
                   <div className="space-y-2">
                     <MockGroupRow name="@marketing_tips" members="12.4K" status="scanning" />
-                    <MockGroupRow name="@saas_founders" members="8.2K" status="scanning" />
+                    <MockGroupRow name="VK: /saas_founders" members="8.2K" status="scanning" />
                     <MockGroupRow name="@b2b_leads" members="34.1K" status="idle" />
                   </div>
                   <div className="mt-3 text-xs text-zinc-600 flex items-center gap-2">
@@ -456,6 +535,53 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── FAQ (SEO + FAQPage schema) ─────────────────────────── */}
+      <section className="py-20 px-6 lg:px-12 border-t border-zinc-800/50">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">{t("landing.faqTitle")}</h2>
+          </div>
+          <div className="space-y-4">
+            {[
+              { q: t("landing.faq1Q"), a: t("landing.faq1A") },
+              { q: t("landing.faq2Q"), a: t("landing.faq2A") },
+              { q: t("landing.faq3Q"), a: t("landing.faq3A") },
+              { q: t("landing.faq4Q"), a: t("landing.faq4A") },
+              { q: t("landing.faq5Q"), a: t("landing.faq5A") },
+              { q: t("landing.faq6Q"), a: t("landing.faq6A") },
+            ].map((faq, i) => (
+              <details key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden group">
+                <summary className="px-6 py-4 cursor-pointer text-zinc-100 font-medium hover:bg-zinc-800/50 transition flex items-center justify-between">
+                  {faq.q}
+                  <span className="text-zinc-500 group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div className="px-6 pb-4 text-sm text-zinc-400 leading-relaxed">{faq.a}</div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Internal links (SEO) ─────────────────────────────── */}
+      <section className="py-16 px-6 lg:px-12 border-t border-zinc-800/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
+            <Link href="/features" className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition group">
+              <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-emerald-400 transition">All Features</h3>
+              <p className="text-sm text-zinc-500">Explore everything 24GO can do — AI classification, campaigns, analytics, and more.</p>
+            </Link>
+            <Link href="/integrations/webhook" className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition group">
+              <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-emerald-400 transition">Integrations</h3>
+              <p className="text-sm text-zinc-500">Connect with AmoCRM, HubSpot, Bitrix24, Google Sheets, and webhooks.</p>
+            </Link>
+            <Link href="/tutorials/telegram-warmup" className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition group">
+              <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-emerald-400 transition">Tutorials</h3>
+              <p className="text-sm text-zinc-500">Step-by-step guides for account warm-up, lead scraping, and auto-reply setup.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-3xl mx-auto text-center">
@@ -476,9 +602,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-sm text-zinc-500">
             <a href="#how" className="hover:text-zinc-300 transition">{t("landing.navHow")}</a>
             <Link href="/blog" className="hover:text-zinc-300 transition">{t("landing.navBlog")}</Link>
+            <Link href="/pricing" className="hover:text-zinc-300 transition">Pricing</Link>
             <Link href="/login" className="hover:text-zinc-300 transition">{t("landing.navSignIn")}</Link>
           </div>
-          <span className="text-xs text-zinc-600">{t("landing.copyright", { year: new Date().getFullYear() })}</span>
+          <div className="flex items-center gap-4 text-xs text-zinc-600">
+            <Link href="/privacy" className="hover:text-zinc-400 transition">Privacy</Link>
+            <Link href="/terms" className="hover:text-zinc-400 transition">Terms</Link>
+            <span>© {new Date().getFullYear()} 24GO</span>
+          </div>
         </div>
       </footer>
 
@@ -552,13 +683,14 @@ function getColorClass(color: string): string {
   return map[color] || map.emerald;
 }
 
-function MockRow({ phone, status, statusColor, proxy }: { phone: string; status: string; statusColor: string; proxy: string }) {
+function MockRow({ phone, status, statusColor, proxy, platform }: { phone: string; status: string; statusColor: string; proxy: string; platform?: string }) {
   const colors: Record<string, string> = { emerald: "bg-emerald-400", amber: "bg-amber-400" };
   return (
     <div className="flex items-center justify-between bg-zinc-900 rounded-lg px-3 py-2">
       <div className="flex items-center gap-2">
         <div className={`w-1.5 h-1.5 rounded-full ${colors[statusColor] || "bg-zinc-500"}`} />
         <span className="text-xs text-zinc-300 font-mono">{phone}</span>
+        {platform && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{platform}</span>}
       </div>
       <div className="flex items-center gap-2">
         <span className="text-[10px] text-zinc-500">{proxy}</span>
