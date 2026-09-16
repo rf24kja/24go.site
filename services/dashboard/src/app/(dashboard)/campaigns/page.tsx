@@ -184,6 +184,7 @@ export default function CampaignsPage() {
   const handleFiles = useCallback((files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach((file) => {
+      if (file.size > 5_000_000) { toast(t("campaigns.fileTooLarge") || "File too large (max 5MB)", "error"); return; }
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result as string;
@@ -191,7 +192,7 @@ export default function CampaignsPage() {
       };
       reader.readAsDataURL(file);
     });
-  }, []);
+  }, [toast, t]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

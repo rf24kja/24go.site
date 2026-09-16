@@ -559,6 +559,8 @@
     "settings.passwordsMismatch": "Passwords don't match",
     "settings.minChars": "Min 8 characters",
     "settings.saveFailed": "Failed to save",
+    "settings.loadFailed": "Failed to load settings",
+    "settings.resetFailed": "Failed to reset settings",
     "settings.addItem": "Add item...",
     "settings.add": "Add",
     "settings.loadDemoConfirm": "Load demo data?",

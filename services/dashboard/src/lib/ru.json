@@ -495,6 +495,8 @@
     "settings.passwordsMismatch": "Пароли не совпадают",
     "settings.minChars": "Минимум 8 символов",
     "settings.saveFailed": "Не удалось сохранить",
+    "settings.loadFailed": "Не удалось загрузить настройки",
+    "settings.resetFailed": "Не удалось сбросить настройки",
     "settings.addItem": "Добавить элемент...",
     "settings.add": "Добавить",
     "settings.loadDemoConfirm": "Загрузить демо-данные?",

@@ -55,7 +55,7 @@ export default function SettingsPage() {
       const data = await getTenantSettings(auth.token);
       setSettings(data.settings || {});
       setDefaults(data.defaults || {});
-    } catch { /* settings load failed — defaults will be shown */ }
+    } catch { setError(t("settings.loadFailed")); }
     setLoading(false);
   }, [auth?.token]);
 
@@ -81,7 +81,7 @@ export default function SettingsPage() {
     try {
       await resetSettingsSection(auth.token, section);
       await loadSettings();
-    } catch { /* reset failed */ }
+    } catch { setError(t("settings.resetFailed")); }
   };
 
   return (

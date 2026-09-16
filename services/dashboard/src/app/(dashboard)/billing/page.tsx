@@ -80,7 +80,7 @@ export default function BillingPage() {
     setCheckoutBusy(plan);
     try {
       const res = await createCheckout(auth.token, plan, "stripe");
-      if (res.checkout_url) window.open(res.checkout_url);
+      if (res.checkout_url) window.location.href = res.checkout_url;
     } catch {
       toast(t("billing.checkoutFailed"), "error");
     } finally {

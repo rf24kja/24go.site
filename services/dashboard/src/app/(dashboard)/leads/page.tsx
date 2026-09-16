@@ -105,7 +105,6 @@ export default function LeadsPage() {
     if (!auth?.token) return;
     const token = auth.token;
     const timer = setTimeout(() => {
-      setLeads([]);
       setLoading(true);
       getLeads(token, {
         intent_score: filter === "ALL" ? undefined : filter,
