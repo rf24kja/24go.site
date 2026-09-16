@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import CookieConsent from "@/components/CookieConsent";
 
 export const metadata: Metadata = {
   title: {
@@ -66,12 +67,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="alternate" hrefLang="en" href="https://www.24go.site?locale=en" />
         <link rel="alternate" hrefLang="ru" href="https://www.24go.site?locale=ru" />
         <link rel="alternate" hrefLang="x-default" href="https://www.24go.site" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#10b981" />
       </head>
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         <ErrorBoundary>
           <ToastProvider>
             <Providers>{children}</Providers>
           </ToastProvider>
+          <CookieConsent />
         </ErrorBoundary>
       </body>
     </html>

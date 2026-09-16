@@ -44,6 +44,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/tutorials/telegram-auto-reply",
     "/tutorials/telegram-lead-scraping",
     "/tutorials/telegram-warmup",
+    "/privacy",
+    "/terms",
   ];
 
   const staticPages: MetadataRoute.Sitemap = [];

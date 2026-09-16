@@ -12,13 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.logging_config import setup_logging
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
-from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings
+from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics
 
 # ── Startup guard ─────────────────────────────────────────────────────
 if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required. Refusing to start without it.")
+
+setup_logging()
 
 _is_production = os.getenv("ENVIRONMENT", "production").lower() == "production" and not os.getenv("DEBUG", "")
 _app_start_time = time.time()
@@ -304,6 +307,7 @@ app.include_router(balance.router)
 app.include_router(proxies.router)
 app.include_router(tools.router)
 app.include_router(mailings.router)
+app.include_router(metrics.router)
 
 
 @app.get("/health")
