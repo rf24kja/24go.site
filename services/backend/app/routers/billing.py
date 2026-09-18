@@ -30,8 +30,13 @@ log = logging.getLogger(__name__)
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_STARTER = os.getenv("STRIPE_PRICE_STARTER", "")
+STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_PRO", "")
+STRIPE_PRICE_ENTERPRISE = os.getenv("STRIPE_PRICE_ENTERPRISE", "")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY", "")
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID", "")
+
+STRIPE_PRICES = {"starter": STRIPE_PRICE_STARTER, "pro": STRIPE_PRICE_PRO, "enterprise": STRIPE_PRICE_ENTERPRISE}
 
 
 # ── Schemas ───────────────────────────────────────────────────────────
@@ -67,6 +72,18 @@ class UsageSummary(BaseModel):
 class CancelResponse(BaseModel):
     status: str
     plan: str
+
+
+class InvoiceResponse(BaseModel):
+    invoice_url: str
+
+
+class InvoiceItem(BaseModel):
+    id: str
+    amount: float
+    status: str
+    date: str
+    pdf_url: str | None
 
 
 # ── Subscription Management ───────────────────────────────────────────
@@ -187,6 +204,62 @@ async def get_usage(
     )
 
 
+# ── Invoices ─────────────────────────────────────────────────────────
+
+@router.get("/invoice/{subscription_id}", response_model=InvoiceResponse)
+async def get_invoice(
+    subscription_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Get the PDF URL for a Stripe subscription's latest invoice."""
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe not configured")
+
+    stripe.api_key = STRIPE_SECRET_KEY
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+    except stripe.error.InvalidRequestError:
+        raise HTTPException(404, "Subscription not found")
+
+    if not subscription.latest_invoice:
+        raise HTTPException(404, "No invoice available yet")
+
+    invoice = stripe.Invoice.retrieve(subscription.latest_invoice)
+    if not invoice.invoice_pdf:
+        raise HTTPException(404, "Invoice PDF not available")
+
+    return InvoiceResponse(invoice_url=invoice.invoice_pdf)
+
+
+@router.get("/history")
+async def billing_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List past invoices for the tenant's Stripe customer."""
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe not configured")
+
+    stripe.api_key = STRIPE_SECRET_KEY
+    customers = stripe.Customer.list(
+        metadata={"tenant_id": str(current_user.tenant_id)}, limit=1
+    )
+    if not customers.data:
+        return []
+
+    invoices = stripe.Invoice.list(customer=customers.data[0].id, limit=20)
+    return [
+        InvoiceItem(
+            id=inv.id,
+            amount=inv.amount_paid / 100,
+            status=inv.status,
+            date=datetime.fromtimestamp(inv.created).isoformat(),
+            pdf_url=inv.invoice_pdf,
+        )
+        for inv in invoices.data
+    ]
+
+
 # ── Stripe Checkout ───────────────────────────────────────────────────
 
 @router.post("/checkout", response_model=CheckoutResponse)
@@ -226,9 +299,12 @@ def _plan_price(plan: str) -> int:
 async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, email: str) -> str:
     """Create Stripe Checkout Session and return the URL."""
     if not STRIPE_SECRET_KEY or STRIPE_SECRET_KEY.startswith("sk_test_..."):
-        # Mock mode — return a fake checkout URL
         log.warning("Stripe not configured — returning mock checkout URL")
         return f"https://checkout.stripe.com/mock?plan={plan}&tenant={tenant_id}"
+
+    price_id = STRIPE_PRICES.get(plan)
+    if not price_id:
+        raise HTTPException(400, f"No Stripe Price ID configured for plan: {plan}")
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -241,10 +317,7 @@ async def _create_stripe_checkout(tenant_id: str, plan: str, price_usd: int, ema
                 "cancel_url": f"{os.getenv('APP_URL', 'http://localhost:3000')}/billing?canceled=true",
                 "metadata[tenant_id]": tenant_id,
                 "metadata[plan_tier]": plan,
-                "line_items[0][price_data][currency]": "usd",
-                "line_items[0][price_data][unit_amount]": price_usd,
-                "line_items[0][price_data][product_data][name]": f"24GO {plan.title()} Plan",
-                "line_items[0][price_data][recurring][interval]": "month",
+                "line_items[0][price]": price_id,
                 "line_items[0][quantity]": "1",
             },
         )
