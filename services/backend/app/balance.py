@@ -27,12 +27,15 @@ async def get_or_create_balance(tenant_id: uuid.UUID, db: AsyncSession) -> UserB
 
 
 async def deduct_balance(tenant_id: uuid.UUID, cost_kopeks: int, db: AsyncSession) -> bool:
-    """Deduct from balance. Returns True if successful."""
-    balance = await get_or_create_balance(tenant_id, db)
-    if balance.balance_kopeks < cost_kopeks:
-        return False
-    balance.balance_kopeks -= cost_kopeks
-    balance.total_spent_kopeks += cost_kopeks
-    balance.total_queries += 1
-    await db.flush()
-    return True
+    """Deduct from balance atomically. Returns True if successful."""
+    from sqlalchemy import text
+    result = await db.execute(
+        text("""UPDATE user_balances
+                SET balance_kopeks = balance_kopeks - :cost,
+                    total_spent_kopeks = total_spent_kopeks + :cost,
+                    total_queries = total_queries + 1
+                WHERE tenant_id = :tid AND balance_kopeks >= :cost
+                RETURNING balance_kopeks"""),
+        {"cost": cost_kopeks, "tid": tenant_id},
+    )
+    return result.fetchone() is not None

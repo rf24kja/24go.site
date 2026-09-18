@@ -117,6 +117,10 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
         post_id = response.get("post_id", 0)
         log.info(f"VK post published: group={group_id} post={post_id}")
 
+        # Record quota usage
+        from app.quota import record_post
+        await record_post(tenant_id)
+
         # Save to posting_logs
         await pool_execute(
             """INSERT INTO posting_logs (id, tenant_id, campaign_id, target_id,

@@ -148,6 +148,10 @@ return 1
                               full_text, utm_url, result.get("message_id"),
                               variant_index=selected_index)
 
+            # Record quota usage
+            from app.quota import record_post as _record_post
+            loop.run_until_complete(_record_post(tenant_id))
+
             # Update A/B variant post count
             if selected_variant and ab_variants:
                 for v in ab_variants:

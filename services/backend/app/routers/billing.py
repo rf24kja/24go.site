@@ -64,6 +64,11 @@ class UsageSummary(BaseModel):
     plan: str
 
 
+class CancelResponse(BaseModel):
+    status: str
+    plan: str
+
+
 # ── Subscription Management ───────────────────────────────────────────
 
 @router.get("/subscription", response_model=SubscriptionResponse)
@@ -100,6 +105,42 @@ async def get_subscription(
         token_credits_balance=sub.token_credits_balance,
         current_period_end=sub.current_period_end.isoformat(),
     )
+
+
+@router.post("/cancel", response_model=CancelResponse)
+async def cancel_subscription(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cancel current subscription. Stripe subscriptions are deleted via Stripe API."""
+    from app.billing_models import Subscription
+    result = await db.execute(
+        select(Subscription).where(Subscription.tenant_id == current_user.tenant_id)
+    )
+    sub = result.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(404, "No active subscription")
+    plan = sub.plan.value if hasattr(sub.plan, "value") else sub.plan
+    if plan == "trial":
+        raise HTTPException(400, "Cannot cancel trial subscription")
+
+    # Cancel on Stripe if configured
+    if STRIPE_SECRET_KEY:
+        stripe.api_key = STRIPE_SECRET_KEY
+        try:
+            # Look up Stripe customer by tenant_id in metadata
+            customers = stripe.Customer.list(metadata={"tenant_id": str(current_user.tenant_id)}, limit=1)
+            if customers.data:
+                subs = stripe.Subscription.list(customer=customers.data[0].id, status="active", limit=1)
+                if subs.data:
+                    stripe.Subscription.delete(subs.data[0].id)
+        except Exception as e:
+            log.warning(f"Stripe cancel failed: {e}")
+
+    sub.status = "cancelled"
+    await db.commit()
+    log.info(f"Subscription cancelled: tenant={current_user.tenant_id}")
+    return CancelResponse(status="cancelled", plan=plan)
 
 
 @router.get("/usage", response_model=UsageSummary)

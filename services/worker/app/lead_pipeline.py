@@ -74,6 +74,13 @@ async def process_incoming_message(
         classification = {"intent_score": "COLD", "confidence": 0.0}
     intent_score = classification["intent_score"]
 
+    # Record token usage (estimate from input length)
+    try:
+        from app.quota import record_usage as _record_usage
+        await _record_usage(tenant_id, len(message_text) * 4)  # ~4 chars per token
+    except Exception as e:
+        log.warning(f"Quota recording failed (non-blocking): {e}")
+
     # 2. Build dialog URL
     if platform == "telegram":
         dialog_url = f"https://t.me/{user_handle.lstrip('@')}"
