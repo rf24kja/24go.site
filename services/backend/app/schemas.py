@@ -311,3 +311,74 @@ class AutoReplyUpdate(BaseModel):
 
 class AutoReplyAnswerCreate(BaseModel):
     text: str = Field(..., min_length=1)
+
+
+# ── WhatsApp ──────────────────────────────────────────────────────────
+
+class ContactCreate(BaseModel):
+    phone: str = Field(..., min_length=5, max_length=20)
+    name: str | None = None
+    wa_id: str | None = None
+    is_group: bool = False
+    metadata_: dict = {}
+
+
+class ContactResponse(BaseModel):
+    id: UUID
+    phone: str
+    name: str | None = None
+    wa_id: str | None = None
+    is_group: bool
+    metadata_: dict
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class ContactImportRequest(BaseModel):
+    file: str = Field(..., description="CSV/JSON with phone, name columns")
+
+
+class WaConnectRequest(BaseModel):
+    phone_number: str = Field(..., min_length=5, max_length=20, description="E.164 format")
+    method: str = Field(default="qr", pattern="^(qr|pairing-code)$")
+
+
+class WaAccountResponse(BaseModel):
+    id: UUID
+    phone_number: str
+    wa_id: str | None = None
+    status: str
+    daily_action_limit: int
+    actions_today: int
+    cooldown_until: datetime | None = None
+    is_active: bool
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class WaGroupResponse(BaseModel):
+    id: UUID
+    group_id: str
+    name: str | None = None
+    members_count: int
+    is_active: bool
+    last_scan_at: datetime | None = None
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class WaParseRequest(BaseModel):
+    account_id: UUID
+    group_links: list[str] = Field(default=[], description="Group invite links; empty = all joined")
+
+
+class WaMessageSend(BaseModel):
+    phone_number: str = Field(..., min_length=5, max_length=20)
+    message: str = Field(..., min_length=1, max_length=5000)
+    media_url: str | None = None

@@ -8,23 +8,21 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Contact, WaAccount, WaGroup, User
+from app.schemas import WaConnectRequest, WaParseRequest, WaAccountResponse, WaGroupResponse
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["whatsapp"])
 
 WASIDECAR_URL = "http://wa-sidecar:3100"
+SIDECAR_TIMEOUT = 30  # ponytail: 30s as per spec, increase for parse if needed
 
 
 # ── WhatsApp Accounts ─────────────────────────────────────────────────
-
-class WaConnectRequest(BaseModel):
-    phone_number: str = Field(..., min_length=5, max_length=20)
-
 
 @router.post("/wa/connect")
 async def wa_connect(
@@ -32,33 +30,31 @@ async def wa_connect(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Initiate QR connection via wa-sidecar."""
-    async with httpx.AsyncClient(timeout=30) as client:
+    """Initiate QR or pairing-code connection via wa-sidecar."""
+    account = WaAccount(
+        tenant_id=current_user.tenant_id,
+        phone_number=body.phone_number,
+        status="warming_up",
+    )
+    db.add(account)
+    await db.flush()  # get account.id without committing
+
+    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
         resp = await client.post(
             f"{WASIDECAR_URL}/connect",
-            json={"phone_number": body.phone_number, "tenant_id": str(current_user.tenant_id)},
+            json={
+                "accountId": str(account.id),
+                "phoneNumber": body.phone_number,
+                "method": body.method,
+            },
         )
     if resp.status_code != 200:
+        await db.rollback()
         raise HTTPException(resp.status_code, resp.text)
+    await db.commit()
+    await db.refresh(account)
     data = resp.json()
-    # upsert wa_accounts row
-    existing = await db.execute(
-        select(WaAccount).where(
-            WaAccount.tenant_id == current_user.tenant_id,
-            WaAccount.phone_number == body.phone_number,
-        )
-    )
-    account = existing.scalar_one_or_none()
-    if not account:
-        account = WaAccount(
-            tenant_id=current_user.tenant_id,
-            phone_number=body.phone_number,
-            status="warming_up",
-        )
-        db.add(account)
-        await db.commit()
-        await db.refresh(account)
-    return {"account_id": str(account.id), "qr": data.get("qr")}
+    return {"account_id": str(account.id), "qr": data.get("qr"), "pairing_code": data.get("pairing_code")}
 
 
 @router.get("/wa/qr/{account_id}")
@@ -69,8 +65,23 @@ async def wa_qr(
 ):
     """Poll QR code for a connecting account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{WASIDECAR_URL}/qr/{account.phone_number}")
+    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/qr/{account.id}")
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    return resp.json()
+
+
+@router.get("/wa/pairing-code/{account_id}")
+async def wa_pairing_code(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get pairing code for phone-number-based connection."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/pairing-code/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
     return resp.json()
@@ -84,12 +95,11 @@ async def wa_status(
 ):
     """Get connection status for a WhatsApp account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{WASIDECAR_URL}/status/{account.phone_number}")
+    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/status/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
     data = resp.json()
-    # sync status locally
     new_status = data.get("status", account.status)
     if new_status != account.status:
         account.status = new_status
@@ -107,8 +117,8 @@ async def wa_disconnect(
 ):
     """Disconnect a WhatsApp account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(f"{WASIDECAR_URL}/disconnect/{account.phone_number}")
+    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+        resp = await client.post(f"{WASIDECAR_URL}/disconnect/{account.id}")
     if resp.status_code not in (200, 404):
         raise HTTPException(resp.status_code, resp.text)
     account.status = "paused"
@@ -125,7 +135,8 @@ async def wa_list_accounts(
     result = await db.execute(
         select(WaAccount).where(WaAccount.tenant_id == current_user.tenant_id)
     )
-    return {"items": result.scalars().all()}
+    accounts = result.scalars().all()
+    return {"items": [WaAccountResponse.model_validate(a) for a in accounts]}
 
 
 @router.delete("/wa/accounts/{account_id}")
@@ -143,11 +154,6 @@ async def wa_remove_account(
 
 # ── Group Parsing ─────────────────────────────────────────────────────
 
-class WaParseRequest(BaseModel):
-    account_id: UUID
-    group_ids: list[str] = Field(default=[], description="Specific groups to parse; empty = all joined")
-
-
 @router.post("/wa/parse")
 async def wa_parse_groups(
     body: WaParseRequest,
@@ -158,10 +164,10 @@ async def wa_parse_groups(
     account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
-            f"{WASIDECAR_URL}/groups/parse",
+            f"{WASIDECAR_URL}/parse-groups",
             json={
-                "phone_number": account.phone_number,
-                "group_ids": body.group_ids,
+                "accountId": str(account.id),
+                "groupLinks": body.group_links,
             },
         )
     if resp.status_code != 200:
@@ -189,7 +195,6 @@ async def wa_parse_groups(
             metadata_={"source_group": member.get("group_id"), "parsed_at": datetime.now(timezone.utc).isoformat()},
         ))
         created_contacts += 1
-    # upsert groups
     for grp in data.get("groups", []):
         existing = await db.execute(
             select(WaGroup).where(
@@ -227,7 +232,8 @@ async def wa_list_groups(
     result = await db.execute(
         select(WaGroup).where(WaGroup.tenant_id == current_user.tenant_id)
     )
-    return {"items": result.scalars().all()}
+    groups = result.scalars().all()
+    return {"items": [WaGroupResponse.model_validate(g) for g in groups]}
 
 
 # ── Contacts ──────────────────────────────────────────────────────────
