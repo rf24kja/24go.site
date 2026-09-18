@@ -760,7 +760,7 @@ export async function assignAccountProxy(token: string, accountId: string, proxy
 
 // ── WhatsApp Groups ─────────────────────────────────────────────────
 
-export async function parseWaGroups(token: string, data: { account_id: string; group_ids?: string[] }) {
+export async function parseWaGroups(token: string, data: { account_id: string; group_links: string[]; tags?: string[] }) {
   return api<any>("/api/v1/wa/parse", { method: "POST", body: JSON.stringify(data), token });
 }
 
