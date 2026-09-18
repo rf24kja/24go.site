@@ -194,18 +194,32 @@ export async function connectVK(token: string, accountId: string, groupToken: st
 
 // ── WhatsApp ──────────────────────────────────────────────────────
 
+export async function connectWhatsApp(token: string, data: { phone_number: string; method: "qr" | "pairing-code" | "existing" }) {
+  return api<{ account_id: string }>(`/api/v1/wa/connect`, { method: "POST", body: JSON.stringify(data), token });
+}
+
 export async function getWhatsAppQr(token: string, accountId: string) {
-  return api<{ qr: string; status: string }>(`/api/v1/accounts/${accountId}/whatsapp/qr`, { token });
+  return api<{ qr: string }>(`/api/v1/wa/qr/${accountId}`, { token });
+}
+
+export async function getWhatsAppPairingCode(token: string, accountId: string) {
+  return api<{ code: string }>(`/api/v1/wa/pairing-code/${accountId}`, { token });
 }
 
 export async function getWhatsAppStatus(token: string, accountId: string) {
-  return api<{ connected: boolean; status: string; parses_today?: number; parse_limit?: number }>(
-    `/api/v1/accounts/${accountId}/whatsapp/status`, { token },
-  );
+  return api<{ status: "connected" | "disconnected" | "connecting" }>(`/api/v1/wa/status/${accountId}`, { token });
 }
 
 export async function disconnectWhatsApp(token: string, accountId: string) {
-  return api<any>(`/api/v1/accounts/${accountId}/whatsapp/disconnect`, { method: "POST", token });
+  return api<any>(`/api/v1/wa/disconnect/${accountId}`, { method: "POST", token });
+}
+
+export async function getWaAccounts(token: string) {
+  return api<{ items: { id: string; phone_number: string; status: string; created_at: string }[] }>(`/api/v1/wa/accounts`, { token });
+}
+
+export async function deleteWhatsApp(token: string, accountId: string) {
+  return api<any>(`/api/v1/wa/accounts/${accountId}`, { method: "DELETE", token });
 }
 
 // ── Campaigns ─────────────────────────────────────────────────────────
@@ -745,10 +759,6 @@ export async function assignAccountProxy(token: string, accountId: string, proxy
 }
 
 // ── WhatsApp Groups ─────────────────────────────────────────────────
-
-export async function getWaAccounts(token: string) {
-  return api<{ items: any[] }>("/api/v1/wa/accounts", { token });
-}
 
 export async function parseWaGroups(token: string, data: { account_id: string; group_ids?: string[] }) {
   return api<any>("/api/v1/wa/parse", { method: "POST", body: JSON.stringify(data), token });
