@@ -25,6 +25,7 @@ class PlatformType(str, enum.Enum):
     telegram = "telegram"
     vkontakte = "vkontakte"
     forum = "forum"
+    whatsapp = "whatsapp"
 
 
 class AccessLevel(str, enum.Enum):
@@ -78,6 +79,9 @@ class Tenant(Base):
     monitored_groups = relationship("MonitoredGroup", back_populates="tenant", cascade="all, delete-orphan")
     mailings = relationship("Mailing", back_populates="tenant", cascade="all, delete-orphan")
     balance = relationship("UserBalance", back_populates="tenant", uselist=False)
+    contacts = relationship("Contact", back_populates="tenant", cascade="all, delete-orphan")
+    wa_accounts = relationship("WaAccount", back_populates="tenant", cascade="all, delete-orphan")
+    wa_groups = relationship("WaGroup", back_populates="tenant", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -448,6 +452,69 @@ class SearchCache(Base):
     __table_args__ = (
         Index("idx_search_cache_hash", "query_hash", "expires_at"),
     )
+
+
+# ── WhatsApp ──────────────────────────────────────────────────────────
+
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    phone = Column(String(20), nullable=False)
+    name = Column(String(255), nullable=True)
+    wa_id = Column(String(255), nullable=True)  # WhatsApp internal ID
+    is_group = Column(Boolean, default=False)
+    metadata_ = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "phone", name="uq_tenant_contact_phone"),
+        Index("idx_contacts_tenant", "tenant_id"),
+    )
+
+    tenant = relationship("Tenant", back_populates="contacts")
+
+
+class WaAccount(Base):
+    __tablename__ = "wa_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    phone_number = Column(String(20), nullable=False)
+    wa_id = Column(String(255), nullable=True)
+    status = Column(Enum(AccountStatus, name="account_status"), nullable=False, default=AccountStatus.warming_up)
+    daily_action_limit = Column(Integer, nullable=False, default=15)
+    actions_today = Column(Integer, nullable=False, default=0)
+    cooldown_until = Column(DateTime(timezone=True))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_wa_accounts_tenant", "tenant_id", "status"),
+    )
+
+    tenant = relationship("Tenant", back_populates="wa_accounts")
+
+
+class WaGroup(Base):
+    __tablename__ = "wa_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+    members_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    last_scan_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "group_id", name="uq_tenant_wa_group"),
+        Index("idx_wa_groups_tenant", "tenant_id", "is_active"),
+    )
+
+    tenant = relationship("Tenant", back_populates="wa_groups")
 
 
 # ── Auto-Replies ──────────────────────────────────────────────────────
