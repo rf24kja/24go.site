@@ -92,6 +92,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(550), nullable=False)
     role = Column(String(50), nullable=False, default="operator")
+    email_verified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     tenant = relationship("Tenant", back_populates="users")
@@ -463,13 +464,25 @@ class Contact(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     phone = Column(String(20), nullable=False)
     name = Column(String(255), nullable=True)
-    wa_id = Column(String(255), nullable=True)  # WhatsApp internal ID
-    is_group = Column(Boolean, default=False)
-    metadata_ = Column("metadata", JSONB, default=dict)
+    wa_jid = Column(String(50), nullable=True)
+    wa_group_source = Column(String(255), nullable=True)
+    wa_group_jid = Column(String(50), nullable=True)
+    wa_parsed_at = Column(DateTime(timezone=True), nullable=True)
+    has_tg = Column(Boolean, default=False)
+    has_viber = Column(Boolean, default=False)
+    tg_user_id = Column(BigInteger, nullable=True)
+    tg_username = Column(String(255), nullable=True)
+    viber_user_id = Column(String(100), nullable=True)
+    last_mailing_at = Column(DateTime(timezone=True), nullable=True)
+    last_mailing_campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=True)
+    mailing_count = Column(Integer, default=0)
+    tags = Column(JSONB, default=list)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
-        UniqueConstraint("tenant_id", "phone", name="uq_tenant_contact_phone"),
+        UniqueConstraint("tenant_id", "phone", name="contacts_tenant_id_phone_key"),
         Index("idx_contacts_tenant", "tenant_id"),
     )
 

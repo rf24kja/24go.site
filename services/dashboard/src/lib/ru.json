@@ -2973,5 +2973,19 @@
     "waOverview.manageAccounts": "Управление аккаунтами",
     "waOverview.parseGroups": "Парсинг групп",
     "waOverview.viewContacts": "Просмотр контактов",
-    "waOverview.sendMailings": "Отправить рассылки"
+    "waOverview.sendMailings": "Отправить рассылки",
+    "email.verify.title": "Подтвердите email",
+    "email.verify.subtitle": "Нажмите на ссылку ниже для подтверждения",
+    "email.verify.button": "Подтвердить email",
+    "email.verify.success": "Email успешно подтверждён",
+    "email.verify.expired": "Ссылка для подтверждения истекла",
+    "email.verify.invalid": "Неверная ссылка для подтверждения",
+    "email.welcome.title": "Добро пожаловать в 24GO",
+    "email.welcome.subtitle": "Найдём ваш первый лид",
+    "email.drip.day1.title": "Добро пожаловать в 24GO, {company}!",
+    "email.drip.day1.body": "Всё готово. Вот как получить первые лиды:",
+    "email.drip.day2.title": "Вы подключили первый аккаунт?",
+    "email.drip.day2.body": "Подключите Telegram или VK, чтобы начать перехватывать лиды.",
+    "email.drip.day3.title": "Пробный период заканчивается через {days} дней",
+    "email.drip.day3.body": "Обновите тариф, чтобы сохранить лиды и получить полный доступ."
 }

@@ -1,4 +1,5 @@
 """Auth endpoints: register, login, me, user management, password recovery."""
+import secrets
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -27,6 +28,37 @@ def _check_rate_limit(key: str, max_requests: int = 5, window_seconds: int = 60)
     pipe.expire(key, window_seconds)
     results = pipe.execute()
     return results[2] <= max_requests
+
+
+def _create_verification_token(email: str) -> str:
+    token = secrets.token_urlsafe(32)
+    _redis.setex(f"verify_token:{token}", 86400, email)  # 24h TTL
+    return token
+
+
+async def _send_verification_email(email: str, token: str):
+    verify_link = f"https://www.24go.site/verify?token={token}"
+    body = (
+        f"Welcome to 24GO!\n\n"
+        f"Please verify your email by clicking the link below:\n\n"
+        f"{verify_link}\n\n"
+        f"This link expires in 24 hours.\n"
+    )
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = settings.FROM_EMAIL
+        msg["To"] = email
+        msg["Subject"] = "Verify your email — 24GO"
+        msg.attach(MIMEText(body, "plain"))
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASS)
+            server.sendmail(settings.FROM_EMAIL, email, msg.as_string())
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to send verification email to {email}: {e}")
+
+
 from app.audit import log_event
 from app.database import get_db
 from app.models import User, Tenant
@@ -79,6 +111,9 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     await db.refresh(user)
     await db.refresh(tenant)
 
+    verification_token = _create_verification_token(body.email)
+    await _send_verification_email(body.email, verification_token)
+
     token = create_access_token({
         "sub": str(user.id),
         "tenant_id": str(tenant.id),
@@ -89,7 +124,26 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
         user_id=user.id,
         tenant_id=tenant.id,
         role=user.role,
+        email_verified=user.email_verified,
     )
+
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    email = _redis.get(f"verify_token:{token}")
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    user.email_verified = True
+    await db.commit()
+    _redis.delete(f"verify_token:{token}")
+
+    return {"message": "Email verified successfully", "redirect_url": "https://www.24go.site/login"}
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -115,6 +169,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         user_id=user.id,
         tenant_id=user.tenant_id,
         role=user.role,
+        email_verified=user.email_verified,
     )
 
 

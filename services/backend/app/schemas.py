@@ -35,6 +35,7 @@ class TokenResponse(BaseModel):
     user_id: UUID
     tenant_id: UUID
     role: str
+    email_verified: bool = False
 
 
 class UserResponse(BaseModel):
@@ -42,6 +43,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     tenant_id: UUID
+    email_verified: bool = False
     created_at: datetime | None = None
 
     class Config:

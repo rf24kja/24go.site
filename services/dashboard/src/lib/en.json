@@ -2973,5 +2973,19 @@
     "waOverview.manageAccounts": "Manage Accounts",
     "waOverview.parseGroups": "Parse Groups",
     "waOverview.viewContacts": "View Contacts",
-    "waOverview.sendMailings": "Send Mailings"
+    "waOverview.sendMailings": "Send Mailings",
+    "email.verify.title": "Verify your email",
+    "email.verify.subtitle": "Click the link below to verify your email address",
+    "email.verify.button": "Verify Email",
+    "email.verify.success": "Email verified successfully",
+    "email.verify.expired": "Verification link has expired",
+    "email.verify.invalid": "Invalid verification link",
+    "email.welcome.title": "Welcome to 24GO",
+    "email.welcome.subtitle": "Let's find your first lead",
+    "email.drip.day1.title": "Welcome to 24GO, {company}!",
+    "email.drip.day1.body": "You're all set up. Here's how to get your first leads:",
+    "email.drip.day2.title": "Have you connected your first account?",
+    "email.drip.day2.body": "Connect a Telegram or VK account to start intercepting leads.",
+    "email.drip.day3.title": "Your trial ends in {days} days",
+    "email.drip.day3.body": "Upgrade now to keep your leads and unlock unlimited channels."
 }

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     SMTP_PASS: str = ""
     NOTIFY_EMAIL: str = ""
     FROM_EMAIL: str = "noreply@24go.site"
+    RESEND_API_KEY: str = ""
 
     # Telegram Bot
     BOT_TOKEN: str = ""

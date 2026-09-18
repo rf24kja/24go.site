@@ -39,6 +39,7 @@ celery.conf.update(
         "app.tasks.vk_comment_scraper.*": {"queue": "parser"},
         "app.tasks.vk_group_scanner.*": {"queue": "listener"},
         "app.tasks.billing.*": {"queue": "billing"},
+        "app.tasks.drip_emailer.*": {"queue": "billing"},
         "app.tasks.mailer.*": {"queue": "poster"},
         "app.tasks.wa_*": {"queue": "parser"},
     },
@@ -77,6 +78,11 @@ celery.conf.update(
         "trial-emails": {
             "task": "app.tasks.trial_emailer.send_trial_emails",
             "schedule": crontab(hour=10, minute=0),
+            "options": {"queue": "billing"},
+        },
+        "drip-emails": {
+            "task": "app.tasks.drip_emailer.send_drip_emails",
+            "schedule": crontab(hour=11, minute=0),
             "options": {"queue": "billing"},
         },
         "vk-health-check": {
