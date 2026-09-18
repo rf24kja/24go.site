@@ -27,7 +27,11 @@ export default function LoginPage() {
       } else {
         await register(email, password, company);
       }
-      router.push("/analytics");
+      if (mode === "register") {
+        router.push("/onboarding");
+      } else {
+        router.push("/analytics");
+      }
     } catch (err: any) {
       setError(err.message || t("login.authFailed"));
     } finally {

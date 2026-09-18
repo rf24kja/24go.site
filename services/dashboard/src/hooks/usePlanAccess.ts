@@ -14,9 +14,9 @@ const PLAN_FEATURES: Record<string, string[]> = {
 const OWNER_ONLY = ["blog-admin", "audit", "health"];
 
 const PLAN_NAMES: Record<string, string> = {
-  starter: "Starter ($75)",
-  pro: "Pro ($199)",
-  enterprise: "Enterprise ($499)",
+  starter: "Starter ($25)",
+  pro: "Pro ($75)",
+  enterprise: "Enterprise ($300)",
 };
 
 export function usePlanAccess() {

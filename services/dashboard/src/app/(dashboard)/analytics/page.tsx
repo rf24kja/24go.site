@@ -72,7 +72,20 @@ export default function AnalyticsPage() {
       </div>
     </div>
   );
-  if (!data) return <div className="p-8"><p className="text-zinc-500">{t("analytics.noData")}</p></div>;
+  if (!data) return (
+    <div className="text-center py-12">
+      <h3 className="text-xl font-bold mb-2">{t("analytics.getStarted")}</h3>
+      <p className="text-gray-400 mb-6">{t("analytics.getStartedDesc")}</p>
+      <div className="flex gap-4 justify-center">
+        <a href="/accounts" className="bg-emerald-600 px-6 py-3 rounded-lg">
+          {t("analytics.connectAccount")}
+        </a>
+        <a href="/targets" className="bg-blue-600 px-6 py-3 rounded-lg">
+          {t("analytics.addTarget")}
+        </a>
+      </div>
+    </div>
+  );
 
   const funnel = data.funnel || {};
   const geoData = (data.geo_breakdown || []).map((g: any) => ({
