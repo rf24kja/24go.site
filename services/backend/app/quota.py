@@ -15,6 +15,20 @@ from app.config import settings
 
 log = logging.getLogger(__name__)
 
+# ── Shared connection pool ─────────────────────────────────────────────
+_pool: asyncpg.Pool | None = None
+
+
+async def _get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        _pool = await asyncpg.create_pool(
+            settings.DATABASE_URL.replace("+asyncpg", ""),
+            min_size=2,
+            max_size=10,
+        )
+    return _pool
+
 # Plan tier limits (from BILLING_AND_LIMITS.md)
 PLAN_LIMITS = {
     "trial": {
@@ -81,10 +95,9 @@ async def check_quota(
             return {"allowed": False, "reason": "insufficient_token_credits", "details": data}
         return {"allowed": True, "reason": "quota_ok", "details": data}
 
-    # DB fallback — ponytail: synchronous connect is fine for quota checks
-    url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    # DB fallback
+    pool = await _get_pool()
+    async with pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT plan, status, monthly_posts_limit, monthly_posts_used, "
             "token_credits_balance, current_period_end FROM subscriptions WHERE tenant_id = $1",
@@ -123,8 +136,6 @@ async def check_quota(
             return {"allowed": False, "reason": "insufficient_token_credits", "details": data}
 
         return {"allowed": True, "reason": "quota_ok", "details": data}
-    finally:
-        await conn.close()
 
 
 async def record_usage(
@@ -144,9 +155,8 @@ async def record_usage(
         + completion_tokens * LLM_COST_PER_MILLION["completion"]
     ) / 1_000_000
 
-    url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    pool = await _get_pool()
+    async with pool.acquire() as conn:
         tenant_uuid = uuid.UUID(tenant_id)
 
         # Insert usage log
@@ -176,8 +186,6 @@ async def record_usage(
 
         log.info(f"Usage recorded: tenant={tenant_id} tokens={total_tokens} cost=${cost_usd:.6f} balance={new_balance}")
         return {"tokens_used": total_tokens, "cost_usd": cost_usd, "new_balance": new_balance}
-    finally:
-        await conn.close()
 
 
 async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
@@ -185,9 +193,8 @@ async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
 
     Returns {"posts_used": int, "posts_limit": int}
     """
-    url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
-    try:
+    pool = await _get_pool()
+    async with pool.acquire() as conn:
         tenant_uuid = uuid.UUID(tenant_id)
         row = await conn.fetchrow(
             """UPDATE subscriptions SET monthly_posts_used = monthly_posts_used + 1
@@ -202,8 +209,6 @@ async def record_post(tenant_id: str, db_url: str | None = None) -> dict:
             pass
 
         return {"posts_used": row["monthly_posts_used"], "posts_limit": row["monthly_posts_limit"]}
-    finally:
-        await conn.close()
 
 
 # TgStat API cost per query (in kopeks)
@@ -227,15 +232,13 @@ def get_plan_limits(plan: str) -> dict:
 
 async def get_subscription_plan(tenant_id: str, db_url: str | None = None) -> str:
     """Return the current plan tier for a tenant."""
-    url = db_url or settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(url)
     try:
-        row = await conn.fetchval(
-            "SELECT plan FROM subscriptions WHERE tenant_id = $1",
-            uuid.UUID(tenant_id),
-        )
-        return row if row else "trial"
+        pool = await _get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchval(
+                "SELECT plan FROM subscriptions WHERE tenant_id = $1",
+                uuid.UUID(tenant_id),
+            )
+            return row if row else "trial"
     except Exception:
         return "trial"
-    finally:
-        await conn.close()

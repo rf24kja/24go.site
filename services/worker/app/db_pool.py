@@ -1,12 +1,16 @@
-"""Shared asyncpg connection pool for all worker modules.
+"""Shared connection pools (asyncpg + Redis) for all worker modules.
 
-Ponytail: one pool per process, lazy-initialized, max 10 connections.
-Eliminates per-query connection churn that exhausts PostgreSQL max_connections.
+Ponytail: one pool per process, lazy-initialized.
 """
+import os
+
 import asyncpg
+import redis.asyncio as aioredis
+
 from .config import DATABASE_URL
 
 _pool: asyncpg.Pool | None = None
+_redis: aioredis.Redis | None = None
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -20,16 +24,12 @@ async def get_pool() -> asyncpg.Pool:
     return _pool
 
 
-async def fetchrow(query: str, *args):
-    pool = await get_pool()
-    return await pool.fetchrow(query, *args)
-
-
-async def fetch(query: str, *args):
-    pool = await get_pool()
-    return await pool.fetch(query, *args)
-
-
-async def execute(query: str, *args):
-    pool = await get_pool()
-    return await pool.execute(query, *args)
+async def get_redis() -> aioredis.Redis:
+    global _redis
+    if _redis is None:
+        _redis = aioredis.from_url(
+            os.getenv("CELERY_BROKER_URL", "redis://redis:6379/1"),
+            decode_responses=True,
+            max_connections=10,
+        )
+    return _redis

@@ -11,15 +11,12 @@ import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-import asyncpg
 from croniter import croniter
 
 from app.celery_app import celery
-from app.config import DATABASE_URL
+from app.db_pool import get_pool, get_redis
 
 log = logging.getLogger(__name__)
-
-DB_URL = DATABASE_URL.replace("+asyncpg", "") if "+asyncpg" in DATABASE_URL else DATABASE_URL
 
 
 @celery.task(name="app.tasks.poster.periodic_campaign_post", queue="poster", max_retries=3)
@@ -33,8 +30,8 @@ def periodic_campaign_post():
 
 
 async def _run():
-    conn = await asyncpg.connect(DB_URL)
-    try:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
         # Fetch all active campaigns with scheduling fields
         campaigns = await conn.fetch(
             "SELECT id, tenant_id, base_text, target_geos, target_niches, "
@@ -60,11 +57,10 @@ async def _run():
             # ── Idempotency lock: prevent double-dispatch within 5 min window ──
             lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
             try:
-                import os, redis as _redis
-                r = _redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
-                if r.exists(lock_key):
-                    continue  # Already dispatched this campaign in this window
-                r.set(lock_key, "1", ex=300)  # 5 min TTL
+                r = await get_redis()
+                if await r.exists(lock_key):
+                    continue
+                await r.set(lock_key, "1", ex=300)
             except Exception:
                 pass  # If Redis unavailable, proceed (risk double-dispatch, better than blocking)
 
@@ -185,5 +181,3 @@ async def _run():
             )
 
         return {"status": "ok", "dispatched": dispatched}
-    finally:
-        await conn.close()
