@@ -32,7 +32,7 @@ export default function ContactsPage() {
   const [platformFilter, setPlatformFilter] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [qualityFilter, setQualityFilter] = useState("");
-  const [tagsFilter, setTagsFilter] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tagInput, setTagInput] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -46,7 +46,7 @@ export default function ContactsPage() {
     if (platformFilter) params.platform = platformFilter;
     if (countryFilter) params.country = countryFilter;
     if (qualityFilter) params.quality = qualityFilter;
-    if (tagsFilter) params.tags = tagsFilter;
+    if (selectedTags.length > 0) params.tags = selectedTags.join(",");
     Promise.all([
       getContacts(auth.token, params),
       getContactStats(auth.token).catch(() => null),
@@ -55,9 +55,9 @@ export default function ContactsPage() {
       setTotal(res.total || 0);
       if (s) setStats(s);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [auth?.token, search, platformFilter, countryFilter, qualityFilter, tagsFilter]);
+  }, [auth?.token, search, platformFilter, countryFilter, qualityFilter, selectedTags]);
 
-  useEffect(() => { setPage(0); load(0); }, [auth?.token, platformFilter, countryFilter, qualityFilter, tagsFilter]);
+  useEffect(() => { setPage(0); load(0); }, [auth?.token, platformFilter, countryFilter, qualityFilter, selectedTags]);
   useEffect(() => {
     const timer = setTimeout(() => { setPage(0); load(0); }, 300);
     return () => clearTimeout(timer);
@@ -168,11 +168,25 @@ export default function ContactsPage() {
           <option value="medium">{t("contacts.medium")}</option>
           <option value="low">{t("contacts.low")}</option>
         </select>
-        <select value={tagsFilter} onChange={(e) => setTagsFilter(e.target.value)}
-          className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-          <option value="">Tags</option>
-          {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-1">
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => {
+                setSelectedTags(prev =>
+                  prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                );
+              }}
+              className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                selectedTags.includes(tag)
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-white/5 text-white/60 border border-white/10 hover:border-white/20"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Bulk actions */}

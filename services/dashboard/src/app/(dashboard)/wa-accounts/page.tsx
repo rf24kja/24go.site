@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getWaAccounts, connectWhatsApp, disconnectWhatsApp, deleteWhatsApp, getWhatsAppStatus } from "@/lib/api";
+import { validateE164, normalizePhone } from "@/lib/validate";
+import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { WaQRModal } from "@/components/WaQRModal";
 
@@ -12,6 +14,7 @@ type Account = { id: string; phone_number: string; status: string; created_at: s
 export default function WaAccountsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
@@ -39,10 +42,15 @@ export default function WaAccountsPage() {
 
   const handleConnect = async () => {
     if (!auth?.token || !phoneNumber.trim()) return;
+    const normalized = normalizePhone(phoneNumber.trim());
+    if (!validateE164(normalized)) {
+      toast("Invalid phone number. Use E.164 format: +1234567890", "error");
+      return;
+    }
     setConnecting(true);
     setConnectError("");
     try {
-      const res = await connectWhatsApp(auth.token, { phone_number: phoneNumber.trim(), method: connectMethod });
+      const res = await connectWhatsApp(auth.token, { phone_number: normalized, method: connectMethod });
       setShowConnect(false);
       setPhoneNumber("");
       if (connectMethod === "qr" || connectMethod === "existing") {
