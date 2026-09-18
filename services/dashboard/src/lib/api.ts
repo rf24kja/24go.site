@@ -770,13 +770,30 @@ export async function getWaGroups(token: string) {
 
 // ── Contacts ────────────────────────────────────────────────────────
 
-export async function getContacts(token: string, params?: { search?: string; has_tg?: boolean; tags?: string; limit?: number; offset?: number }) {
+export type ContactPlatform = "telegram" | "vkontakte" | "whatsapp" | "viber";
+
+export type Contact = {
+  id: string;
+  phone: string;
+  name: string | null;
+  country: string | null;
+  platforms: Record<ContactPlatform, { exists: boolean; username?: string; last_seen?: string }>;
+  tags: string[];
+  last_mailing: { date: string; platform: string; message: string } | null;
+  quality_score: number | null;
+  created_at: string;
+};
+
+export async function getContacts(token: string, params?: {
+  search?: string; platform?: string; country?: string;
+  tags?: string; quality?: string; page?: number; limit?: number;
+}) {
   const qs = toQuery(params as any);
-  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/contacts${qs ? `?${qs}` : ""}`, { token });
+  return api<{ items: Contact[]; total: number }>(`/api/v1/contacts${qs ? `?${qs}` : ""}`, { token });
 }
 
 export async function getContactStats(token: string) {
-  return api<{ total: number; with_tg: number; with_viber: number }>("/api/v1/contacts/stats", { token });
+  return api<{ total: number; telegram: number; vkontakte: number; whatsapp: number; viber: number }>("/api/v1/contacts/stats", { token });
 }
 
 export async function updateContact(token: string, contactId: string, data: { tags?: string[]; notes?: string }) {
@@ -787,8 +804,16 @@ export async function deleteContact(token: string, contactId: string) {
   return api<any>(`/api/v1/contacts/${contactId}`, { method: "DELETE", token });
 }
 
-export async function checkTgPhones(token: string, phones: string[]) {
-  return api<any>("/api/v1/contacts/check-tg", { method: "POST", body: JSON.stringify({ phones }), token });
+export async function checkPlatforms(token: string, phoneNumbers: string[]) {
+  return api<any>("/api/v1/contacts/check-platforms", {
+    method: "POST", body: JSON.stringify({ phone_numbers: phoneNumbers }), token,
+  });
+}
+
+export async function refreshPlatforms(token: string, contactIds: string[]) {
+  return api<any>("/api/v1/contacts/refresh-platforms", {
+    method: "POST", body: JSON.stringify({ contact_ids: contactIds }), token,
+  });
 }
 
 export async function exportContactsCsv(token: string) {
@@ -799,9 +824,9 @@ export async function exportContactsCsv(token: string) {
   return res.blob();
 }
 
-export async function bulkTagContacts(token: string, contactIds: string[], tags: string[], action: "add" | "remove" = "add") {
+export async function bulkTagContacts(token: string, contactIds: string[], tags: string[]) {
   return api<any>("/api/v1/contacts/bulk-tag", {
-    method: "POST", body: JSON.stringify({ contact_ids: contactIds, tags, action }), token,
+    method: "POST", body: JSON.stringify({ contact_ids: contactIds, tags }), token,
   });
 }
 
