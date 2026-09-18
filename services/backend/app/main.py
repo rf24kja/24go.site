@@ -15,7 +15,7 @@ from app.config import settings
 from app.logging_config import setup_logging
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
-from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics
+from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics, phone_parser
 
 # ── Startup guard ─────────────────────────────────────────────────────
 if not settings.JWT_SECRET:
@@ -308,6 +308,7 @@ app.include_router(proxies.router)
 app.include_router(tools.router)
 app.include_router(mailings.router)
 app.include_router(metrics.router)
+app.include_router(phone_parser.router)
 
 
 @app.get("/health")
