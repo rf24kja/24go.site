@@ -4,11 +4,9 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   WASocket,
-  makeCacheableSignalKeyStore,
-  delay
+  makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
-import { toBuffer } from 'qrcode'
 import pino from 'pino'
 import NodeCache from 'node-cache'
 import { sessionManager } from './auth'
@@ -19,85 +17,113 @@ app.use(express.json())
 
 const logger = pino({ level: 'silent' })
 
-// In-memory QR storage (no localStorage per spec)
-const qrCache = new NodeCache({ stdTTL: 20 }) // 20s expiry
-
-// Connection states per account
+const qrCache = new NodeCache({ stdTTL: 20 })
 const connections = new Map<string, WASocket>()
 
-// Health check
+function validateE164(phone: string): boolean {
+  return /^\+[1-9]\d{1,14}$/.test(phone)
+}
+
+function normalizePhone(phone: string): string {
+  const cleaned = phone.replace(/[^\d+]/g, '')
+  if (!cleaned.startsWith('+')) {
+    return '+' + cleaned
+  }
+  return cleaned
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout')), ms)
+  )
+  return Promise.race([promise, timeout])
+}
+
+async function connectAccount(accountId: string, phoneNumber?: string, method?: string) {
+  let session = await sessionManager.getSession(accountId)
+  if (!session) {
+    session = await sessionManager.createSession(accountId)
+  }
+
+  const sock = makeWASocket({
+    auth: {
+      creds: session.state.creds,
+      keys: makeCacheableSignalKeyStore(session.state.keys, logger)
+    },
+    printQRInTerminal: false,
+    logger
+  })
+
+  connections.set(accountId, sock)
+
+  sock.ev.on('creds.update', session.saveCreds)
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect, qr } = update
+
+    if (qr) {
+      qrCache.set(accountId, qr)
+    }
+
+    if (connection === 'open') {
+      qrCache.del(accountId)
+    }
+
+    if (connection === 'close') {
+      connections.delete(accountId)
+      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
+      if (statusCode === DisconnectReason.loggedOut) {
+        sessionManager.deleteSession(accountId)
+      } else {
+        // ponytail: basic reconnect, add exponential backoff if needed
+        setTimeout(() => {
+          if (!connections.has(accountId)) {
+            connectAccount(accountId, phoneNumber, method).catch(() => {})
+          }
+        }, 5000)
+      }
+    }
+  })
+
+  return sock
+}
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-// Connect account
 app.post('/connect', async (req, res) => {
   const { accountId, phoneNumber, method } = req.body
   if (!accountId) {
     return res.status(400).json({ error: 'accountId required' })
   }
 
-  // Check if already connected
   if (connections.has(accountId)) {
     return res.status(409).json({ error: 'Account already connected' })
   }
 
-  try {
-    // Get or create session
-    let session = await sessionManager.getSession(accountId)
-    if (!session) {
-      session = await sessionManager.createSession(accountId)
+  if (method === 'pairing' && phoneNumber) {
+    const normalized = normalizePhone(phoneNumber)
+    if (!validateE164(normalized)) {
+      return res.status(400).json({ error: 'Invalid phone number. Must be E.164 format: +{country}{number}' })
     }
+  }
 
-    const sock = makeWASocket({
-      auth: {
-        creds: session.state.creds,
-        keys: makeCacheableSignalKeyStore(session.state.keys, logger)
-      },
-      printQRInTerminal: false,
-      logger
-    })
+  try {
+    const sock = await connectAccount(accountId, phoneNumber, method)
 
-    connections.set(accountId, sock)
-
-    // Handle credentials update
-    sock.ev.on('creds.update', session.saveCreds)
-
-    // Handle connection updates
-    sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect, qr } = update
-
-      if (qr) {
-        qrCache.set(accountId, qr)
-      }
-
-      if (connection === 'open') {
-        qrCache.del(accountId) // Clear QR on successful connection
-      }
-
-      if (connection === 'close') {
-        connections.delete(accountId)
-        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
-        if (statusCode === DisconnectReason.loggedOut) {
-          sessionManager.deleteSession(accountId)
-        }
-      }
-    })
-
-    // For pairing code method, request pairing code
     if (method === 'pairing' && phoneNumber) {
-      const code = await sock.requestPairingCode(phoneNumber)
+      const normalized = normalizePhone(phoneNumber)
+      const code = await withTimeout(sock.requestPairingCode(normalized), 30000)
       return res.json({ status: 'pairing', code })
     }
 
-    // For QR or existing session, return status
     res.json({ status: 'connecting' })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })
 
-// Get QR code
 app.get('/qr/:accountId', (req, res) => {
   const qr = qrCache.get<string>(req.params.accountId)
   if (!qr) {
@@ -106,10 +132,7 @@ app.get('/qr/:accountId', (req, res) => {
   res.json({ qr })
 })
 
-// Get pairing code
 app.get('/pairing-code/:accountId', (req, res) => {
-  // Pairing code is returned in /connect response
-  // This endpoint is for polling if needed
   const sock = connections.get(req.params.accountId)
   if (!sock) {
     return res.status(404).json({ error: 'Session not found' })
@@ -117,7 +140,6 @@ app.get('/pairing-code/:accountId', (req, res) => {
   res.json({ status: 'pending' })
 })
 
-// Get connection status
 app.get('/status/:accountId', (req, res) => {
   const sock = connections.get(req.params.accountId)
   if (!sock) {
@@ -130,7 +152,6 @@ app.get('/status/:accountId', (req, res) => {
   })
 })
 
-// Disconnect
 app.post('/disconnect/:accountId', (req, res) => {
   const sock = connections.get(req.params.accountId)
   if (sock) {
@@ -142,7 +163,6 @@ app.post('/disconnect/:accountId', (req, res) => {
   res.json({ removed: true })
 })
 
-// Parse group participants
 app.post('/parse-groups', async (req, res) => {
   const { accountId, groupLinks } = req.body
   if (!accountId || !groupLinks) {
@@ -159,7 +179,6 @@ app.post('/parse-groups', async (req, res) => {
 
     for (const link of groupLinks) {
       try {
-        // Extract invite code from link
         const inviteMatch = link.match(/chat\.whatsapp\.com\/([A-Za-z0-9]+)/)
         if (!inviteMatch) {
           results.push({ link, participants: [], error: 'Invalid group link' })
@@ -168,23 +187,27 @@ app.post('/parse-groups', async (req, res) => {
 
         const inviteCode = inviteMatch[1]
 
-        // Get group info without joining
-        const groupInfo = await sock.groupGetInviteInfo(inviteCode)
+        const groupInfo = await withTimeout(sock.groupGetInviteInfo(inviteCode), 30000)
         if (!groupInfo) {
           results.push({ link, participants: [], error: 'Group not found' })
           continue
         }
 
-        // Join the group
-        const groupId = await sock.groupAcceptInvite(inviteCode)
+        const groupId = await withTimeout(sock.groupAcceptInvite(inviteCode), 30000)
         if (!groupId) {
           results.push({ link, participants: [], error: 'Failed to join group' })
           continue
         }
 
-        // Get participants from metadata
-        const metadata = await sock.groupMetadata(groupId)
+        const metadata = await withTimeout(sock.groupMetadata(groupId), 30000)
         const participants = metadata.participants.map(p => p.id.split('@')[0])
+
+        // ponytail: leave group after extracting participants
+        try {
+          await withTimeout(sock.groupLeave(groupId), 30000)
+        } catch (e) {
+          console.log(`Failed to leave group ${groupId}:`, e)
+        }
 
         results.push({ link, participants })
       } catch (err: any) {
@@ -198,7 +221,6 @@ app.post('/parse-groups', async (req, res) => {
   }
 })
 
-// Check if numbers are on WhatsApp
 app.post('/check-whatsapp', async (req, res) => {
   const { accountId, numbers } = req.body
   if (!accountId || !numbers) {
@@ -210,15 +232,23 @@ app.post('/check-whatsapp', async (req, res) => {
     return res.status(400).json({ error: 'Account not connected' })
   }
 
+  // Validate all numbers first
+  for (const num of numbers) {
+    const normalized = normalizePhone(num)
+    if (!validateE164(normalized)) {
+      return res.status(400).json({ error: `Invalid phone number: ${num}. Must be E.164 format` })
+    }
+  }
+
   try {
     const results = await Promise.all(
       numbers.map(async (phone: string) => {
         try {
-          const result = await sock.onWhatsApp(phone)
-          if (result && result[0]) {
-            return { phone, exists: result[0].exists }
-          }
-          return { phone, exists: false }
+          const normalized = normalizePhone(phone)
+          const jid = normalized.substring(1) + '@s.whatsapp.net'
+          const results = await withTimeout(sock.onWhatsApp(jid), 30000)
+          const result = results?.[0]
+          return { phone, exists: result?.exists ?? false }
         } catch {
           return { phone, exists: false }
         }
