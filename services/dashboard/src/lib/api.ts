@@ -743,3 +743,60 @@ export async function bulkAssignProxies(token: string, resetFirst: boolean = fal
 export async function assignAccountProxy(token: string, accountId: string, proxyId: string | null) {
   return api<any>(`/api/v1/accounts/${accountId}/assign-proxy`, { method: "POST", body: JSON.stringify({ proxy_id: proxyId }), token });
 }
+
+// ── WhatsApp Groups ─────────────────────────────────────────────────
+
+export async function getWaAccounts(token: string) {
+  return api<{ items: any[] }>("/api/v1/wa/accounts", { token });
+}
+
+export async function parseWaGroups(token: string, data: { account_id: string; group_ids?: string[] }) {
+  return api<any>("/api/v1/wa/parse", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function getWaGroups(token: string) {
+  return api<{ items: any[] }>("/api/v1/wa/groups", { token });
+}
+
+// ── Contacts ────────────────────────────────────────────────────────
+
+export async function getContacts(token: string, params?: { search?: string; has_tg?: boolean; tags?: string; limit?: number; offset?: number }) {
+  const qs = toQuery(params as any);
+  return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/contacts${qs ? `?${qs}` : ""}`, { token });
+}
+
+export async function getContactStats(token: string) {
+  return api<{ total: number; with_tg: number; with_viber: number }>("/api/v1/contacts/stats", { token });
+}
+
+export async function updateContact(token: string, contactId: string, data: { tags?: string[]; notes?: string }) {
+  return api<any>(`/api/v1/contacts/${contactId}`, { method: "PUT", body: JSON.stringify(data), token });
+}
+
+export async function deleteContact(token: string, contactId: string) {
+  return api<any>(`/api/v1/contacts/${contactId}`, { method: "DELETE", token });
+}
+
+export async function checkTgPhones(token: string, phones: string[]) {
+  return api<any>("/api/v1/contacts/check-tg", { method: "POST", body: JSON.stringify({ phones }), token });
+}
+
+export async function exportContactsCsv(token: string) {
+  const res = await fetch(`${API_URL}/api/v1/contacts/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  return res.blob();
+}
+
+export async function bulkTagContacts(token: string, contactIds: string[], tags: string[], action: "add" | "remove" = "add") {
+  return api<any>("/api/v1/contacts/bulk-tag", {
+    method: "POST", body: JSON.stringify({ contact_ids: contactIds, tags, action }), token,
+  });
+}
+
+// ── WA Overview ─────────────────────────────────────────────────────
+
+export async function getWaOverview(token: string) {
+  return api<any>("/api/v1/wa/overview", { token });
+}

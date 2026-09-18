@@ -72,6 +72,7 @@ export function Sidebar() {
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/wa-accounts", label: t("sidebar.waAccounts"), icon: UserCircle, feature: "accounts" },
     { href: "/wa-groups", label: t("sidebar.waGroups"), icon: Radio, feature: "groups" },
+    { href: "/contacts", label: t("sidebar.contacts"), icon: UsersGroup, feature: "groups" },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
