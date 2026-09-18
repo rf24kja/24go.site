@@ -19,3 +19,5 @@ pysocks>=1.7.1
 vk_api==11.9.9
 croniter>=1.4.0
 stripe>=10.0.0
+sentry-sdk[fastapi]>=2.0.0
+psutil>=5.9.0
