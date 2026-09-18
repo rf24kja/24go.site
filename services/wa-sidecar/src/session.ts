@@ -7,6 +7,8 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import { toBuffer } from "qrcode";
 import path from "path";
+import fs from "fs";
+import pino from "pino";
 
 const SESSION_DIR = process.env.WA_SESSION_DIR || "/data/wa/sessions";
 
@@ -16,9 +18,12 @@ interface Session {
   status: "connected" | "disconnected" | "qr_pending";
   phone: string;
   jid: string;
+  reconnectAttempts: number;
 }
 
 const sessions = new Map<string, Session>();
+const MAX_RECONNECT_ATTEMPTS = 3;
+const BASE_DELAY_MS = 3000;
 
 export async function createSession(accountId: string): Promise<Session> {
   const sessionDir = path.join(SESSION_DIR, accountId);
@@ -27,13 +32,15 @@ export async function createSession(accountId: string): Promise<Session> {
   let qrBuffer: Buffer | null = null;
   let resolveQr: ((buf: Buffer) => void) | null = null;
 
+  const silentLogger = pino({ level: "silent" });
+
   const sock = makeWASocket({
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, undefined as any),
+      keys: makeCacheableSignalKeyStore(state.keys, silentLogger),
     },
     printQRInTerminal: false,
-    logger: undefined as any,
+    logger: silentLogger,
   });
 
   const session: Session = {
@@ -42,6 +49,7 @@ export async function createSession(accountId: string): Promise<Session> {
     status: "disconnected",
     phone: "",
     jid: "",
+    reconnectAttempts: 0,
   };
 
   sock.ev.on("creds.update", saveCreds);
@@ -75,9 +83,13 @@ export async function createSession(accountId: string): Promise<Session> {
     if (connection === "close") {
       session.status = "disconnected";
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      if (statusCode !== DisconnectReason.loggedOut) {
-        // Reconnect on non-logout
-        createSession(accountId);
+      if (
+        statusCode !== DisconnectReason.loggedOut &&
+        session.reconnectAttempts < MAX_RECONNECT_ATTEMPTS
+      ) {
+        session.reconnectAttempts++;
+        const delay = BASE_DELAY_MS * Math.pow(2, session.reconnectAttempts - 1);
+        setTimeout(() => createSession(accountId), delay);
       }
     }
   });
@@ -114,6 +126,12 @@ export function removeSession(accountId: string): boolean {
   if (session) {
     session.sock.end(undefined);
     sessions.delete(accountId);
+
+    const sessionDir = path.join(SESSION_DIR, accountId);
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
+
     return true;
   }
   return false;
@@ -142,11 +160,19 @@ export async function getGroupParticipants(
     throw new Error("Failed to join group");
   }
 
-  // Wait a moment for group metadata to sync
-  await new Promise((r) => setTimeout(r, 2000));
-
-  // Get group metadata
-  const metadata = await session.sock.groupMetadata(groupId);
+  // Wait for group metadata to become available (up to 10s)
+  let metadata;
+  for (let i = 0; i < 10; i++) {
+    try {
+      metadata = await session.sock.groupMetadata(groupId);
+      if (metadata) break;
+    } catch {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  if (!metadata) {
+    throw new Error("Timed out waiting for group metadata");
+  }
   const participants = metadata.participants.map((p) => {
     // Extract phone number from JID
     const phone = p.id.split("@")[0];
