@@ -6,3 +6,4 @@ __pycache__/
 .agent/
 *.session
 scripts/
+dist/
