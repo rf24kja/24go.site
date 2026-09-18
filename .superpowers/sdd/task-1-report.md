@@ -1,76 +1,40 @@
-# Task 1 Report: wa-sidecar Node.js Service
+# Task 1: Rewrite sidecar core
 
-## What Was Implemented
+**Status:** DONE
 
-Created a standalone Node.js service wrapping Baileys (WhatsApp multi-device protocol) as a Docker sidecar.
+## Changes made
 
-### Files Created
+1. **Updated `package.json`** - Pinned Baileys to `6.7.24`, added `node-cache`, `tsx` for dev, removed `pino` (using Baileys built-in)
 
-| File | Purpose |
-|------|---------|
-| `services/wa-sidecar/package.json` | Dependencies: baileys, express, qrcode, pino, cors |
-| `services/wa-sidecar/tsconfig.json` | TypeScript config: ES2022, commonjs, strict |
-| `services/wa-sidecar/src/session.ts` | Session manager with create/get/remove/getGroupParticipants |
-| `services/wa-sidecar/src/index.ts` | Express server on port 3100 with 6 endpoints |
-| `services/wa-sidecar/Dockerfile` | node:20-slim, npm ci --production, expose 3100 |
+2. **Created `src/auth.ts`** - New `SessionManager` class with `getSession`, `createSession`, `deleteSession`, `hasSession` methods using Baileys `useMultiFileAuthState`
 
-### Endpoints
+3. **Rewrote `src/index.ts`** - New routes:
+   - `GET /health` - health check
+   - `POST /connect` - connect account with method (qr/pairing/existing)
+   - `GET /qr/:accountId` - get QR code (in-memory cache, 20s TTL)
+   - `GET /pairing-code/:accountId` - get pairing code
+   - `GET /status/:accountId` - get connection status
+   - `POST /disconnect/:accountId` - disconnect
+   - `POST /parse-groups` - parse group participants
+   - `POST /check-whatsapp` - check if numbers are on WhatsApp
 
-- `GET /health` — health check
-- `POST /connect` — initiate QR connection (waits 30s for QR)
-- `GET /qr/:accountId` — poll QR code
-- `GET /status/:accountId` — connection status
-- `POST /disconnect/:accountId` — disconnect session
-- `POST /parse-groups` — parse group participants from invite links
+4. **Removed `src/session.ts`** - Replaced by `auth.ts`
 
-## Testing
+## Build result
 
-- `npm install` — success (193 packages)
-- `npx tsc` — success, no errors
-- Compiled output verified in `dist/`
+✅ **Build succeeded** - `npm run build` completed without errors
 
-## Files Changed
+## Test result
 
-- `.gitignore` — added `dist/` to ignore compiled output
-- `services/wa-sidecar/` — all new files (7 files, 3120 insertions)
+No tests exist in this service (not requested).
 
-## Self-Review Findings
+## Concerns
 
-1. **Logger disabled** — Baileys logger set to `undefined as any`. Acceptable for sidecar; add pino logger if debugging needed.
-2. **No rate limiting** — endpoints have no rate limiting. Fine for internal service; add if exposed externally.
-3. **No auth on endpoints** — no API key validation. Acceptable for localhost-only communication with FastAPI backend.
+None. The rewrite follows the design spec exactly:
+- Baileys `6.7.24` (stable, not 7.x)
+- QR code in-memory only (no localStorage)
+- 30s timeout max for API calls
+- Single sidecar instance (no horizontal scaling)
+- Phone format: E.164 (`+79001234567`)
 
-## Commits
-
-- `22a5b9c` — feat(wa-sidecar): create WhatsApp Baileys sidecar service
-- `7e31216` — fix(wa-sidecar): reconnect backoff, session cleanup, baileys module
-
-## Task 1 Fixes Applied
-
-### Critical Fixes
-
-1. **Recursive reconnect without backoff/limit** (`session.ts:83-93`):
-   - Added `reconnectAttempts` counter to Session interface
-   - Max 3 retry attempts with exponential backoff (3s, 6s, 12s)
-   - Stops reconnecting on `DisconnectReason.loggedOut`
-
-2. **removeSession doesn't delete session files** (`session.ts:124-138`):
-   - Added `fs.rmSync(sessionDir, { recursive: true, force: true })` before map deletion
-   - Checks `fs.existsSync` before attempting removal
-
-### Important Fixes
-
-3. **Created `src/baileys.ts`** — Re-export barrel for Baileys types and functions
-
-4. **Magic 2000ms sleep** (`session.ts:163-175`):
-   - Replaced with retry loop (up to 10 attempts, 1s each) for group metadata
-   - Throws descriptive error on timeout
-
-5. **`undefined as any` for logger/key store** (`session.ts:35-44`):
-   - Created `pino({ level: "silent" })` instance
-   - Used for both `makeCacheableSignalKeyStore` and `logger` options
-
-### Test Results
-
-- `npx tsc` — **PASS** (0 errors)
-- Commit: `7e31216`
+Skipped: `cachedGroupMetadata` (add when group messaging is implemented), database-backed auth state (add for production multi-instance). Add when: group messaging performance degrades, or scaling to multiple sidecar instances.
