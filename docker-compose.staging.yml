@@ -1,0 +1,77 @@
+# Staging environment — lighter resources, separate DB
+# Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+services:
+  postgres:
+    container_name: staging-postgres
+    environment:
+      POSTGRES_DB: staging_db
+      POSTGRES_USER: staging_user
+      POSTGRES_PASSWORD: staging_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+
+  redis:
+    container_name: staging-redis
+    ports:
+      - "6380:6379"
+
+  fastapi:
+    container_name: staging-fastapi
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+    ports:
+      - "8002:8000"
+
+  worker-parser:
+    container_name: staging-worker-parser
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  worker-poster:
+    container_name: staging-worker-poster
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  worker-warmup:
+    container_name: staging-worker-warmup
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  worker-listener:
+    container_name: staging-worker-listener
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  worker-billing:
+    container_name: staging-worker-billing
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  celery-beat:
+    container_name: staging-celery-beat
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  bot:
+    container_name: staging-bot
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://staging_user:staging_pass@postgres:5432/staging_db
+
+  wa-sidecar:
+    container_name: staging-wa-sidecar
+    environment:
+      - APP_ENV=staging
+
+volumes:
+  staging_pgdata:
