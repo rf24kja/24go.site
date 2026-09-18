@@ -95,7 +95,8 @@ services:
     build:
       context: ./services/worker
       dockerfile: Dockerfile
-    command: celery -A app.celery_app:celery flower --port=5555 --basic_auth=admin:Fl0wer24go!
+    command: celery -A app.celery_app:celery flower --port=5555
+    # ponytail: auth handled by Caddy reverse proxy (flower.24go.site basic_auth)
     restart: unless-stopped
     env_file:
       - .env
@@ -240,6 +241,28 @@ services:
     networks:
       - internal
 
+  # ── WhatsApp Sidecar ────────────────────────────────────────────────
+  wa-sidecar:
+    build:
+      context: ./services/wa-sidecar
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - WA_SESSION_DIR=/data/wa/sessions
+      - WA_SIDECAR_PORT=3100
+    volumes:
+      - wa_sessions:/data/wa/sessions
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - internal
+      - preyi_preyi_net
+
   # ── Telegram Mini-Bot ───────────────────────────────────────────────
   bot:
     build:
@@ -269,3 +292,4 @@ networks:
 
 volumes:
   pgdata:
+  wa_sessions:
