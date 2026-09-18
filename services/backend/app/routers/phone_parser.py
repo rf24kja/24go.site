@@ -1,173 +1,467 @@
-"""Phone parser — normalize, validate, and enrich phone numbers."""
-import re
+"""WhatsApp integration — account connection, group parsing, contact management."""
+import csv
+import io
+from datetime import datetime, timezone
+from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Contact, User
+from app.models import Contact, WaAccount, WaGroup, User
 from app.security import get_current_user
 
-router = APIRouter(prefix="/api/v1/phone-parser", tags=["phone-parser"])
+router = APIRouter(prefix="/api/v1", tags=["whatsapp"])
 
-# Common country dial codes — covers 95%+ of contacts
-_COUNTRY_CODES = {
-    "7": "RU", "1": "US", "20": "EG", "27": "ZA", "30": "GR", "31": "NL",
-    "32": "BE", "33": "FR", "34": "ES", "36": "HU", "39": "IT", "40": "RO",
-    "41": "CH", "43": "AT", "44": "GB", "45": "DK", "46": "SE", "47": "NO",
-    "48": "PL", "49": "DE", "51": "PE", "52": "MX", "53": "CU", "54": "AR",
-    "55": "BR", "56": "CL", "57": "CO", "58": "VE", "60": "MY", "61": "AU",
-    "62": "ID", "63": "PH", "64": "NZ", "65": "SG", "66": "TH", "81": "JP",
-    "82": "KR", "84": "VN", "86": "CN", "90": "TR", "91": "IN", "92": "PK",
-    "93": "AF", "94": "LK", "95": "MM", "98": "IR", "212": "MA", "213": "DZ",
-    "216": "TN", "218": "LY", "220": "GM", "221": "SN", "222": "MR",
-    "223": "ML", "224": "GN", "225": "CI", "226": "BF", "227": "NE",
-    "228": "TG", "229": "BJ", "230": "MU", "231": "LR", "232": "SL",
-    "233": "GH", "234": "NG", "235": "TD", "236": "CF", "237": "CM",
-    "238": "CV", "239": "ST", "240": "GQ", "241": "GA", "242": "CG",
-    "243": "CD", "244": "AO", "245": "GW", "246": "IO", "248": "SC",
-    "249": "SD", "250": "RW", "251": "ET", "252": "SO", "253": "DJ",
-    "254": "KE", "255": "TZ", "256": "UG", "257": "BI", "258": "MZ",
-    "260": "ZM", "261": "MG", "262": "RE", "263": "ZW", "264": "NA",
-    "265": "MW", "266": "LS", "267": "BW", "268": "SZ", "269": "KM",
-    "290": "SH", "291": "ER", "297": "AW", "298": "FO", "299": "GL",
-    "350": "GI", "351": "PT", "352": "LU", "353": "IE", "354": "IS",
-    "355": "AL", "356": "MT", "357": "CY", "358": "FI", "359": "BG",
-    "370": "LT", "371": "LV", "372": "EE", "373": "MD", "374": "AM",
-    "375": "BY", "376": "AD", "377": "MC", "378": "SM", "380": "UA",
-    "381": "RS", "382": "ME", "383": "XK", "385": "HR", "386": "SI",
-    "387": "BA", "389": "MK", "420": "CZ", "421": "SK", "852": "HK",
-    "853": "MO", "855": "KH", "856": "LA", "880": "BD", "886": "TW",
-    "960": "MV", "961": "LB", "962": "JO", "963": "SY", "964": "IQ",
-    "965": "KW", "966": "SA", "967": "YE", "968": "OM", "971": "AE",
-    "972": "IL", "973": "BH", "974": "QA", "975": "BT", "976": "MN",
-    "977": "NP", "992": "TJ", "993": "TM", "994": "AZ", "995": "GE",
-    "996": "KG", "998": "UZ",
-}
+WASIDECAR_URL = "http://wa-sidecar:3100"
 
 
-def _parse_phone(raw: str) -> dict:
-    """Parse a phone string into structured data."""
-    digits = re.sub(r"[^\d]", "", raw)
-    if len(digits) < 7:
-        return {"valid": False, "raw": raw, "error": "too_short"}
+# ── WhatsApp Accounts ─────────────────────────────────────────────────
 
-    # Strip leading +, spaces, dashes already removed by digit extraction
-    # Normalize: if raw starts with 00, treat as international
-    if raw.strip().startswith("00") and len(digits) > 10:
-        digits = digits[2:]  # strip 00 prefix
+class WaConnectRequest(BaseModel):
+    phone_number: str = Field(..., min_length=5, max_length=20)
 
-    # Strip leading 0 for domestic numbers that aren't international
-    country_code = None
-    national = digits
 
-    for code in sorted(_COUNTRY_CODES.keys(), key=len, reverse=True):
-        if digits.startswith(code) and len(digits) > len(code):
-            country_code = code
-            national = digits[len(code):]
-            break
+@router.post("/wa/connect")
+async def wa_connect(
+    body: WaConnectRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Initiate QR connection via wa-sidecar."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{WASIDECAR_URL}/connect",
+            json={"phone_number": body.phone_number, "tenant_id": str(current_user.tenant_id)},
+        )
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    data = resp.json()
+    # upsert wa_accounts row
+    existing = await db.execute(
+        select(WaAccount).where(
+            WaAccount.tenant_id == current_user.tenant_id,
+            WaAccount.phone_number == body.phone_number,
+        )
+    )
+    account = existing.scalar_one_or_none()
+    if not account:
+        account = WaAccount(
+            tenant_id=current_user.tenant_id,
+            phone_number=body.phone_number,
+            status="warming_up",
+        )
+        db.add(account)
+        await db.commit()
+        await db.refresh(account)
+    return {"account_id": str(account.id), "qr": data.get("qr")}
 
-    if country_code is None:
-        # Assume local number — can't determine country
-        national = digits.lstrip("0") if len(digits) > 10 else digits
-        return {
-            "valid": True,
-            "raw": raw,
-            "e164": f"+{digits}",
-            "country_code": None,
-            "country": None,
-            "national": national,
-            "formatted": raw.strip(),
-        }
 
-    cc = _COUNTRY_CODES.get(country_code, "??")
-    formatted = f"+{country_code} {national}"
-    e164 = f"+{country_code}{national}"
+@router.get("/wa/qr/{account_id}")
+async def wa_qr(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Poll QR code for a connecting account."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/qr/{account.phone_number}")
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    return resp.json()
 
+
+@router.get("/wa/status/{account_id}")
+async def wa_status(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get connection status for a WhatsApp account."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/status/{account.phone_number}")
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    data = resp.json()
+    # sync status locally
+    new_status = data.get("status", account.status)
+    if new_status != account.status:
+        account.status = new_status
+        if new_status == "active":
+            account.wa_id = data.get("wa_id")
+        await db.commit()
+    return data
+
+
+@router.post("/wa/disconnect/{account_id}")
+async def wa_disconnect(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Disconnect a WhatsApp account."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(f"{WASIDECAR_URL}/disconnect/{account.phone_number}")
+    if resp.status_code not in (200, 404):
+        raise HTTPException(resp.status_code, resp.text)
+    account.status = "paused"
+    await db.commit()
+    return {"status": "disconnected"}
+
+
+@router.get("/wa/accounts")
+async def wa_list_accounts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List WhatsApp accounts for tenant."""
+    result = await db.execute(
+        select(WaAccount).where(WaAccount.tenant_id == current_user.tenant_id)
+    )
+    return {"items": result.scalars().all()}
+
+
+@router.delete("/wa/accounts/{account_id}")
+async def wa_remove_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove a WhatsApp account."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    await db.delete(account)
+    await db.commit()
+    return {"deleted": True}
+
+
+# ── Group Parsing ─────────────────────────────────────────────────────
+
+class WaParseRequest(BaseModel):
+    account_id: UUID
+    group_ids: list[str] = Field(default=[], description="Specific groups to parse; empty = all joined")
+
+
+@router.post("/wa/parse")
+async def wa_parse_groups(
+    body: WaParseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Parse WhatsApp groups via wa-sidecar, upsert contacts."""
+    account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(
+            f"{WASIDECAR_URL}/groups/parse",
+            json={
+                "phone_number": account.phone_number,
+                "group_ids": body.group_ids,
+            },
+        )
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    data = resp.json()
+    created_contacts = 0
+    for member in data.get("members", []):
+        phone = member.get("phone")
+        if not phone:
+            continue
+        existing = await db.execute(
+            select(Contact).where(
+                Contact.tenant_id == current_user.tenant_id,
+                Contact.phone == phone,
+            )
+        )
+        if existing.scalar_one_or_none():
+            continue
+        db.add(Contact(
+            tenant_id=current_user.tenant_id,
+            phone=phone,
+            name=member.get("name"),
+            wa_id=member.get("wa_id"),
+            is_group=False,
+            metadata_={"source_group": member.get("group_id"), "parsed_at": datetime.now(timezone.utc).isoformat()},
+        ))
+        created_contacts += 1
+    # upsert groups
+    for grp in data.get("groups", []):
+        existing = await db.execute(
+            select(WaGroup).where(
+                WaGroup.tenant_id == current_user.tenant_id,
+                WaGroup.group_id == grp["group_id"],
+            )
+        )
+        g = existing.scalar_one_or_none()
+        if g:
+            g.name = grp.get("name", g.name)
+            g.members_count = grp.get("members_count", g.members_count)
+            g.last_scan_at = datetime.now(timezone.utc)
+        else:
+            db.add(WaGroup(
+                tenant_id=current_user.tenant_id,
+                group_id=grp["group_id"],
+                name=grp.get("name"),
+                members_count=grp.get("members_count", 0),
+                last_scan_at=datetime.now(timezone.utc),
+            ))
+    await db.commit()
     return {
-        "valid": True,
-        "raw": raw,
-        "e164": e164,
-        "country_code": f"+{country_code}",
-        "country": cc,
-        "national": national,
-        "formatted": formatted,
+        "created_contacts": created_contacts,
+        "groups_updated": len(data.get("groups", [])),
+        "total_members": len(data.get("members", [])),
     }
 
 
-class ParseRequest(BaseModel):
-    phone: str = Field(..., min_length=1, max_length=30)
+@router.get("/wa/groups")
+async def wa_list_groups(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List parsed WhatsApp groups."""
+    result = await db.execute(
+        select(WaGroup).where(WaGroup.tenant_id == current_user.tenant_id)
+    )
+    return {"items": result.scalars().all()}
 
 
-class ParseBatchRequest(BaseModel):
-    phones: list[str] = Field(..., min_length=1, max_length=500)
-
-
-@router.post("/parse")
-async def parse_phone(body: ParseRequest):
-    """Parse and normalize a single phone number."""
-    return _parse_phone(body.phone)
-
-
-@router.post("/parse-batch")
-async def parse_batch(body: ParseBatchRequest):
-    """Parse multiple phone numbers at once."""
-    return {"results": [_parse_phone(p) for p in body.phones]}
-
+# ── Contacts ──────────────────────────────────────────────────────────
 
 @router.get("/contacts")
 async def list_contacts(
     search: str | None = None,
+    has_tg: bool | None = None,
+    tags: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List parsed contacts for the tenant."""
+    """List contacts with filters."""
     q = select(Contact).where(Contact.tenant_id == current_user.tenant_id)
     if search:
-        q = q.where(Contact.phone.ilike(f"%{search}%"))
+        q = q.where(Contact.phone.ilike(f"%{search}%") | Contact.name.ilike(f"%{search}%"))
+    if has_tg is not None:
+        if has_tg:
+            q = q.where(Contact.metadata_["has_tg"].as_boolean() == True)
+        else:
+            q = q.where(Contact.metadata_["has_tg"].as_boolean() != True)
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",")]
+        for tag in tag_list:
+            q = q.where(Contact.metadata_["tags"].astext.contains(tag))
+    if date_from:
+        q = q.where(Contact.created_at >= date_from)
+    if date_to:
+        q = q.where(Contact.created_at <= date_to)
 
-    from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
-
     result = await db.execute(
         q.order_by(Contact.created_at.desc()).limit(limit).offset(offset)
     )
     return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 
 
-@router.post("/enrich")
-async def enrich_contact(
-    body: ParseRequest,
+@router.get("/contacts/stats")
+async def contact_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Parse phone and upsert into contacts table."""
-    parsed = _parse_phone(body.phone)
-    if not parsed["valid"]:
-        raise HTTPException(400, parsed.get("error", "invalid_phone"))
+    """Contact statistics."""
+    base = select(func.count()).where(Contact.tenant_id == current_user.tenant_id)
+    total = (await db.execute(base)).scalar() or 0
+    with_tg = (await db.execute(
+        base.where(Contact.metadata_["has_tg"].as_boolean() == True)
+    )).scalar() or 0
+    with_viber = (await db.execute(
+        base.where(Contact.metadata_["has_viber"].as_boolean() == True)
+    )).scalar() or 0
+    return {"total": total, "with_tg": with_tg, "with_viber": with_viber}
 
-    # Check existing
-    existing = await db.execute(
-        select(Contact).where(
-            Contact.tenant_id == current_user.tenant_id,
-            Contact.phone == parsed["e164"],
-        )
-    )
-    contact = existing.scalar_one_or_none()
-    if contact:
-        return {"contact": contact, "parsed": parsed, "created": False}
 
-    contact = Contact(
-        tenant_id=current_user.tenant_id,
-        phone=parsed["e164"],
-        metadata_={"country": parsed["country"], "country_code": parsed["country_code"]},
-    )
-    db.add(contact)
+@router.get("/contacts/{contact_id}")
+async def get_contact(
+    contact_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get contact detail."""
+    return await _get_contact(db, contact_id, current_user.tenant_id)
+
+
+class ContactUpdateRequest(BaseModel):
+    tags: list[str] | None = None
+    notes: str | None = None
+
+
+@router.put("/contacts/{contact_id}")
+async def update_contact(
+    contact_id: UUID,
+    body: ContactUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update contact tags/notes."""
+    contact = await _get_contact(db, contact_id, current_user.tenant_id)
+    meta = dict(contact.metadata_ or {})
+    if body.tags is not None:
+        meta["tags"] = body.tags
+    if body.notes is not None:
+        meta["notes"] = body.notes
+    contact.metadata_ = meta
     await db.commit()
     await db.refresh(contact)
-    return {"contact": contact, "parsed": parsed, "created": True}
+    return contact
+
+
+@router.delete("/contacts/{contact_id}")
+async def delete_contact(
+    contact_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a contact."""
+    contact = await _get_contact(db, contact_id, current_user.tenant_id)
+    await db.delete(contact)
+    await db.commit()
+    return {"deleted": True}
+
+
+class CheckTgRequest(BaseModel):
+    phones: list[str] = Field(..., min_length=1, max_length=1000)
+
+
+@router.post("/contacts/check-tg")
+async def check_tg(
+    body: CheckTgRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Dispatch Celery task to check phones against Telegram."""
+    from app.celery_app import celery_app
+    task = celery_app.send_task(
+        "tasks.check_tg_phones",
+        args=[str(current_user.tenant_id), body.phones],
+    )
+    return {"task_id": task.id, "status": "dispatched"}
+
+
+@router.post("/contacts/export")
+async def export_contacts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CSV export of contacts."""
+    result = await db.execute(
+        select(Contact).where(Contact.tenant_id == current_user.tenant_id).order_by(Contact.created_at.desc())
+    )
+    contacts = result.scalars().all()
+
+    def generate():
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["phone", "name", "wa_id", "is_group", "tags", "notes", "created_at"])
+        for c in contacts:
+            meta = c.metadata_ or {}
+            writer.writerow([
+                c.phone,
+                c.name or "",
+                c.wa_id or "",
+                c.is_group,
+                ",".join(meta.get("tags", [])),
+                meta.get("notes", ""),
+                c.created_at.isoformat() if c.created_at else "",
+            ])
+            yield buf.getvalue()
+            buf.seek(0)
+            buf.truncate(0)
+
+    return StreamingResponse(generate(), media_type="text/csv", headers={
+        "Content-Disposition": "attachment; filename=contacts.csv"
+    })
+
+
+class BulkTagRequest(BaseModel):
+    contact_ids: list[UUID]
+    tags: list[str]
+    action: str = Field(default="add", pattern="^(add|remove)$")
+
+
+@router.post("/contacts/bulk-tag")
+async def bulk_tag(
+    body: BulkTagRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk add/remove tags on contacts."""
+    updated = 0
+    for cid in body.contact_ids:
+        contact = await _get_contact(db, cid, current_user.tenant_id)
+        meta = dict(contact.metadata_ or {})
+        existing_tags = set(meta.get("tags", []))
+        if body.action == "add":
+            existing_tags.update(body.tags)
+        else:
+            existing_tags -= set(body.tags)
+        meta["tags"] = sorted(existing_tags)
+        contact.metadata_ = meta
+        updated += 1
+    await db.commit()
+    return {"updated": updated}
+
+
+class AssignCampaignRequest(BaseModel):
+    contact_ids: list[UUID]
+    campaign_id: UUID
+
+
+@router.post("/contacts/assign-campaign")
+async def assign_campaign(
+    body: AssignCampaignRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Assign contacts to a campaign/mailing."""
+    updated = 0
+    for cid in body.contact_ids:
+        contact = await _get_contact(db, cid, current_user.tenant_id)
+        meta = dict(contact.metadata_ or {})
+        campaigns = meta.get("campaigns", [])
+        cid_str = str(body.campaign_id)
+        if cid_str not in [str(c) for c in campaigns]:
+            campaigns.append(cid_str)
+        meta["campaigns"] = campaigns
+        contact.metadata_ = meta
+        updated += 1
+    await db.commit()
+    return {"updated": updated, "campaign_id": str(body.campaign_id)}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────
+
+async def _get_wa_account(db: AsyncSession, account_id: UUID, tenant_id: UUID) -> WaAccount:
+    result = await db.execute(
+        select(WaAccount).where(WaAccount.id == account_id, WaAccount.tenant_id == tenant_id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "WA account not found")
+    return account
+
+
+async def _get_contact(db: AsyncSession, contact_id: UUID, tenant_id: UUID) -> Contact:
+    result = await db.execute(
+        select(Contact).where(Contact.id == contact_id, Contact.tenant_id == tenant_id)
+    )
+    contact = result.scalar_one_or_none()
+    if not contact:
+        raise HTTPException(404, "Contact not found")
+    return contact
