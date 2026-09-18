@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import deque
 
+import sentry_sdk
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
@@ -16,6 +17,12 @@ from app.logging_config import setup_logging
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
 from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics, phone_parser, contacts
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN"),
+    traces_sample_rate=0.1,
+    environment=os.environ.get("APP_ENV", "production"),
+)
 
 # ── Startup guard ─────────────────────────────────────────────────────
 if not settings.JWT_SECRET:
@@ -85,7 +92,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 app.add_middleware(TenantRLSMiddleware)
@@ -143,7 +150,7 @@ ws_manager = ConnectionManager()
 def _decode_ws_token(token: str) -> dict | None:
     """Validate JWT and return payload, or None if invalid."""
     try:
-        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], audience="24go")
     except JWTError:
         return None
 
