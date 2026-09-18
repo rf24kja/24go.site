@@ -48,7 +48,7 @@ export function Sidebar() {
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
-  ] : [
+  ] : platform === "vkontakte" ? [
     { href: "/vk-overview", label: t("sidebar.vkOverview"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.vkLeads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
@@ -67,6 +67,15 @@ export function Sidebar() {
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
     { href: "/vk-settings", label: t("sidebar.vkSettings"), icon: Cog },
+  ] : [
+    { href: "/wa-overview", label: t("sidebar.waOverview"), icon: ChartBar, feature: "analytics" },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
+    { href: "/wa-accounts", label: t("sidebar.waAccounts"), icon: UserCircle, feature: "accounts" },
+    { href: "/wa-groups", label: t("sidebar.waGroups"), icon: Radio, feature: "groups" },
+    { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
+    { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
+    { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
+    { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ];
   const NAV = NAV_ITEMS.filter((item) => {
     if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com" && auth?.user?.role !== "owner") return false;
@@ -131,15 +140,21 @@ export function Sidebar() {
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
               onClick={() => setPlatform("telegram")}
-              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${platform === "telegram" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "telegram" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
-              Telegram
+              TG
             </button>
             <button
               onClick={() => setPlatform("vkontakte")}
-              className={`flex-1 text-xs py-2 rounded transition min-h-[36px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
-              {t("sidebar.vkontakte")}
+              VK
+            </button>
+            <button
+              onClick={() => setPlatform("whatsapp")}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "whatsapp" ? "bg-green-500/20 text-green-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              WA
             </button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">

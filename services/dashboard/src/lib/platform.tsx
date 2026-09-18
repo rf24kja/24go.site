@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Platform = "telegram" | "vkontakte";
+type Platform = "telegram" | "vkontakte" | "whatsapp";
 
 interface PlatformContextType {
   platform: Platform;
@@ -19,7 +19,7 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("platform") as Platform | null;
-    if (saved === "telegram" || saved === "vkontakte") {
+    if (saved === "telegram" || saved === "vkontakte" || saved === "whatsapp") {
       setPlatformState(saved);
     }
   }, []);

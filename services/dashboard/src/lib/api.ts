@@ -192,6 +192,22 @@ export async function connectVK(token: string, accountId: string, groupToken: st
   });
 }
 
+// ── WhatsApp ──────────────────────────────────────────────────────
+
+export async function getWhatsAppQr(token: string, accountId: string) {
+  return api<{ qr: string; status: string }>(`/api/v1/accounts/${accountId}/whatsapp/qr`, { token });
+}
+
+export async function getWhatsAppStatus(token: string, accountId: string) {
+  return api<{ connected: boolean; status: string; parses_today?: number; parse_limit?: number }>(
+    `/api/v1/accounts/${accountId}/whatsapp/status`, { token },
+  );
+}
+
+export async function disconnectWhatsApp(token: string, accountId: string) {
+  return api<any>(`/api/v1/accounts/${accountId}/whatsapp/disconnect`, { method: "POST", token });
+}
+
 // ── Campaigns ─────────────────────────────────────────────────────────
 
 export async function getCampaigns(token: string, params?: { platform?: string; limit?: number; offset?: number }) {
