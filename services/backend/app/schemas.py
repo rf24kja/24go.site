@@ -344,7 +344,7 @@ class ContactImportRequest(BaseModel):
 
 class WaConnectRequest(BaseModel):
     phone_number: str = Field(..., min_length=5, max_length=20, description="E.164 format")
-    method: str = Field(default="qr", pattern="^(qr|pairing-code)$")
+    method: str = Field(default="qr", pattern="^(qr|pairing-code|existing)$")
 
 
 class WaAccountResponse(BaseModel):

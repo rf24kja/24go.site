@@ -43,6 +43,15 @@ class AccountStatus(str, enum.Enum):
     paused = "paused"
 
 
+class WaAccountStatus(str, enum.Enum):
+    """Lifecycle of a WhatsApp connection (own PG type, see migration 014)."""
+
+    warming_up = "warming_up"
+    connected = "connected"
+    disconnected = "disconnected"
+    paused = "paused"
+
+
 class LeadIntentLevel(str, enum.Enum):
     HOT = "HOT"
     WARM = "WARM"
@@ -496,7 +505,7 @@ class WaAccount(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     phone_number = Column(String(20), nullable=False)
     wa_id = Column(String(255), nullable=True)
-    status = Column(Enum(AccountStatus, name="account_status"), nullable=False, default=AccountStatus.warming_up)
+    status = Column(Enum(WaAccountStatus, name="wa_account_status"), nullable=False, default=WaAccountStatus.warming_up)
     daily_action_limit = Column(Integer, nullable=False, default=15)
     actions_today = Column(Integer, nullable=False, default=0)
     cooldown_until = Column(DateTime(timezone=True))

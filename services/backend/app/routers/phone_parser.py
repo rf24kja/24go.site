@@ -12,7 +12,9 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Contact, WaAccount, WaGroup, User
+from app.models import Contact, WaAccount, WaGroup, User, WaAccountStatus
+
+VALID_WA_STATUSES = {s.value for s in WaAccountStatus}
 from app.schemas import WaConnectRequest, WaParseRequest, WaAccountResponse, WaGroupResponse
 from app.security import get_current_user
 
@@ -54,7 +56,7 @@ async def wa_connect(
     await db.commit()
     await db.refresh(account)
     data = resp.json()
-    return {"account_id": str(account.id), "qr": data.get("qr"), "pairing_code": data.get("pairing_code")}
+    return {"account_id": str(account.id), "qr": data.get("qr"), "pairing_code": data.get("pairing_code") or data.get("code")}
 
 
 @router.get("/wa/qr/{account_id}")
@@ -103,10 +105,11 @@ async def wa_status(
         raise HTTPException(resp.status_code, resp.text)
     data = resp.json()
     new_status = data.get("status", account.status)
-    if new_status != account.status:
+    # ponytail: persist only known statuses, sidecar may send others
+    if new_status in VALID_WA_STATUSES and new_status != account.status:
         account.status = new_status
-        if new_status == "active":
-            account.wa_id = data.get("wa_id")
+        if new_status == "connected":
+            account.wa_id = data.get("wa_id") or data.get("phone")
         await db.commit()
     return data
 
@@ -180,6 +183,7 @@ async def wa_parse_groups(
         raise HTTPException(resp.status_code, resp.text)
     data = resp.json()
     created_contacts = 0
+    group_names = {g["group_id"]: g.get("name", "") for g in data.get("groups", [])}
     for member in data.get("members", []):
         phone = member.get("phone")
         if not phone:
@@ -196,9 +200,11 @@ async def wa_parse_groups(
             tenant_id=current_user.tenant_id,
             phone=phone,
             name=member.get("name"),
-            wa_id=member.get("wa_id"),
-            is_group=False,
-            metadata_={"source_group": member.get("group_id"), "parsed_at": datetime.now(timezone.utc).isoformat()},
+            wa_jid=member.get("wa_id"),
+            wa_group_jid=member.get("group_id"),
+            wa_group_source=group_names.get(member.get("group_id", ""), ""),
+            wa_parsed_at=datetime.now(timezone.utc),
+            tags=["whatsapp"],
         ))
         created_contacts += 1
     for grp in data.get("groups", []):

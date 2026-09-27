@@ -18,6 +18,7 @@ app.use(express.json())
 const logger = pino({ level: 'silent' })
 
 const qrCache = new NodeCache({ stdTTL: 20 })
+const pairingCache = new NodeCache({ stdTTL: 120 })
 const connections = new Map<string, WASocket>()
 
 function validateE164(phone: string): boolean {
@@ -109,7 +110,10 @@ app.post('/connect', async (req, res) => {
     return res.status(409).json({ error: 'Account already connected' })
   }
 
-  if (method === 'pairing' && phoneNumber) {
+  if (method === 'pairing' || method === 'pairing-code') {
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'phoneNumber required for pairing' })
+    }
     const normalized = normalizePhone(phoneNumber)
     if (!validateE164(normalized)) {
       return res.status(400).json({ error: 'Invalid phone number. Must be E.164 format: +{country}{number}' })
@@ -119,9 +123,10 @@ app.post('/connect', async (req, res) => {
   try {
     const sock = await connectAccount(accountId, phoneNumber, method)
 
-    if (method === 'pairing' && phoneNumber) {
+    if ((method === 'pairing' || method === 'pairing-code') && phoneNumber) {
       const normalized = normalizePhone(phoneNumber)
       const code = await withTimeout(sock.requestPairingCode(normalized), 30000)
+      pairingCache.set(accountId, code)
       return res.json({ status: 'pairing', code })
     }
 
@@ -140,11 +145,11 @@ app.get('/qr/:accountId', (req, res) => {
 })
 
 app.get('/pairing-code/:accountId', (req, res) => {
-  const sock = connections.get(req.params.accountId)
-  if (!sock) {
-    return res.status(404).json({ error: 'Session not found' })
+  const code = pairingCache.get<string>(req.params.accountId)
+  if (!code) {
+    return res.status(404).json({ error: 'Code not available' })
   }
-  res.json({ status: 'pending' })
+  res.json({ code })
 })
 
 app.get('/status/:accountId', (req, res) => {
@@ -167,6 +172,7 @@ app.post('/disconnect/:accountId', (req, res) => {
   }
   sessionManager.deleteSession(req.params.accountId)
   qrCache.del(req.params.accountId)
+  pairingCache.del(req.params.accountId)
   res.json({ removed: true })
 })
 
