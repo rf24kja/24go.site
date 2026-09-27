@@ -39,6 +39,13 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout])
 }
 
+// ponytail: anti-ban pause between groups, 15-45s random. Never remove.
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+const MAX_GROUPS_PER_CALL = 5
+
 async function connectAccount(accountId: string, phoneNumber?: string, method?: string) {
   let session = await sessionManager.getSession(accountId)
   if (!session) {
@@ -163,10 +170,28 @@ app.post('/disconnect/:accountId', (req, res) => {
   res.json({ removed: true })
 })
 
+app.get('/my-groups/:accountId', async (req, res) => {
+  const sock = connections.get(req.params.accountId)
+  if (!sock) {
+    return res.status(400).json({ error: 'Account not connected' })
+  }
+  try {
+    const participating = await withTimeout(sock.groupFetchAllParticipating(), 30000)
+    const groups = Object.entries(participating).map(([id, g]: [string, any]) => ({
+      group_id: id,
+      name: g.subject || '',
+      members_count: g.participants?.length || 0,
+    }))
+    res.json({ groups })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 app.post('/parse-groups', async (req, res) => {
-  const { accountId, groupLinks } = req.body
-  if (!accountId || !groupLinks) {
-    return res.status(400).json({ error: 'accountId and groupLinks required' })
+  const { accountId, groupLinks, groupIds } = req.body
+  if (!accountId || (!groupLinks && !groupIds)) {
+    return res.status(400).json({ error: 'accountId and groupLinks/groupIds required' })
   }
 
   const sock = connections.get(accountId)
@@ -174,14 +199,50 @@ app.post('/parse-groups', async (req, res) => {
     return res.status(400).json({ error: 'Account not connected' })
   }
 
-  try {
-    const results: { link: string; participants: string[]; error?: string }[] = []
+  const links: string[] = (groupLinks || []).slice(0, MAX_GROUPS_PER_CALL)
+  const ids: string[] = (groupIds || []).slice(0, MAX_GROUPS_PER_CALL)
+  if ((groupLinks || []).length > MAX_GROUPS_PER_CALL || (groupIds || []).length > MAX_GROUPS_PER_CALL) {
+    return res.status(400).json({ error: `Max ${MAX_GROUPS_PER_CALL} groups per call` })
+  }
 
-    for (const link of groupLinks) {
+  const members: { phone?: string; name?: string; wa_id: string; group_id: string }[] = []
+  const groups: { group_id: string; name: string; members_count: number }[] = []
+  const errors: { target?: string; link?: string; error: string }[] = []
+
+  const collect = (groupId: string, groupName: string, parts: any[]) => {
+    let phones = 0
+    for (const p of parts) {
+      // LID participants (@lid) hide the real number — can't message them, skip
+      if (typeof p.id === 'string' && p.id.endsWith('@s.whatsapp.net')) {
+        const digits = p.id.split('@')[0]
+        members.push({ phone: '+' + digits, wa_id: p.id, group_id: groupId })
+        phones++
+      }
+    }
+    groups.push({ group_id: groupId, name: groupName, members_count: parts.length })
+    return phones
+  }
+
+  try {
+    // Already-joined groups: pure read, no join/leave — safest path
+    for (const groupId of ids) {
+      try {
+        const metadata = await withTimeout(sock.groupMetadata(groupId), 30000)
+        collect(groupId, (metadata as any).subject || '', (metadata as any).participants || [])
+      } catch (err: any) {
+        errors.push({ target: groupId, error: err.message })
+      }
+      if (ids.indexOf(groupId) < ids.length - 1 || links.length > 0) {
+        await sleep(15000 + Math.random() * 30000)
+      }
+    }
+
+    // Invite links: join -> read -> leave. Higher ban risk, use sparingly.
+    for (const link of links) {
       try {
         const inviteMatch = link.match(/chat\.whatsapp\.com\/([A-Za-z0-9]+)/)
         if (!inviteMatch) {
-          results.push({ link, participants: [], error: 'Invalid group link' })
+          errors.push({ link, error: 'Invalid group link' })
           continue
         }
 
@@ -189,33 +250,34 @@ app.post('/parse-groups', async (req, res) => {
 
         const groupInfo = await withTimeout(sock.groupGetInviteInfo(inviteCode), 30000)
         if (!groupInfo) {
-          results.push({ link, participants: [], error: 'Group not found' })
+          errors.push({ link, error: 'Group not found' })
           continue
         }
 
         const groupId = await withTimeout(sock.groupAcceptInvite(inviteCode), 30000)
         if (!groupId) {
-          results.push({ link, participants: [], error: 'Failed to join group' })
+          errors.push({ link, error: 'Failed to join group' })
           continue
         }
 
         const metadata = await withTimeout(sock.groupMetadata(groupId), 30000)
-        const participants = metadata.participants.map(p => p.id.split('@')[0])
+        collect(groupId, (metadata as any).subject || (groupInfo as any).subject || '', (metadata as any).participants || [])
 
-        // ponytail: leave group after extracting participants
+        // ponytail: leave after extracting, but the pause BEFORE next group is what matters
         try {
           await withTimeout(sock.groupLeave(groupId), 30000)
         } catch (e) {
           console.log(`Failed to leave group ${groupId}:`, e)
         }
-
-        results.push({ link, participants })
       } catch (err: any) {
-        results.push({ link, participants: [], error: err.message })
+        errors.push({ target: link, error: err.message })
+      }
+      if (links.indexOf(link) < links.length - 1) {
+        await sleep(15000 + Math.random() * 30000)
       }
     }
 
-    res.json({ results })
+    res.json({ members, groups, errors })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }

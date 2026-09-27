@@ -377,7 +377,8 @@ class WaGroupResponse(BaseModel):
 
 class WaParseRequest(BaseModel):
     account_id: UUID
-    group_links: list[str] = Field(default=[], description="Group invite links; empty = all joined")
+    group_links: list[str] = Field(default=[], max_length=5, description="Invite links (join-read-leave, higher risk)")
+    group_ids: list[str] = Field(default=[], max_length=5, description="Already-joined group IDs (read-only, safest)")
 
 
 class WaMessageSend(BaseModel):

@@ -162,12 +162,15 @@ async def wa_parse_groups(
 ):
     """Parse WhatsApp groups via wa-sidecar, upsert contacts."""
     account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
+    if not body.group_links and not body.group_ids:
+        raise HTTPException(400, "Provide group_links or group_ids (max 5)")
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             f"{WASIDECAR_URL}/parse-groups",
             json={
                 "accountId": str(account.id),
                 "groupLinks": body.group_links,
+                "groupIds": body.group_ids,
             },
         )
     if resp.status_code != 200:
@@ -234,6 +237,21 @@ async def wa_list_groups(
     )
     groups = result.scalars().all()
     return {"items": [WaGroupResponse.model_validate(g) for g in groups]}
+
+
+@router.get("/wa/my-groups/{account_id}")
+async def wa_my_groups(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List groups the account already joined. Pure read, no joins — safest first step."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/my-groups/{account.id}")
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    return resp.json()
 
 
 # ── Contacts ──────────────────────────────────────────────────────────
