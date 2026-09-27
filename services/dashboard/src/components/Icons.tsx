@@ -223,6 +223,19 @@ export const Cross = (p: IconProps) => (
   </S>
 );
 
+export const Eye = (p: IconProps) => (
+  <S {...p}>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </S>
+);
+
+export const MessageSquare = (p: IconProps) => (
+  <S {...p}>
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </S>
+);
+
 export const Menu = (p: IconProps) => (
   <S {...p}>
     <line x1="3" y1="6" x2="21" y2="6" />

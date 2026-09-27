@@ -159,7 +159,7 @@ export default function WaOverviewPage() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <h2 className="text-base font-semibold text-zinc-100 mb-4">{t("waOverview.contactQuality")}</h2>
           <div className="flex flex-wrap gap-4">
-            {Object.entries(data.quality).sort((a: [string, number], b: [string, number]) => b[1] - a[1]).map(([score, count]) => (
+            {Object.entries(data.quality).sort((a, b) => Number(b[1]) - Number(a[1])).map(([score, count]) => (
               <div key={score} className="flex items-center gap-2 bg-zinc-800 rounded-lg px-3 py-2">
                 <span className={`w-3 h-3 rounded-full ${score === "hot" || score === "5" ? "bg-red-400" : score === "warm" || score === "4" ? "bg-amber-400" : score === "cold" || score === "3" ? "bg-blue-400" : "bg-zinc-500"}`} />
                 <span className="text-sm text-zinc-300 capitalize">{score}</span>
