@@ -58,6 +58,7 @@ async def wa_connect(
 
 
 @router.get("/wa/qr/{account_id}")
+@router.get("/accounts/{account_id}/whatsapp/qr")  # ponytail: compat for pre-redesign frontend bundles
 async def wa_qr(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -88,6 +89,7 @@ async def wa_pairing_code(
 
 
 @router.get("/wa/status/{account_id}")
+@router.get("/accounts/{account_id}/whatsapp/status")  # ponytail: compat for pre-redesign frontend bundles
 async def wa_status(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -110,6 +112,7 @@ async def wa_status(
 
 
 @router.post("/wa/disconnect/{account_id}")
+@router.post("/accounts/{account_id}/whatsapp/disconnect")  # ponytail: compat for pre-redesign frontend bundles
 async def wa_disconnect(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
