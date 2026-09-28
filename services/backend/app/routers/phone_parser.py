@@ -177,6 +177,7 @@ async def wa_parse_groups(
                 "accountId": str(account.id),
                 "groupLinks": body.group_links,
                 "groupIds": body.group_ids,
+                "leave": body.leave,
             },
         )
     if resp.status_code != 200:

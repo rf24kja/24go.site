@@ -195,7 +195,9 @@ app.get('/my-groups/:accountId', async (req, res) => {
 })
 
 app.post('/parse-groups', async (req, res) => {
-  const { accountId, groupLinks, groupIds } = req.body
+  const { accountId, groupLinks, groupIds, leave } = req.body
+  // ponytail: leave=false when parsing own groups — never kick the user out of their groups
+  const shouldLeave = leave !== false
   if (!accountId || (!groupLinks && !groupIds)) {
     return res.status(400).json({ error: 'accountId and groupLinks/groupIds required' })
   }
@@ -270,10 +272,12 @@ app.post('/parse-groups', async (req, res) => {
         collect(groupId, (metadata as any).subject || (groupInfo as any).subject || '', (metadata as any).participants || [])
 
         // ponytail: leave after extracting, but the pause BEFORE next group is what matters
-        try {
-          await withTimeout(sock.groupLeave(groupId), 30000)
-        } catch (e) {
-          console.log(`Failed to leave group ${groupId}:`, e)
+        if (shouldLeave) {
+          try {
+            await withTimeout(sock.groupLeave(groupId), 30000)
+          } catch (e) {
+            console.log(`Failed to leave group ${groupId}:`, e)
+          }
         }
       } catch (err: any) {
         errors.push({ target: link, error: err.message })
