@@ -1057,6 +1057,8 @@
     "login.forgotPassword": "Forgot password?",
     "login.backHome": "← Back to home",
     "login.authFailed": "Authentication failed",
+    "login.passwordHint": "Min 8 characters: uppercase + lowercase + digit",
+    "login.passwordWeak": "Password needs at least 8 characters with an uppercase letter, a lowercase letter and a digit",
     "blog.title": "Blog",
     "blog.en": "EN",
     "blog.ru": "RU",

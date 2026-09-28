@@ -22,6 +22,25 @@ export class ApiError extends Error {
   }
 }
 
+// ponytail: FastAPI 422 returns detail as [{loc, msg, type}] — flatten or UI shows [object Object]
+export function extractErrorMessage(body: string): string {
+  try {
+    const parsed = JSON.parse(body);
+    const detail = parsed.detail ?? parsed.error ?? body;
+    if (Array.isArray(detail)) {
+      const msgs = detail
+        .map((d) => (typeof d === "string" ? d : d?.msg))
+        .filter(Boolean);
+      if (msgs.length > 0) return msgs.join("; ");
+      return body;
+    }
+    if (typeof detail === "string") return detail;
+    return body;
+  } catch {
+    return body;
+  }
+}
+
 function toQuery(params?: Record<string, string | number | undefined | null>): string {
   if (!params) return "";
   const filtered = Object.fromEntries(
@@ -52,12 +71,7 @@ export async function api<T = any>(path: string, opts: FetchOptions = {}): Promi
   if (!res.ok) {
     const body = await res.text();
     // Try to extract a clean error message from the response
-    let message = body;
-    try {
-      const parsed = JSON.parse(body);
-      message = parsed.detail || parsed.error || body;
-    } catch { /* use raw body */ }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, extractErrorMessage(body));
   }
   return res.json();
 }
@@ -176,12 +190,7 @@ export async function bulkImportAccounts(token: string, files: File[]) {
   }
   if (!res.ok) {
     const body = await res.text();
-    let message = body;
-    try {
-      const parsed = JSON.parse(body);
-      message = parsed.detail || parsed.error || body;
-    } catch { /* use raw body */ }
-    throw new Error(message);
+    throw new Error(extractErrorMessage(body));
   }
   return res.json();
 }

@@ -993,6 +993,8 @@
     "login.forgotPassword": "Забыли пароль?",
     "login.backHome": "← Назад на главную",
     "login.authFailed": "Ошибка авторизации",
+    "login.passwordHint": "Минимум 8 символов: заглавная + строчная буквы и цифра",
+    "login.passwordWeak": "Пароль: минимум 8 символов, заглавная и строчная буквы плюс цифра",
     "blog.title": "Блог",
     "blog.en": "EN",
     "blog.ru": "RU",

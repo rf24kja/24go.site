@@ -17,9 +17,16 @@ export default function LoginPage() {
   const router = useRouter();
   const { t } = useI18n();
 
+  const passwordOk = (pw: string) =>
+    pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (mode === "register" && !passwordOk(password)) {
+      setError(t("login.passwordWeak"));
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
@@ -76,6 +83,9 @@ export default function LoginPage() {
           <input type="password" placeholder={t("login.passwordPlaceholder")} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
             aria-label={t("login.passwordPlaceholder")}
             className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500" />
+          {mode === "register" && (
+            <p className="text-[11px] text-zinc-500 -mt-2">{t("login.passwordHint")}</p>
+          )}
 
           {error && (
             <div className="px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg">
