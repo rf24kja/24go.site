@@ -23,19 +23,36 @@ export class ApiError extends Error {
 }
 
 // ponytail: FastAPI 422 returns detail as [{loc, msg, type}] — flatten or UI shows [object Object]
+const RU_ERROR_HINTS: [RegExp, string][] = [
+  [/at least one uppercase letter/i, "Добавьте заглавную букву (A–Z)"],
+  [/at least one lowercase letter/i, "Добавьте строчную букву (a–z)"],
+  [/at least one digit/i, "Добавьте цифру (0–9)"],
+  [/at least \d+ characters/i, "Пароль слишком короткий (минимум 8 символов)"],
+];
+
 export function extractErrorMessage(body: string): string {
   try {
     const parsed = JSON.parse(body);
     const detail = parsed.detail ?? parsed.error ?? body;
+    let text: string;
     if (Array.isArray(detail)) {
       const msgs = detail
         .map((d) => (typeof d === "string" ? d : d?.msg))
         .filter(Boolean);
-      if (msgs.length > 0) return msgs.join("; ");
-      return body;
+      text = msgs.length > 0 ? msgs.join("; ") : body;
+    } else if (typeof detail === "string") {
+      text = detail;
+    } else {
+      text = body;
     }
-    if (typeof detail === "string") return detail;
-    return body;
+    // Append Russian hint when the message matches a known backend rule
+    const lang = typeof navigator !== "undefined" && navigator.language?.startsWith("ru");
+    if (lang) {
+      for (const [re, hint] of RU_ERROR_HINTS) {
+        if (re.test(text)) return `${text} — ${hint}`;
+      }
+    }
+    return text;
   } catch {
     return body;
   }

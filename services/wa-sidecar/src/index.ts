@@ -182,7 +182,8 @@ app.get('/my-groups/:accountId', async (req, res) => {
     return res.status(400).json({ error: 'Account not connected' })
   }
   try {
-    const participating = await withTimeout(sock.groupFetchAllParticipating(), 30000)
+    // ponytail: 180s — first call after reconnect can be very slow, don't falsely report failure
+    const participating = await withTimeout(sock.groupFetchAllParticipating(), 180000)
     const groups = Object.entries(participating).map(([id, g]: [string, any]) => ({
       group_id: id,
       name: g.subject || '',

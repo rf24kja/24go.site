@@ -257,7 +257,7 @@ async def wa_my_groups(
 ):
     """List groups the account already joined. Pure read, no joins — safest first step."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=200) as client:
         resp = await client.get(f"{WASIDECAR_URL}/my-groups/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
