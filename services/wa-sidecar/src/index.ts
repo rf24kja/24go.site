@@ -20,6 +20,8 @@ const logger = pino({ level: 'silent' })
 const qrCache = new NodeCache({ stdTTL: 20 })
 const pairingCache = new NodeCache({ stdTTL: 120 })
 const connections = new Map<string, WASocket>()
+// accountId -> groupJid -> {name, last_seen}
+const knownGroups = new Map<string, Map<string, { name: string; last_seen: number }>>()
 
 function validateE164(phone: string): boolean {
   return /^\+[1-9]\d{1,14}$/.test(phone)
@@ -65,6 +67,32 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
   connections.set(accountId, sock)
 
   sock.ev.on('creds.update', session.saveCreds)
+
+  // ponytail: learn group JIDs from history sync + live messages.
+  // groupFetchAllParticipating is broken on this Baileys version — this is the fallback.
+  if (!(sock as any).__groupsHooked) {
+    (sock as any).__groupsHooked = true
+    const learn = (id: string, name?: string) => {
+      if (typeof id !== 'string' || !id.endsWith('@g.us')) return
+      let known = knownGroups.get(accountId)
+      if (!known) {
+        known = new Map()
+        knownGroups.set(accountId, known)
+      }
+      const prev = known.get(id)
+      known.set(id, { name: name || prev?.name || '', last_seen: Date.now() })
+      if (known.size > 500) {
+        const oldest = [...known.entries()].sort((a, b) => a[1].last_seen - b[1].last_seen)[0]
+        known.delete(oldest[0])
+      }
+    }
+    sock.ev.on('messaging-history.set', ({ chats }: any) => {
+      for (const c of chats || []) learn(c.id, c.name)
+    })
+    sock.ev.on('messages.upsert', ({ messages }: any) => {
+      for (const m of messages || []) learn(m.key?.remoteJid)
+    })
+  }
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update
@@ -176,8 +204,18 @@ app.post('/disconnect/:accountId', (req, res) => {
   res.json({ removed: true })
 })
 
-app.get('/my-groups/:accountId', async (req, res) => {
-  const sock = connections.get(req.params.accountId)
+// Groups learned from history sync + live messages (fallback when groupFetchAllParticipating fails)
+app.get('/known-groups/:accountId', (req, res) => {
+  const known = knownGroups.get(req.params.accountId)
+  if (!known) {
+    return res.json({ groups: [], note: 'no sync data yet, wait for history sync or incoming messages' })
+  }
+  res.json({
+    groups: [...known.entries()].map(([group_id, v]) => ({ group_id, name: v.name })),
+  })
+})
+
+app.get('/my-groups/:accountId', async (req, res) => {  const sock = connections.get(req.params.accountId)
   if (!sock) {
     return res.status(400).json({ error: 'Account not connected' })
   }

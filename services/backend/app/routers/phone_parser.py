@@ -249,9 +249,23 @@ async def wa_list_groups(
     return {"items": [WaGroupResponse.model_validate(g) for g in groups]}
 
 
-@router.get("/wa/my-groups/{account_id}")
-async def wa_my_groups(
+@router.get("/wa/known-groups/{account_id}")
+async def wa_known_groups(
     account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Groups learned from history sync + live messages. Fallback when the list call fails."""
+    account = await _get_wa_account(db, account_id, current_user.tenant_id)
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.get(f"{WASIDECAR_URL}/known-groups/{account.id}")
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    return resp.json()
+
+
+@router.get("/wa/my-groups/{account_id}")
+async def wa_my_groups(    account_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
