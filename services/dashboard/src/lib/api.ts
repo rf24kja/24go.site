@@ -640,7 +640,7 @@ export async function getPublicBlogPost(slug: string, locale = "en") {
 }
 
 export async function getBlogSlugs() {
-  const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=100");
+  const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=200");
   return data.items || [];
 }
 

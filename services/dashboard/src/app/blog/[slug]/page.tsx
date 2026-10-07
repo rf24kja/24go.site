@@ -168,14 +168,20 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
     );
   }
 
-  // Fetch related posts
+  // Fetch related posts — prefer shared tags, fill up with recent
   let relatedPosts: any[] = [];
   try {
     const res = await getPublicBlogPosts(locale);
     const all = Array.isArray(res) ? res : res.items || [];
-    relatedPosts = all
+    const mine = new Set(post.tags || []);
+    const scored = all
       .filter((p: any) => p.slug !== params.slug)
-      .slice(0, 3);
+      .map((p: any) => ({
+        p,
+        shared: (p.tags || []).filter((t: string) => mine.has(t)).length,
+      }))
+      .sort((a: any, b: any) => b.shared - a.shared);
+    relatedPosts = scored.slice(0, 3).map((s: any) => s.p);
   } catch {}
 
   const jsonLd = {

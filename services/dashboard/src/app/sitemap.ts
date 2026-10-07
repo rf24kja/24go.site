@@ -4,9 +4,12 @@ const API = "https://api.24go.site";
 const BASE = "https://www.24go.site";
 const LOCALES = ["en", "ru"] as const;
 
+// ponytail: ISR, not build-time — new articles enter the sitemap within an hour, no redeploy needed
+export const revalidate = 3600;
+
 async function getBlogPosts(): Promise<MetadataRoute.Sitemap> {
   try {
-    const res = await fetch(`${API}/api/v1/blog?limit=100`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API}/api/v1/blog?limit=200`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const data = await res.json();
     const posts: MetadataRoute.Sitemap = [];
