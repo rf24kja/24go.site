@@ -24,7 +24,7 @@ export async function GET() {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>24GO Blog — Lead Generation & AI</title>
+    <title>24GO Blog - Lead Generation and AI</title>
     <link>${BASE}/blog</link>
     <description>Articles about lead generation, Telegram automation, AI-powered sales, and B2B marketing.</description>
     <language>en</language>

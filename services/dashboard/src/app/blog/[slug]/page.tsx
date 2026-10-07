@@ -120,7 +120,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   try {
     const post = await getPublicBlogPost(params.slug, locale);
     return {
-      title: `${post.title} — 24GO Blog`,
+      title: `${post.title} - 24GO Blog`,
       description: post.meta_description || post.excerpt || "",
       openGraph: {
         title: post.title,
