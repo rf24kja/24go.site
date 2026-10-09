@@ -582,6 +582,50 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Fresh from the blog (SEO: crawl path to latest articles) ── */}
+      <section className="py-16 px-6 lg:px-12 border-t border-zinc-800/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-zinc-100">
+              {lang === "ru" ? "Свежее в блоге" : "Fresh from the blog"}
+            </h2>
+            <Link href="/blog" className="text-sm text-emerald-400 hover:text-emerald-300 transition">
+              {lang === "ru" ? "Все статьи →" : "All articles →"}
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                slug: "vk-tovarnye-rekomendatsii-2026",
+                ru: "Лента VK оценивает, купишь ли ты: разбираем товарные рекомендации",
+                en: "VK Ranks Products by Purchase Intent: What Sellers Should Do",
+              },
+              {
+                slug: "5-auditov-svoego-saas-chto-nashli",
+                ru: "Мы прогнали свой SaaS через 5 аудитов за неделю. Нашли 62 проблемы",
+                en: "We Ran 5 Audits on Our Own SaaS in One Week. Found 62 Problems",
+              },
+              {
+                slug: "hiring-developers-through-telegram-groups",
+                ru: "Мы наняли 3 разработчиков через Telegram-группы",
+                en: "We Hired 3 Developers Through Telegram Groups",
+              },
+            ].map((a) => (
+              <Link
+                key={a.slug}
+                href={`/blog/${a.slug}?locale=${lang}`}
+                className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-emerald-500/30 transition group"
+              >
+                <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-emerald-400 transition">
+                  {lang === "ru" ? a.ru : a.en}
+                </h3>
+                <p className="text-sm text-emerald-400/80">24GO Blog →</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <section className="py-24 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-3xl mx-auto text-center">
