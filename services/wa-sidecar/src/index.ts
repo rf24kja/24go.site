@@ -87,10 +87,15 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
       }
     }
     sock.ev.on('messaging-history.set', ({ chats }: any) => {
+      console.log(`[wa-debug] history-set: ${chats?.length || 0} chats`)
       for (const c of chats || []) learn(c.id, c.name)
     })
-    sock.ev.on('messages.upsert', ({ messages }: any) => {
-      for (const m of messages || []) learn(m.key?.remoteJid)
+    sock.ev.on('messages.upsert', ({ messages, type }: any) => {
+      // ponytail: log only JIDs + direction, never message content
+      for (const m of messages || []) {
+        console.log(`[wa-debug] upsert type=${type} fromMe=${m.key?.fromMe} remoteJid=${m.key?.remoteJid}`)
+        learn(m.key?.remoteJid)
+      }
     })
   }
 
