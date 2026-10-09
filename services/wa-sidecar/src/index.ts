@@ -58,6 +58,8 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
 
   const sock = makeWASocket({
     version: await fetchLatestBaileysVersion().then(v => v.version).catch(() => undefined),
+    // ponytail: full history on connect — we need the group list, and partial sync gives nothing
+    syncFullHistory: true,
     auth: {
       creds: session.state.creds,
       keys: makeCacheableSignalKeyStore(session.state.keys, logger)
