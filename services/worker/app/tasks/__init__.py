@@ -10,6 +10,10 @@ from app.tasks import vk_listener  # noqa: F401
 from app.tasks import vk_poster  # noqa: F401
 from app.tasks import vk_comment_scraper  # noqa: F401
 from app.tasks import vk_group_scanner  # noqa: F401
+from app.tasks import vk_health_check  # noqa: F401
 from app.tasks import campaign_scheduler  # noqa: F401
 from app.tasks import trial_emailer  # noqa: F401
+from app.tasks import drip_emailer  # noqa: F401
+from app.tasks import mailer  # noqa: F401
+from app.tasks import wa_tasks  # noqa: F401
 from app.tasks import account_validator  # noqa: F401

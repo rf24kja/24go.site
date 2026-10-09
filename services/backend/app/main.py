@@ -10,6 +10,7 @@ from collections import deque
 import sentry_sdk
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from jose import JWTError, jwt
 
 from app.config import settings
@@ -220,17 +221,21 @@ async def shutdown_pool():
     await close_pool()
 
 
-@app.post("/internal/broadcast")
+class BroadcastIn(BaseModel):
+    tenant_id: str
+    event: dict
+
+
+@app.post("/internal/broadcast", include_in_schema=False)
 async def broadcast_event(
-    tenant_id: str,
-    event: dict,
+    body: BroadcastIn,
     x_internal_key: str = Header(default=""),
 ):
     """Internal endpoint for workers — requires X-Internal-Key header."""
     if not settings.INTERNAL_API_KEY or not hmac.compare_digest(x_internal_key, settings.INTERNAL_API_KEY):
         raise HTTPException(403, "Invalid internal key")
     queue = get_event_queue()
-    await queue.put((tenant_id, event))
+    await queue.put((body.tenant_id, body.event))
     return {"queued": True}
 
 
