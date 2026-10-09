@@ -4,12 +4,13 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   WASocket,
-  makeCacheableSignalKeyStore
+  makeCacheableSignalKeyStore,
+  fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import NodeCache from 'node-cache'
-import { sessionManager } from './auth'
+import { sessionManager } from './auth.js'
 
 const app = express()
 app.use(cors())
@@ -56,6 +57,7 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
   }
 
   const sock = makeWASocket({
+    version: await fetchLatestBaileysVersion().then(v => v.version).catch(() => undefined),
     auth: {
       creds: session.state.creds,
       keys: makeCacheableSignalKeyStore(session.state.keys, logger)
