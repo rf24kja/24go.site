@@ -2,7 +2,7 @@ import { useMultiFileAuthState, makeCacheableSignalKeyStore } from '@whiskeysock
 import path from 'path'
 import fs from 'fs'
 
-const SESSIONS_DIR = process.env.SESSIONS_DIR || '/data/wa_sessions'
+const SESSIONS_DIR = process.env.WA_SESSION_DIR || process.env.SESSIONS_DIR || '/data/wa/sessions'
 
 export class SessionManager {
   private sessions: Map<string, any> = new Map()

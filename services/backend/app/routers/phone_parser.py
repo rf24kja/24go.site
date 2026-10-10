@@ -1,7 +1,12 @@
 """WhatsApp integration — account connection, group parsing, contact management."""
+import asyncio
 import csv
 import io
+import json
+import logging
 import os
+import random
+import uuid
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -14,12 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Contact, WaAccount, WaGroup, User, WaAccountStatus
+from app.rate_limiter import get_redis as get_redis_client
 
 VALID_WA_STATUSES = {s.value for s in WaAccountStatus}
 from app.schemas import WaConnectRequest, WaParseRequest, WaAccountResponse, WaGroupResponse
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["whatsapp"])
+
+log = logging.getLogger(__name__)
 
 WASIDECAR_URL = "http://wa-sidecar:3100"
 SIDECAR_TIMEOUT = 30  # ponytail: 30s as per spec, increase for parse if needed
@@ -190,7 +198,11 @@ async def wa_parse_groups(
         )
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
-    data = resp.json()
+    return await _store_parse_result(db, current_user.tenant_id, resp.json())
+
+
+async def _store_parse_result(db, tenant_id, data: dict) -> dict:
+    """Upsert contacts + groups from a sidecar parse response. Shared by sync/async paths."""
     created_contacts = 0
     group_names = {g["group_id"]: g.get("name", "") for g in data.get("groups", [])}
     for member in data.get("members", []):
@@ -199,14 +211,14 @@ async def wa_parse_groups(
             continue
         existing = await db.execute(
             select(Contact).where(
-                Contact.tenant_id == current_user.tenant_id,
+                Contact.tenant_id == tenant_id,
                 Contact.phone == phone,
             )
         )
         if existing.scalar_one_or_none():
             continue
         db.add(Contact(
-            tenant_id=current_user.tenant_id,
+            tenant_id=tenant_id,
             phone=phone,
             name=member.get("name"),
             wa_jid=member.get("wa_id"),
@@ -219,7 +231,7 @@ async def wa_parse_groups(
     for grp in data.get("groups", []):
         existing = await db.execute(
             select(WaGroup).where(
-                WaGroup.tenant_id == current_user.tenant_id,
+                WaGroup.tenant_id == tenant_id,
                 WaGroup.group_id == grp["group_id"],
             )
         )
@@ -227,13 +239,15 @@ async def wa_parse_groups(
         if g:
             g.name = grp.get("name", g.name)
             g.members_count = grp.get("members_count", g.members_count)
+            g.reachable_count = grp.get("reachable_count", grp.get("members_count", 0))
             g.last_scan_at = datetime.now(timezone.utc)
         else:
             db.add(WaGroup(
-                tenant_id=current_user.tenant_id,
+                tenant_id=tenant_id,
                 group_id=grp["group_id"],
                 name=grp.get("name"),
                 members_count=grp.get("members_count", 0),
+                reachable_count=grp.get("reachable_count", grp.get("members_count", 0)),
                 last_scan_at=datetime.now(timezone.utc),
             ))
     await db.commit()
@@ -242,6 +256,118 @@ async def wa_parse_groups(
         "groups_updated": len(data.get("groups", [])),
         "total_members": len(data.get("members", [])),
     }
+
+
+@router.post("/wa/parse-async", status_code=202)
+async def wa_parse_async(
+    body: WaParseRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Start background parse job. Returns immediately with job_id.
+
+    ponytail: a 5-group parse holds HTTP ~3 min (anti-ban sleeps) — the
+    request returns in ms, progress is polled via /wa/parse-status/{job_id}.
+    """
+    account_id = body.account_id
+    links = (body.group_links or [])[:5]
+    ids = (body.group_ids or [])[:5]
+    if not links and not ids:
+        raise HTTPException(400, "Provide group_links or group_ids (max 5)")
+    job_id = str(uuid.uuid4())
+    job = {
+        "job_id": job_id,
+        "tenant_id": str(current_user.tenant_id),
+        "account_id": str(account_id),
+        "status": "queued",
+        "total_groups": len(links) + len(ids),
+        "done_groups": 0,
+        "created_contacts": 0,
+        "error": None,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        r = await get_redis_client()
+        await r.set(f"wa_parse_job:{job_id}", json.dumps(job), ex=3600)
+    except Exception as e:
+        raise HTTPException(503, f"Job queue unavailable: {type(e).__name__}")
+    asyncio.create_task(_run_parse_job(
+        job_id, str(current_user.tenant_id), str(account_id),
+        links, ids, body.leave,
+    ))
+    return {"job_id": job_id, "status": "queued", "total_groups": job["total_groups"]}
+
+
+async def _run_parse_job(job_id: str, tenant_id: str, account_id: str,
+                         links: list, ids: list, leave: bool):
+    """Background worker: one sidecar call per group, progress in Redis."""
+    from app.database import async_session
+
+    async def save(patch: dict):
+        try:
+            r = await get_redis_client()
+            raw = await r.get(f"wa_parse_job:{job_id}")
+            job = json.loads(raw) if raw else {"job_id": job_id}
+            job.update(patch)
+            job["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await r.set(f"wa_parse_job:{job_id}", json.dumps(job), ex=3600)
+        except Exception as e:
+            log.warning(f"parse job {job_id}: progress save failed: {e}")
+
+    targets = [("link", x) for x in links] + [("id", x) for x in ids]
+    created_total = 0
+    try:
+        await save({"status": "running"})
+        async with async_session() as db:
+            for i, (kind, target) in enumerate(targets):
+                payload: dict = {"accountId": account_id, "leave": leave,
+                                 "groupLinks": [], "groupIds": []}
+                if kind == "link":
+                    payload["groupLinks"] = [target]
+                else:
+                    payload["groupIds"] = [target]
+                async with _sidecar_client(timeout=120) as client:
+                    resp = await client.post(f"{WASIDECAR_URL}/parse-groups", json=payload)
+                if resp.status_code != 200:
+                    log.warning(f"parse job {job_id}: group {i} failed: {resp.status_code}")
+                else:
+                    summary = await _store_parse_result(db, _uuid.UUID(tenant_id), resp.json())
+                    created_total += summary.get("created_contacts", 0)
+                await save({"done_groups": i + 1, "created_contacts": created_total})
+                if i < len(targets) - 1:
+                    # ponytail: pacing lives here now (single-group sidecar calls don't sleep)
+                    await asyncio.sleep(15 + random.random() * 30)
+        await save({"status": "done", "created_contacts": created_total})
+    except Exception as e:
+        log.error(f"parse job {job_id} failed: {e}")
+        await save({"status": "failed", "error": str(e)[:300]})
+
+
+@router.get("/wa/parse-status/{job_id}")
+async def wa_parse_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Poll background parse progress. Tenant-scoped."""
+    try:
+        r = await get_redis_client()
+        raw = await r.get(f"wa_parse_job:{job_id}")
+    except Exception:
+        raise HTTPException(503, "Job queue unavailable")
+    if not raw:
+        raise HTTPException(404, "Unknown or expired job")
+    job = json.loads(raw)
+    if job.get("tenant_id") != str(current_user.tenant_id):
+        raise HTTPException(404, "Unknown or expired job")
+    # ponytail: stale running jobs (dead worker) surface as failed, not stuck
+    if job.get("status") == "running":
+        try:
+            updated = datetime.fromisoformat(job.get("updated_at", ""))
+            if (datetime.now(timezone.utc) - updated).total_seconds() > 600:
+                job["status"] = "failed"
+                job["error"] = "worker died mid-parse (stale 10 min)"
+        except Exception:
+            pass
+    return job
 
 
 @router.get("/wa/groups")

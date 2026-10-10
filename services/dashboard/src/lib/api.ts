@@ -227,7 +227,7 @@ export async function connectVK(token: string, accountId: string, groupToken: st
 // ── MAX messenger ───────────────────────────────────────────────────
 
 export async function connectMax(token: string, botToken: string) {
-  return api<{ id: string; bot_name: string; status: string }>(`/api/v1/max/connect`, {
+  return api<{ id: string; bot_name: string; status: string; webhook_secret?: string }>(`/api/v1/max/connect`, {
     method: "POST", body: JSON.stringify({ bot_token: botToken }), token,
   });
 }
@@ -814,6 +814,14 @@ export async function assignAccountProxy(token: string, accountId: string, proxy
 
 export async function parseWaGroups(token: string, data: { account_id: string; group_links: string[]; tags?: string[] }) {
   return api<any>("/api/v1/wa/parse", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function parseWaGroupsAsync(token: string, data: { account_id: string; group_links?: string[]; group_ids?: string[]; leave?: boolean }) {
+  return api<{ job_id: string; status: string; total_groups: number }>("/api/v1/wa/parse-async", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function getWaParseStatus(token: string, jobId: string) {
+  return api<{ job_id: string; status: string; total_groups: number; done_groups: number; created_contacts: number; error?: string | null }>(`/api/v1/wa/parse-status/${jobId}`, { token });
 }
 
 export async function getWaGroups(token: string) {

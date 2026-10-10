@@ -61,11 +61,8 @@ celery.conf.update(
             "schedule": crontab(hour=0, minute=0),
             "options": {"queue": "billing"},
         },
-        "periodic-target-discovery": {
-            "task": "app.tasks.parser.periodic_discovery",
-            "schedule": crontab(minute=0, hour="*/6"),
-            "options": {"queue": "parser"},
-        },
+        # ponytail: periodic_discovery task never existed — entry removed
+        # (was erroring every 6h). Re-add with implementation when needed.
         "periodic-campaign-post": {
             "task": "app.tasks.poster.periodic_campaign_post",
             "schedule": crontab(minute="*/5"),
@@ -103,3 +100,16 @@ celery.autodiscover_tasks(["app.tasks"])
 # ponytail: ordering constraint — Celery(...) above must exist before any
 # tasks/__init__ import runs (every task module does `from app.celery_app
 # import celery`). Never move imports of app.tasks above the Celery() call.
+
+# ponytail: phantom beat guard — a schedule entry pointing at a task name
+# with no implementation must fail loud HERE, not silently every N hours
+# in worker logs (precedent: periodic_discovery errored every 6h unnoticed).
+import app.tasks  # noqa: F401 — registers all tasks synchronously; safe (celery exists above)
+for _sched_name in [
+    k for k, v in celery.conf.beat_schedule.items() if v["task"] not in celery.tasks
+]:
+    logger.error(
+        "Dropping phantom beat entry %s -> %s (no such task)",
+        _sched_name, celery.conf.beat_schedule[_sched_name]["task"],
+    )
+    del celery.conf.beat_schedule[_sched_name]

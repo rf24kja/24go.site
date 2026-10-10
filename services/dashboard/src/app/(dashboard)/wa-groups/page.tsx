@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { getWaAccounts, parseWaGroups, getWaGroups } from "@/lib/api";
+import { getWaAccounts, parseWaGroupsAsync, getWaParseStatus, getWaGroups } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 
@@ -29,7 +29,6 @@ export default function WaGroupsPage() {
   const [accounts, setAccounts] = useState<WaAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [links, setLinks] = useState("");
-  const [tags, setTags] = useState("");
   const [parsing, setParsing] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [progress, setProgress] = useState({ current: 0, total: 0, done: false });
@@ -57,34 +56,36 @@ export default function WaGroupsPage() {
     };
   }, []);
 
-  const startPolling = useCallback((expectedTotal: number) => {
+  const startPolling = useCallback((jobId: string, expectedTotal: number) => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    let elapsed = 0;
     pollingRef.current = setInterval(async () => {
-      elapsed += 2;
       if (!auth?.token) return;
       try {
-        const res = await getWaGroups(auth.token);
-        const currentGroups = (res.items || []) as WaGroup[];
-        setGroups(currentGroups);
-        const parsedCount = currentGroups.filter(g => parsingGroups.includes(g.source_link) || g.parsed_at).length;
-        setProgress(prev => ({
-          ...prev,
-          current: Math.min(parsedCount, expectedTotal),
-          done: parsedCount >= expectedTotal || elapsed > 300,
-        }));
-        if (parsedCount >= expectedTotal || elapsed > 300) {
+        const job = await getWaParseStatus(auth.token, jobId);
+        setProgress({
+          current: Math.min(job.done_groups || 0, expectedTotal),
+          total: expectedTotal,
+          done: job.status === "done" || job.status === "failed",
+        });
+        if (job.status === "done" || job.status === "failed") {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setParsing(false);
           setParsingGroups([]);
+          if (job.status === "failed") {
+            toast(job.error || "Parse failed", "error");
+          } else {
+            toast(t("waGroups.parsed"), "success");
+          }
+          load();
         }
       } catch {}
-    }, 2000);
-  }, [auth?.token, parsingGroups]);
+    }, 3000);
+  }, [auth?.token]);
 
   const handleParse = async () => {
     if (!auth?.token || !selectedAccount || !links.trim()) return;
-    const linkLines = links.split("\n").map(l => l.trim()).filter(Boolean);
+    // ponytail: backend caps at 5 groups per job — cut client-side with the warning shown
+    const linkLines = links.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 5);
     if (linkLines.length === 0) return;
 
     setParsing(true);
@@ -92,13 +93,11 @@ export default function WaGroupsPage() {
     setProgress({ current: 0, total: linkLines.length, done: false });
 
     try {
-      await parseWaGroups(auth.token, {
+      const job = await parseWaGroupsAsync(auth.token, {
         account_id: selectedAccount,
         group_links: linkLines,
-        tags: tags.split(",").map(t => t.trim()).filter(Boolean),
       });
-      toast(t("waGroups.parsed"), "success");
-      startPolling(linkLines.length);
+      startPolling(job.job_id, linkLines.length);
     } catch (e: any) {
       toast(e.message || "Parse failed", "error");
       setParsing(false);
@@ -146,12 +145,6 @@ export default function WaGroupsPage() {
                   <option key={a.id} value={a.id}>{a.phone_number}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="text-xs text-zinc-500 mb-1 block">{t("waGroups.tags")}</label>
-              <input type="text" value={tags} onChange={(e) => setTags(e.target.value)}
-                placeholder={t("waGroups.tagsPlaceholder")}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100" />
             </div>
             <button onClick={handleParse}
               disabled={parsing || !selectedAccount || !links.trim()}

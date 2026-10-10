@@ -21,6 +21,8 @@ export default function MaxAccountsPage() {
   const [botToken, setBotToken] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState("");
+  // ponytail: shown once after connect — server never returns it again
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
 
   const load = () => {
     if (!auth?.token) return;
@@ -38,9 +40,10 @@ export default function MaxAccountsPage() {
     setConnecting(true);
     setConnectError("");
     try {
-      await connectMax(auth.token, botToken.trim());
+      const res: any = await connectMax(auth.token, botToken.trim());
       setShowConnect(false);
       setBotToken("");
+      if (res?.webhook_secret) setWebhookSecret(res.webhook_secret);
       load();
       toast(t("maxAccounts.status.connected"), "success");
     } catch (e: any) {
@@ -106,6 +109,24 @@ export default function MaxAccountsPage() {
           {t("maxAccounts.connect")}
         </button>
       </div>
+
+      {webhookSecret && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-300">{t("maxAccounts.webhookSecretTitle")}</p>
+            <p className="text-xs text-zinc-400 mt-0.5">{t("maxAccounts.webhookSecretHint")}</p>
+            <code className="block mt-2 text-xs font-mono text-zinc-200 break-all select-all">{webhookSecret}</code>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => { navigator.clipboard?.writeText(webhookSecret); toast(t("maxAccounts.copied"), "success"); }}
+              className="px-3 py-1.5 text-xs bg-amber-500/20 text-amber-300 rounded-lg hover:bg-amber-500/30 transition">
+              {t("maxAccounts.copy")}
+            </button>
+            <button onClick={() => setWebhookSecret(null)}
+              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition">✕</button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
         <table className="w-full text-sm min-w-[480px]">

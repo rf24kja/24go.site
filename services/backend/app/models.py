@@ -528,6 +528,7 @@ class WaGroup(Base):
     group_id = Column(String(255), nullable=False)
     name = Column(String(255), nullable=True)
     members_count = Column(Integer, default=0)
+    reachable_count = Column(Integer, default=0)  # non-LID members with phone numbers
     is_active = Column(Boolean, default=True)
     last_scan_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -367,6 +367,7 @@ class WaGroupResponse(BaseModel):
     group_id: str
     name: str | None = None
     members_count: int
+    reachable_count: int = 0
     is_active: bool
     last_scan_at: datetime | None = None
     created_at: datetime | None = None
