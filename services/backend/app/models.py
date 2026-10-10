@@ -26,6 +26,7 @@ class PlatformType(str, enum.Enum):
     vkontakte = "vkontakte"
     forum = "forum"
     whatsapp = "whatsapp"
+    max = "max"
 
 
 class AccessLevel(str, enum.Enum):

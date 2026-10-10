@@ -218,6 +218,26 @@ export async function connectVK(token: string, accountId: string, groupToken: st
   });
 }
 
+// ── MAX messenger ───────────────────────────────────────────────────
+
+export async function connectMax(token: string, botToken: string) {
+  return api<{ id: string; bot_name: string; status: string }>(`/api/v1/max/connect`, {
+    method: "POST", body: JSON.stringify({ bot_token: botToken }), token,
+  });
+}
+
+export async function getMaxAccounts(token: string) {
+  return api<{ items: { id: string; bot_name: string; status: string; created_at: string }[] }>(`/api/v1/max/accounts`, { token });
+}
+
+export async function getMaxStatus(token: string, accountId: string) {
+  return api<{ connected: boolean }>(`/api/v1/max/status/${accountId}`, { token });
+}
+
+export async function deleteMaxAccount(token: string, accountId: string) {
+  return api<any>(`/api/v1/max/accounts/${accountId}`, { method: "DELETE", token });
+}
+
 // ── WhatsApp ──────────────────────────────────────────────────────
 
 export async function connectWhatsApp(token: string, data: { phone_number: string; method: "qr" | "pairing-code" | "existing" }) {

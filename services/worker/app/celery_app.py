@@ -38,6 +38,8 @@ celery.conf.update(
         "app.tasks.vk_poster.*": {"queue": "poster"},
         "app.tasks.vk_comment_scraper.*": {"queue": "parser"},
         "app.tasks.vk_group_scanner.*": {"queue": "listener"},
+        "app.tasks.max_listener.*": {"queue": "listener"},
+        "app.tasks.max_poster.*": {"queue": "poster"},
         "app.tasks.billing.*": {"queue": "billing"},
         "app.tasks.drip_emailer.*": {"queue": "billing"},
         "app.tasks.mailer.*": {"queue": "poster"},
