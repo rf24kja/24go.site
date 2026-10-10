@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from croniter import croniter
 
 from app.celery_app import celery
-from app.db_pool import get_pool, get_redis
+from app.db_pool import fetch, fetchrow, fetchval, execute, get_redis
 
 log = logging.getLogger(__name__)
 
@@ -30,154 +30,159 @@ def periodic_campaign_post():
 
 
 async def _run():
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        # Fetch all active campaigns with scheduling fields
-        campaigns = await conn.fetch(
-            "SELECT id, tenant_id, base_text, target_geos, target_niches, "
-            "schedule_cron, posts_per_day, timezone, last_posted_at, "
-            "ab_enabled, ab_variants "
-            "FROM campaigns WHERE is_active = true"
+    # ponytail: one-shot helpers (open-use-close per query) — no shared pool
+    # across per-task event loops, structurally leak-proof.
+    campaigns = await fetch(
+        "SELECT id, tenant_id, base_text, target_geos, target_niches, "
+        "schedule_cron, posts_per_day, timezone, last_posted_at, "
+        "ab_enabled, ab_variants "
+        "FROM campaigns WHERE is_active = true"
+    )
+    if not campaigns:
+        return {"status": "no_active_campaigns"}
+
+    now_utc = datetime.now(timezone.utc)
+    dispatched = []
+
+    for c in campaigns:
+        tz_name = c["timezone"] or "UTC"
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            tz = ZoneInfo("UTC")
+
+        local_now = now_utc.astimezone(tz)
+
+        # ── Idempotency lock: prevent double-dispatch within 5 min window ──
+        lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
+        try:
+            r = await get_redis()
+            if await r.exists(lock_key):
+                continue
+            await r.set(lock_key, "1", ex=300)
+        except Exception:
+            pass  # If Redis unavailable, proceed (risk double-dispatch, better than blocking)
+
+        # ── Cron check ─────────────────────────────────────────────
+        cron_expr = c["schedule_cron"]
+        if cron_expr:
+            # Campaigns without a cron are manual-only → skip
+            cron = croniter(cron_expr, local_now.replace(second=0, microsecond=0))
+            prev = cron.get_prev(datetime)
+            # Fire if the previous cron tick is within the last 5 minutes
+            delta = (local_now - prev).total_seconds()
+            if delta > 300:
+                continue
+
+        # ── Daily limit check ──────────────────────────────────────
+        posts_today = await fetchval(
+            """SELECT count(*) FROM posting_logs
+               WHERE campaign_id = $1 AND executed_at >= (NOW() AT TIME ZONE $2)::date""",
+            c["id"], tz_name,
         )
-        if not campaigns:
-            return {"status": "no_active_campaigns"}
+        limit = c["posts_per_day"] or 1
+        if posts_today >= limit:
+            log.debug(f"Campaign {c['id']} hit daily limit ({posts_today}/{limit})")
+            continue
 
-        now_utc = datetime.now(timezone.utc)
-        dispatched = []
+        # ── Pick a matching target ─────────────────────────────────
+        target_geos = c["target_geos"] or []
+        if isinstance(target_geos, str):
+            import json as _json
+            target_geos = _json.loads(target_geos)
+        target = await fetchrow(
+            "SELECT id, target_id_code, title, platform FROM targets "
+            "WHERE tenant_id = $1 AND is_active = true "
+            "AND (geo_tag = ANY($2) OR $2 = '{}') "
+            "ORDER BY random() LIMIT 1",
+            c["tenant_id"],
+            target_geos,
+        )
+        if not target:
+            continue
 
-        for c in campaigns:
-            tz_name = c["timezone"] or "UTC"
-            try:
-                tz = ZoneInfo(tz_name)
-            except Exception:
-                tz = ZoneInfo("UTC")
+        platform = target.get("platform", "telegram")
 
-            local_now = now_utc.astimezone(tz)
+        # ponytail: explicit skip — MAX campaigns need a recipient mapping
+        # that doesn't exist yet; TG poster would build a bogus t.me URL.
+        if platform == "max":
+            log.debug(f"Campaign {c['id']}: skipping MAX target (unsupported)")
+            continue
 
-            # ── Idempotency lock: prevent double-dispatch within 5 min window ──
-            lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
-            try:
-                r = await get_redis()
-                if await r.exists(lock_key):
-                    continue
-                await r.set(lock_key, "1", ex=300)
-            except Exception:
-                pass  # If Redis unavailable, proceed (risk double-dispatch, better than blocking)
-
-            # ── Cron check ─────────────────────────────────────────────
-            cron_expr = c["schedule_cron"]
-            if cron_expr:
-                # Campaigns without a cron are manual-only → skip
-                cron = croniter(cron_expr, local_now.replace(second=0, microsecond=0))
-                prev = cron.get_prev(datetime)
-                # Fire if the previous cron tick is within the last 5 minutes
-                delta = (local_now - prev).total_seconds()
-                if delta > 300:
-                    continue
-
-            # ── Daily limit check ──────────────────────────────────────
-            posts_today = await conn.fetchval(
-                """SELECT count(*) FROM posting_logs
-                   WHERE campaign_id = $1 AND executed_at >= (NOW() AT TIME ZONE $2)::date""",
-                c["id"], tz_name,
-            )
-            limit = c["posts_per_day"] or 1
-            if posts_today >= limit:
-                log.debug(f"Campaign {c['id']} hit daily limit ({posts_today}/{limit})")
-                continue
-
-            # ── Pick a matching target ─────────────────────────────────
-            target_geos = c["target_geos"] or []
-            if isinstance(target_geos, str):
-                import json as _json
-                target_geos = _json.loads(target_geos)
-            target = await conn.fetchrow(
-                "SELECT id, target_id_code, title, platform FROM targets "
-                "WHERE tenant_id = $1 AND is_active = true "
-                "AND (geo_tag = ANY($2) OR $2 = '{}') "
-                "ORDER BY random() LIMIT 1",
-                c["tenant_id"],
-                target_geos,
-            )
-            if not target:
-                continue
-
-            platform = target.get("platform", "telegram")
-
-            # ── Pick an available account (matching platform) ────────
-            account = await conn.fetchrow(
-                "SELECT id, account_identifier FROM account_pool "
-                "WHERE tenant_id = $1 AND status = 'active' AND platform = $2 "
-                "AND actions_today < daily_action_limit "
-                "ORDER BY random() LIMIT 1",
-                c["tenant_id"],
-                platform,
-            )
-            if not account:
-                continue
+        # ── Pick an available account (matching platform) ────────
+        account = await fetchrow(
+            "SELECT id, account_identifier FROM account_pool "
+            "WHERE tenant_id = $1 AND status = 'active' AND platform = $2 "
+            "AND actions_today < daily_action_limit "
+            "ORDER BY random() LIMIT 1",
+            c["tenant_id"],
+            platform,
+        )
+        if not account:
+            continue
 
             # ── Dispatch ───────────────────────────────────────────────
-            from app.tenant_settings import get_tenant_settings_from_db
-            posting_cfg = (await get_tenant_settings_from_db(str(c["tenant_id"]))).get("posting", {})
-            utm_source = posting_cfg.get("utm_source", "leadgen")
-            utm_medium = posting_cfg.get("utm_medium", "post")
+        from app.tenant_settings import get_tenant_settings_from_db
+        posting_cfg = (await get_tenant_settings_from_db(str(c["tenant_id"]))).get("posting", {})
+        utm_source = posting_cfg.get("utm_source", "leadgen")
+        utm_medium = posting_cfg.get("utm_medium", "post")
 
-            if platform == "vkontakte":
-                utm_url = (
-                    f"https://vk.com/public{target['target_id_code']}"
-                    f"?utm_source={utm_source}&utm_medium={utm_medium}"
-                    f"&utm_campaign={c['id']}"
-                )
-                celery.send_task(
-                    "app.tasks.vk_poster.post_to_vk",
-                    args=[
-                        str(c["tenant_id"]),
-                        str(account["id"]),
-                        int(target["target_id_code"].replace("vk_", "")),
-                        c["base_text"],
-                        str(c["id"]),
-                        str(target["id"]),
-                    ],
-                    kwargs={
-                        "ab_enabled": c.get("ab_enabled", False),
-                        "ab_variants": c.get("ab_variants") or [],
-                    },
-                    queue="poster",
-                )
-            else:
-                utm_url = (
-                    f"https://t.me/{target['target_id_code']}"
-                    f"?utm_source={utm_source}&utm_medium={utm_medium}"
-                    f"&utm_campaign={c['id']}"
-                )
-                celery.send_task(
-                    "app.tasks.poster.publish_post",
-                    args=[
-                        str(c["tenant_id"]),
-                        str(c["id"]),
-                        str(target["id"]),
-                        str(account["id"]),
-                        c["base_text"],
-                        utm_url,
-                        f"@{target['target_id_code']}",
-                    ],
-                    kwargs={
-                        "ab_enabled": c.get("ab_enabled", False),
-                        "ab_variants": c.get("ab_variants") or [],
-                    },
-                    queue="poster",
-                )
-
-            # Update last_posted_at
-            await conn.execute(
-                "UPDATE campaigns SET last_posted_at = NOW() WHERE id = $1",
-                c["id"],
+        if platform == "vkontakte":
+            utm_url = (
+                f"https://vk.com/public{target['target_id_code']}"
+                f"?utm_source={utm_source}&utm_medium={utm_medium}"
+                f"&utm_campaign={c['id']}"
+            )
+            celery.send_task(
+                "app.tasks.vk_poster.post_to_vk",
+                args=[
+                    str(c["tenant_id"]),
+                    str(account["id"]),
+                    int(target["target_id_code"].replace("vk_", "")),
+                    c["base_text"],
+                    str(c["id"]),
+                    str(target["id"]),
+                ],
+                kwargs={
+                    "ab_enabled": c.get("ab_enabled", False),
+                    "ab_variants": c.get("ab_variants") or [],
+                },
+                queue="poster",
+            )
+        else:
+            utm_url = (
+                f"https://t.me/{target['target_id_code']}"
+                f"?utm_source={utm_source}&utm_medium={utm_medium}"
+                f"&utm_campaign={c['id']}"
+            )
+            celery.send_task(
+                "app.tasks.poster.publish_post",
+                args=[
+                    str(c["tenant_id"]),
+                    str(c["id"]),
+                    str(target["id"]),
+                    str(account["id"]),
+                    c["base_text"],
+                    utm_url,
+                    f"@{target['target_id_code']}",
+                ],
+                kwargs={
+                    "ab_enabled": c.get("ab_enabled", False),
+                    "ab_variants": c.get("ab_variants") or [],
+                },
+                queue="poster",
             )
 
-            dispatched.append(str(c["id"]))
-            log.info(
-                f"Dispatched: campaign={c['id']} target={target['title']} "
-                f"account={account['account_identifier']} tz={tz_name}"
-            )
+        # Update last_posted_at
+        await execute(
+            "UPDATE campaigns SET last_posted_at = NOW() WHERE id = $1",
+            c["id"],
+        )
 
-        return {"status": "ok", "dispatched": dispatched}
+        dispatched.append(str(c["id"]))
+        log.info(
+            f"Dispatched: campaign={c['id']} target={target['title']} "
+            f"account={account['account_identifier']} tz={tz_name}"
+        )
+
+    return {"status": "ok", "dispatched": dispatched}

@@ -53,6 +53,7 @@ async def lead_stats(
 async def list_leads(
     intent_score: str | None = None,
     status_filter: str | None = None,
+    platform: str | None = None,
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -63,6 +64,9 @@ async def list_leads(
         q = q.where(Lead.intent_score == intent_score)
     if status_filter:
         q = q.where(Lead.status == status_filter)
+    # ponytail: dashboard sends platform=; honor it or the toggle lies
+    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        q = q.where(Lead.platform == platform)
     
     # Get total count for pagination
     from sqlalchemy import func

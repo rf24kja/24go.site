@@ -112,7 +112,11 @@ export default function LeadsPage() {
         limit: PAGE_SIZE, offset: 0,
       } as any).then((res) => {
         let items = res.items || res;
-        if (sourceFilter !== "all") items = items.filter((l: Lead) => (l.source || "dm") === sourceFilter);
+        if (sourceFilter !== "all") items = items.filter((l: Lead) => {
+          const s = l.source || "dm";
+          // ponytail: max_chat/max_dm roll up under the MAX chip
+          return s === sourceFilter || (sourceFilter === "max" && s.startsWith("max"));
+        });
         setLeads(items);
         setTotal(res.total || items.length);
       }).catch(() => { setLeads([]); setTotal(0); }).finally(() => setLoading(false));
@@ -237,6 +241,7 @@ export default function LeadsPage() {
               { key: "dm", label: t("leads.sourceDm") },
               { key: "comment", label: t("leads.sourceComment") },
               { key: "manual", label: t("leads.sourceManual") },
+              { key: "max", label: "MAX" },
             ].map((s) => (
               <button key={s.key} onClick={() => setSourceFilter(s.key)}
                 className={`px-2 py-1 rounded transition ${sourceFilter === s.key ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"}`}>

@@ -57,7 +57,9 @@ export default function MaxAccountsPage() {
     try {
       await deleteMaxAccount(auth.token, id);
       load();
-    } catch { /* silent */ } finally {
+    } catch (e: any) {
+      toast(e?.message || t("maxAccounts.deleteFailed"), "error");
+    } finally {
       setActionBusy(null);
     }
   };
@@ -69,13 +71,17 @@ export default function MaxAccountsPage() {
       const res = await getMaxStatus(auth.token, id);
       toast(res.connected ? t("maxAccounts.status.connected") : t("maxAccounts.status.disconnected"), res.connected ? "success" : "error");
       load();
-    } catch { /* silent */ } finally {
+    } catch (e: any) {
+      toast(e?.message || t("maxAccounts.statusFailed"), "error");
+    } finally {
       setActionBusy(null);
     }
   };
 
   const statusColor = (s: string) =>
-    s === "connected" || s === "active" ? "bg-emerald-400" : s === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-zinc-600";
+    s === "connected" || s === "active" ? "bg-emerald-400"
+    : s === "banned" ? "bg-rose-500"
+    : s === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-zinc-600";
 
   const statusLabel = (s: string) => {
     const map: Record<string, string> = {
@@ -85,6 +91,8 @@ export default function MaxAccountsPage() {
       paused: t("maxAccounts.status.disconnected"),
       connecting: t("maxAccounts.status.connecting"),
       warming_up: t("maxAccounts.status.connecting"),
+      banned: t("maxAccounts.status.banned"),
+      cooldown: t("maxAccounts.status.cooldown"),
     };
     return map[s] || s;
   };

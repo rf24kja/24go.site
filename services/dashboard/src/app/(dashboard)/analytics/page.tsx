@@ -94,8 +94,16 @@ export default function AnalyticsPage() {
     hot: g.hot_leads,
   }));
 
+  const sourceLabel = (s: string) => {
+    if (s === "dm") return t("analytics.sourceDm");
+    if (s === "comment") return t("analytics.sourceComment");
+    if (s === "group") return t("analytics.sourceGroup");
+    if (s === "manual") return t("analytics.sourceManual");
+    if (s === "max_dm" || s === "max_chat") return "MAX";
+    return s;
+  };
   const sourceData = (data.source_breakdown || []).map((s: any) => ({
-    name: s.source === "dm" ? t("analytics.sourceDm") : s.source === "comment" ? t("analytics.sourceComment") : s.source === "group" ? t("analytics.sourceGroup") : s.source === "manual" ? t("analytics.sourceManual") : s.source,
+    name: sourceLabel(s.source),
     leads: s.leads,
     hot: s.hot_leads,
   }));

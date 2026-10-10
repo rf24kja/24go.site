@@ -57,12 +57,19 @@ class AnalyticsResponse(BaseModel):
 @router.get("/", response_model=AnalyticsResponse)
 async def get_analytics(
     days: int = Query(default=30, le=90),
+    platform: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Aggregate analytics for the dashboard charts."""
     tenant_id = current_user.tenant_id
     since = date.today() - timedelta(days=days)
+
+    def _pf():
+        # ponytail: dashboard sends platform=; honor it or per-platform numbers lie
+        if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+            return [Lead.platform == platform]
+        return []
 
     # ── Funnel: 5 queries → 2 ───────────────────────────────────────
     # Combined funnel query (leads + hot + warm in one pass)
@@ -74,6 +81,7 @@ async def get_analytics(
         ).where(
             Lead.tenant_id == tenant_id,
             Lead.created_at >= since,
+            *_pf(),
         )
     )
     row = funnel_q.one()
@@ -107,6 +115,7 @@ async def get_analytics(
             Lead.tenant_id == tenant_id,
             Lead.created_at >= since,
             Lead.geo_tag != "",
+            *_pf(),
         )
         .group_by(Lead.geo_tag)
         .order_by(func.count(Lead.id).desc())
@@ -127,6 +136,7 @@ async def get_analytics(
         .where(
             Lead.tenant_id == tenant_id,
             Lead.created_at >= since,
+            *_pf(),
         )
         .group_by(Lead.source)
         .order_by(func.count(Lead.id).desc())
@@ -147,6 +157,7 @@ async def get_analytics(
         .where(
             Lead.tenant_id == tenant_id,
             Lead.created_at >= since,
+            *_pf(),
         )
         .group_by(text("day"))
         .order_by(text("day"))
@@ -245,6 +256,7 @@ async def leaderboard(
     leaderboard = []
     for c in campaigns:
         # Count leads matching this campaign's geos
+        # ponytail: per-campaign view stays unfiltered by platform by design
         lead_q = select(
             func.count(Lead.id).label("total"),
             func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),

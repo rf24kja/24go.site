@@ -1,6 +1,7 @@
 """WhatsApp integration — account connection, group parsing, contact management."""
 import csv
 import io
+import os
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -22,6 +23,13 @@ router = APIRouter(prefix="/api/v1", tags=["whatsapp"])
 
 WASIDECAR_URL = "http://wa-sidecar:3100"
 SIDECAR_TIMEOUT = 30  # ponytail: 30s as per spec, increase for parse if needed
+SIDECAR_API_KEY = os.getenv("SIDECAR_API_KEY", "")
+
+
+def _sidecar_client(timeout=SIDECAR_TIMEOUT) -> httpx.AsyncClient:
+    # ponytail: fail-closed auth — sidecar 503s without the key, forcing config
+    headers = {"X-Sidecar-Key": SIDECAR_API_KEY} if SIDECAR_API_KEY else {}
+    return httpx.AsyncClient(timeout=timeout, headers=headers)
 
 
 # ── WhatsApp Accounts ─────────────────────────────────────────────────
@@ -41,7 +49,7 @@ async def wa_connect(
     db.add(account)
     await db.flush()  # get account.id without committing
 
-    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+    async with _sidecar_client() as client:
         resp = await client.post(
             f"{WASIDECAR_URL}/connect",
             json={
@@ -68,7 +76,7 @@ async def wa_qr(
 ):
     """Poll QR code for a connecting account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+    async with _sidecar_client() as client:
         resp = await client.get(f"{WASIDECAR_URL}/qr/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
@@ -83,7 +91,7 @@ async def wa_pairing_code(
 ):
     """Get pairing code for phone-number-based connection."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+    async with _sidecar_client() as client:
         resp = await client.get(f"{WASIDECAR_URL}/pairing-code/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
@@ -99,7 +107,7 @@ async def wa_status(
 ):
     """Get connection status for a WhatsApp account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+    async with _sidecar_client() as client:
         resp = await client.get(f"{WASIDECAR_URL}/status/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
@@ -123,7 +131,7 @@ async def wa_disconnect(
 ):
     """Disconnect a WhatsApp account."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=SIDECAR_TIMEOUT) as client:
+    async with _sidecar_client() as client:
         resp = await client.post(f"{WASIDECAR_URL}/disconnect/{account.id}")
     if resp.status_code not in (200, 404):
         raise HTTPException(resp.status_code, resp.text)
@@ -170,7 +178,7 @@ async def wa_parse_groups(
     account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
     if not body.group_links and not body.group_ids:
         raise HTTPException(400, "Provide group_links or group_ids (max 5)")
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with _sidecar_client(timeout=120) as client:
         resp = await client.post(
             f"{WASIDECAR_URL}/parse-groups",
             json={
@@ -257,7 +265,7 @@ async def wa_known_groups(
 ):
     """Groups learned from history sync + live messages. Fallback when the list call fails."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with _sidecar_client(timeout=60) as client:
         resp = await client.get(f"{WASIDECAR_URL}/known-groups/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)
@@ -271,7 +279,7 @@ async def wa_my_groups(    account_id: UUID,
 ):
     """List groups the account already joined. Pure read, no joins — safest first step."""
     account = await _get_wa_account(db, account_id, current_user.tenant_id)
-    async with httpx.AsyncClient(timeout=200) as client:
+    async with _sidecar_client(timeout=200) as client:
         resp = await client.get(f"{WASIDECAR_URL}/my-groups/{account.id}")
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, resp.text)

@@ -40,6 +40,7 @@ def start_max_listener(self, tenant_id: str, account_id: str):
 
 
 async def _run_max_listener(task, tenant_id: str, account_id: str):
+    import time
     from app.max_client import load_max_token, get_updates
     from app.db_pool import get_redis
     from app.lead_pipeline import process_incoming_message
@@ -50,7 +51,16 @@ async def _run_max_listener(task, tenant_id: str, account_id: str):
         return
 
     redis = await get_redis()
+    lock_key = f"max_listener_lock:{account_id}"
     marker_key = f"max_marker:{account_id}"
+    try:
+        locked = await redis.set(lock_key, "1", nx=True, ex=120)
+    except Exception:
+        locked = True  # Redis down: proceed, duplicates preferable to silence
+    if not locked:
+        log.warning(f"MAX listener already running for {account_id}, exiting duplicate")
+        return
+
     try:
         marker_raw = await redis.get(marker_key)
         marker = int(marker_raw) if marker_raw else None
@@ -58,35 +68,67 @@ async def _run_max_listener(task, tenant_id: str, account_id: str):
         marker = None
 
     log.info(f"MAX listener polling for account {account_id}")
+    errs = 0
     while True:
+        # Refresh singleton lock every iteration (dies with us if we crash)
+        try:
+            await redis.set(lock_key, "1", ex=120)
+        except Exception:
+            pass
+        t0 = time.monotonic()
         updates, marker = await get_updates(token, marker=marker, timeout=30)
-        if marker is not None:
-            try:
-                await redis.set(marker_key, str(marker))
-            except Exception:
-                pass
+        dt = time.monotonic() - t0
+        if not updates and dt < 5:
+            # Fast empty round = API error, not a quiet chat: back off
+            errs += 1
+            await asyncio.sleep(min(60, 2 ** min(errs, 6)))
+            continue
+        errs = 0
         for upd in updates:
             try:
                 await _handle_update(tenant_id, account_id, upd, process_incoming_message)
             except Exception as e:
                 log.error(f"MAX update handling failed: {e}")
+        # ponytail: persist marker ONLY after the batch is processed —
+        # persisting before means a crash loses leads silently.
+        if marker is not None:
+            try:
+                await redis.set(marker_key, str(marker))
+            except Exception as e:
+                log.error(f"MAX marker persist failed (will replay on restart): {e}")
         await asyncio.sleep(1)
 
 
 async def _handle_update(tenant_id, account_id, upd, process_incoming_message):
+    if not isinstance(upd, dict):
+        log.warning("MAX update: non-dict item skipped")
+        return
     update_type = upd.get("update_type", "")
     if update_type not in ("message_created", "bot_started"):
         return
-    msg = upd.get("message") or {}
+    msg = upd.get("message")
+    if not isinstance(msg, dict):
+        return
     # Skip own bot messages to avoid loops
-    sender = msg.get("sender") or upd.get("user") or {}
+    sender = msg.get("sender") or upd.get("user")
+    if not isinstance(sender, dict):
+        sender = {}
     if sender.get("is_bot"):
         return
-    text = (msg.get("text") or "").strip()
+    text = msg.get("text")
+    text = text if isinstance(text, str) else ""
+    text = text.strip()
     if not text:
         return
-    user_id = str(sender.get("user_id") or msg.get("sender_id") or "unknown")
-    chat = msg.get("chat") or {}
+    user_id = str(sender.get("user_id") or msg.get("sender_id") or "")
+    if not user_id or user_id == "unknown":
+        # ponytail: a lead without an identity can't be replied to — skip, don't store junk
+        log.warning("MAX update without user_id skipped")
+        return
+    chat = msg.get("chat")
+    chat_id = ""
+    if isinstance(chat, dict):
+        chat_id = str(chat.get("chat_id") or "")
     await process_incoming_message(
         tenant_id=tenant_id,
         platform="max",
@@ -96,5 +138,5 @@ async def _handle_update(tenant_id, account_id, upd, process_incoming_message):
         user_full_name=str(sender.get("name") or "")[:255],
         message_text=text[:2000],
         geo_tag="",
-        source="max_chat" if chat.get("chat_id") else "max_dm",
+        source="max_chat" if chat_id else "max_dm",
     )

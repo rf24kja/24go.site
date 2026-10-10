@@ -42,8 +42,12 @@ celery.conf.update(
         "app.tasks.max_poster.*": {"queue": "poster"},
         "app.tasks.billing.*": {"queue": "billing"},
         "app.tasks.drip_emailer.*": {"queue": "billing"},
+        "app.tasks.trial_emailer.*": {"queue": "billing"},
+        "app.tasks.vk_health_check.*": {"queue": "warmup"},
+        "app.tasks.account_validator.*": {"queue": "warmup"},
         "app.tasks.mailer.*": {"queue": "poster"},
         "app.tasks.wa_*": {"queue": "parser"},
+        "app.tasks.wa_check_telegram_phones": {"queue": "parser"},
     },
     # ── Periodic Task Schedule (Celery Beat) ──────────────────────────
     beat_schedule={
@@ -96,3 +100,6 @@ celery.conf.update(
 )
 
 celery.autodiscover_tasks(["app.tasks"])
+# ponytail: ordering constraint — Celery(...) above must exist before any
+# tasks/__init__ import runs (every task module does `from app.celery_app
+# import celery`). Never move imports of app.tasks above the Celery() call.

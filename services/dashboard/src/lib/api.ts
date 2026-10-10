@@ -76,13 +76,19 @@ export async function api<T = any>(path: string, opts: FetchOptions = {}): Promi
 
   const res = await fetch(`${API_URL}${path}`, { ...init, headers });
 
-  // 401 interceptor — session expired, redirect to login
+  // 401 interceptor — session expired, redirect to login.
+  // ponytail: only when WE sent a token and the call isn't itself an auth
+  // call — otherwise a wrong password (or mistyped bot token, now 400
+  // server-side) nukes the session and shows "Session expired".
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
+    const body = await res.text();
+    const isAuthCall = path.startsWith("/api/v1/auth/");
+    if (token && !isAuthCall && typeof window !== "undefined") {
       localStorage.removeItem("token");
       window.location.href = "/login";
+      throw new ApiError(401, "Session expired");
     }
-    throw new ApiError(401, "Session expired");
+    throw new ApiError(401, extractErrorMessage(body));
   }
 
   if (!res.ok) {

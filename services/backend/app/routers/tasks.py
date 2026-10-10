@@ -88,6 +88,9 @@ async def dispatch_poster(
         raise HTTPException(404, "Target not found")
 
     platform = target.get("platform", "telegram")
+    # ponytail: explicit reject — same reason as campaigns.py
+    if platform == "max":
+        raise HTTPException(400, "Campaigns for MAX are not supported yet (no recipient mapping)")
     if platform == "vkontakte":
         utm_url = f"https://vk.com/public{target['target_id_code']}?utm_source=leadgen&utm_medium=post&utm_campaign={body.campaign_id}"
         task = _celery.send_task(

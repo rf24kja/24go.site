@@ -583,6 +583,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Fresh from the blog (SEO: crawl path to latest articles) ── */}
+      {/* ponytail: hardcoded trio — rotate to newest slugs when publishing batches */}
       <section className="py-16 px-6 lg:px-12 border-t border-zinc-800/50">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-6">

@@ -9,14 +9,14 @@ services:
       POSTGRES_USER: staging_user
       POSTGRES_PASSWORD: staging_pass
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
     volumes:
       - staging_pgdata:/var/lib/postgresql/data
 
   redis:
     container_name: staging-redis
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
 
   fastapi:
     container_name: staging-fastapi

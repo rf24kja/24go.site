@@ -45,19 +45,22 @@ def post_to_max(self, tenant_id: str, account_id: str,
 async def _publish_max_post(tenant_id, account_id, chat_id, user_id,
                             text, campaign_id, target_id) -> dict:
     from app.max_client import load_max_token, send_message
-    from app.db_pool import get_pool, execute as pool_execute
+    from app.db_pool import fetchrow, execute as pool_execute
 
     token = await load_max_token(account_id)
     if not token:
         return {"status": "error", "error": "no_token"}
 
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT daily_action_limit, actions_today FROM account_pool WHERE id = $1",
-            uuid.UUID(account_id),
-        )
-    if row and row["actions_today"] >= (row["daily_action_limit"] or 15):
+    # ponytail: atomic gate+increment — check-then-act races under concurrency.
+    # Failed sends still consume the safety slot (conservative); billing
+    # (record_post below) counts successes only.
+    gated = await fetchrow(
+        """UPDATE account_pool SET actions_today = actions_today + 1
+           WHERE id = $1 AND actions_today < COALESCE(daily_action_limit, 15)
+           RETURNING id""",
+        uuid.UUID(account_id),
+    )
+    if not gated:
         log.info(f"MAX account {account_id} reached daily limit")
         return {"status": "skipped", "reason": "daily_limit_reached"}
 
@@ -68,13 +71,6 @@ async def _publish_max_post(tenant_id, account_id, chat_id, user_id,
     if result.get("error"):
         log.error(f"MAX publish error: {result}")
         return {"status": "error", "error": str(result.get("error"))[:200]}
-
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE account_pool SET actions_today = actions_today + 1 WHERE id = $1",
-            uuid.UUID(account_id),
-        )
 
     from app.quota import record_post
     try:

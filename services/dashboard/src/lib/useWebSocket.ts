@@ -54,8 +54,10 @@ export function useWebSocket(tenantId: string | null, token: string | null = nul
     const poll = async () => {
       if (!tenantId || !token) return;
       try {
+        // ponytail: JWT via header, not URL (tokens in URLs leak to logs)
         const res = await fetch(
-          `${apiBase}/api/v1/events/poll?since=${sinceRef.current}&token=${encodeURIComponent(token)}`,
+          `${apiBase}/api/v1/events/poll?since=${sinceRef.current}`,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (res.status === 401) {
           // ponytail: token expired, stop polling to avoid spam

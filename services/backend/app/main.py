@@ -229,11 +229,16 @@ class BroadcastIn(BaseModel):
 @app.post("/internal/broadcast", include_in_schema=False)
 async def broadcast_event(
     body: BroadcastIn,
+    request: Request,
     x_internal_key: str = Header(default=""),
 ):
     """Internal endpoint for workers — requires X-Internal-Key header."""
     if not settings.INTERNAL_API_KEY or not hmac.compare_digest(x_internal_key, settings.INTERNAL_API_KEY):
         raise HTTPException(403, "Invalid internal key")
+    # ponytail: bound event size — leaked key must not become memory pressure
+    raw_len = int(request.headers.get("content-length", "0") or 0)
+    if raw_len > 65536:
+        raise HTTPException(413, "Event too large")
     queue = get_event_queue()
     await queue.put((body.tenant_id, body.event))
     return {"queued": True}
@@ -248,9 +253,16 @@ _BUFFER_TTL = 300  # 5 minutes
 @app.get("/api/v1/events/poll")
 async def poll_events(
     since: float = 0,
-    token: str = Query(...),
+    token: str = Query(default=""),
+    authorization: str = Header(default=""),
 ):
-    """Authenticated long-poll — token required, tenant from JWT."""
+    """Authenticated long-poll — token required, tenant from JWT.
+    ponytail: prefer Authorization header (JWT in URL leaks to logs);
+    ?token= kept for backward compat."""
+    if not token and authorization.lower().startswith("bearer "):
+        token = authorization[7:]
+    if not token:
+        raise HTTPException(401, "Invalid token")
     payload = _decode_ws_token(token)
     if not payload:
         raise HTTPException(401, "Invalid token")

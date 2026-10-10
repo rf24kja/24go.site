@@ -49,14 +49,17 @@ def _decrypt(ciphertext: str) -> str:
 
 async def load_max_token(account_id: str) -> str | None:
     """Load and decrypt MAX bot token from account_sessions table."""
-    from app.db_pool import get_pool
+    import uuid
+    from app.db_pool import fetchrow
 
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT session_data FROM account_sessions WHERE account_id = $1",
-            account_id,
-        )
+    try:
+        aid = uuid.UUID(account_id)
+    except ValueError:
+        return None
+    row = await fetchrow(
+        "SELECT session_data FROM account_sessions WHERE account_id = $1",
+        aid,
+    )
     if not row:
         return None
     return _decrypt(row["session_data"])
@@ -128,7 +131,8 @@ async def get_updates(token: str, marker: int | None = None,
         return [], marker
     if isinstance(data, dict):
         updates = data.get("updates") or data.get("items") or []
-        next_marker = data.get("marker", data.get("next_marker", marker))
+        # ponytail: explicit null from server must not rewind the marker
+        next_marker = data.get("marker") or data.get("next_marker") or marker
         return updates if isinstance(updates, list) else [], next_marker
     if isinstance(data, list):
         return data, marker

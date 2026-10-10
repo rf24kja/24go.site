@@ -191,6 +191,11 @@ async def run_campaign_now(
 
     platform = t.platform if hasattr(t, 'platform') else "telegram"
 
+    # ponytail: explicit reject — MAX campaigns need a recipient mapping that
+    # doesn't exist yet; falling through would build a bogus t.me URL.
+    if platform == "max":
+        raise HTTPException(400, "Campaigns for MAX are not supported yet (no recipient mapping)")
+
     # Find an available account (matching platform)
     acc = await db.execute(
         select(_models.AccountPool).where(

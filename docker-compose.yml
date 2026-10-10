@@ -303,10 +303,11 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     environment:
       - WA_SESSION_DIR=/data/wa/sessions
       - WA_SIDECAR_PORT=3100
+      - SIDECAR_API_KEY=${SIDECAR_API_KEY:?Set SIDECAR_API_KEY in .env}
     volumes:
       - wa_sessions:/data/wa/sessions
     deploy:

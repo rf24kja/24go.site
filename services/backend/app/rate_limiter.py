@@ -44,9 +44,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api/") or any(path.startswith(s) for s in SKIP_PATHS):
             return await call_next(request)
 
-        # Extract tenant_id from request state (set by RLS middleware)
+        # ponytail: unauthenticated public routes (webhooks) get an IP bucket,
+        # not a free pass — tenant_id is None there by design.
         tenant_id = getattr(request.state, "tenant_id", None)
         if not tenant_id:
+            if path.startswith("/api/v1/max/webhooks"):
+                return await self._ip_limit(request, call_next, limit=60)
             return await call_next(request)
 
         try:
@@ -82,7 +85,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     headers={"Retry-After": str(60 - (int(time.time()) % 60))},
                 )
         except Exception as e:
-            # Redis down — log warning, skip rate limiting for this request
-            log.warning("Redis unavailable — rate limiting skipped: %s", type(e).__name__)
+            log.warning("Redis unavailable — rejecting request: %s", type(e).__name__)
+            return JSONResponse(
+                status_code=503,
+                content={"error": "service_unavailable", "detail": "Rate limiter unavailable, request rejected"},
+                headers={"Retry-After": "60"},
+            )
 
+        return await call_next(request)
+
+    async def _ip_limit(self, request: Request, call_next, limit: int = 60):
+        """Per-IP sliding window for unauthenticated routes. Fail-closed."""
+        try:
+            r = await get_redis()
+            client_ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+                         or (request.client.host if request.client else "unknown"))
+            key = f"rl:ip:{client_ip}:{int(time.time() // 60)}"
+            current = await r.incr(key)
+            if current == 1:
+                await r.expire(key, 120)
+            if current > limit:
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": "rate_limited", "limit": limit},
+                    headers={"Retry-After": "60"},
+                )
+        except Exception as e:
+            log.warning("Redis unavailable — rejecting request: %s", type(e).__name__)
+            return JSONResponse(
+                status_code=503,
+                content={"error": "service_unavailable", "detail": "Rate limiter unavailable, request rejected"},
+                headers={"Retry-After": "60"},
+            )
         return await call_next(request)

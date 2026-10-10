@@ -63,6 +63,12 @@ async def start_listener(
             task = start_vk_listener.apply_async(
                 args=[str(current_user.tenant_id), account_id, vk_gid],
             )
+        elif platform == "max":
+            task = celery.send_task(
+                "app.tasks.max_listener.start_max_listener",
+                args=[str(current_user.tenant_id), account_id],
+                queue="listener",
+            )
         else:
             task = celery.send_task(
                 "app.tasks.listener.start_lead_listener",

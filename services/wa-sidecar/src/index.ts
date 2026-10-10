@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import crypto from 'crypto'
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
@@ -13,8 +14,32 @@ import NodeCache from 'node-cache'
 import { sessionManager } from './auth.js'
 
 const app = express()
-app.use(cors())
+// ponytail: service-to-service only — browsers have no business here
+app.use(cors({ origin: false }))
 app.use(express.json())
+
+const SIDECAR_API_KEY = process.env.SIDECAR_API_KEY || ''
+
+// ponytail: fail-closed — no key configured means no access, not open access
+app.use((req, res, next) => {
+  if (req.path === '/health') return next()
+  if (!SIDECAR_API_KEY) {
+    return res.status(503).json({ error: 'sidecar auth not configured' })
+  }
+  const got = req.header('X-Sidecar-Key') || ''
+  const a = Buffer.from(got)
+  const b = Buffer.from(SIDECAR_API_KEY)
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(403).json({ error: 'forbidden' })
+  }
+  next()
+})
+
+function assertAccountId(accountId: unknown): asserts accountId is string {
+  if (typeof accountId !== 'string' || !/^[A-Za-z0-9-]{1,64}$/.test(accountId)) {
+    throw new Error('invalid account id')
+  }
+}
 
 const logger = pino({ level: 'silent' })
 
@@ -49,6 +74,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 const MAX_GROUPS_PER_CALL = 5
+const MAX_NUMBERS_PER_CALL = 100
+const reconnectAttempts = new Map<string, number>()
+const connectingNow = new Set<string>()
 
 async function connectAccount(accountId: string, phoneNumber?: string, method?: string) {
   let session = await sessionManager.getSession(accountId)
@@ -56,8 +84,14 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
     session = await sessionManager.createSession(accountId)
   }
 
+  const version = await fetchLatestBaileysVersion().then(v => v.version).catch(() => undefined)
+  if (!version) {
+    console.log(`[wa] WARNING: could not fetch live WA version, using library default (may cause silent disconnects)`)
+  } else {
+    console.log(`[wa] using WA version ${(version as number[]).join('.')}`)
+  }
   const sock = makeWASocket({
-    version: await fetchLatestBaileysVersion().then(v => v.version).catch(() => undefined),
+    version: version as any,
     // ponytail: full history on connect — we need the group list, and partial sync gives nothing
     syncFullHistory: true,
     auth: {
@@ -112,6 +146,7 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
 
     if (connection === 'open') {
       qrCache.del(accountId)
+      reconnectAttempts.delete(accountId)
     }
 
     if (connection === 'close') {
@@ -119,13 +154,18 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
       if (statusCode === DisconnectReason.loggedOut) {
         sessionManager.deleteSession(accountId)
+        reconnectAttempts.delete(accountId)
       } else {
-        // ponytail: basic reconnect, add exponential backoff if needed
+        // ponytail: exponential backoff, not a fixed 5s storm
+        const n = (reconnectAttempts.get(accountId) || 0) + 1
+        reconnectAttempts.set(accountId, n)
+        const delay = Math.min(300000, 5000 * 2 ** Math.min(n, 6))
+        console.log(`[wa] reconnect ${accountId} attempt ${n} in ${delay}ms`)
         setTimeout(() => {
           if (!connections.has(accountId)) {
             connectAccount(accountId, phoneNumber, method).catch(() => {})
           }
-        }, 5000)
+        }, delay)
       }
     }
   })
@@ -142,10 +182,16 @@ app.post('/connect', async (req, res) => {
   if (!accountId) {
     return res.status(400).json({ error: 'accountId required' })
   }
+  try {
+    assertAccountId(accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
 
-  if (connections.has(accountId)) {
+  if (connections.has(accountId) || connectingNow.has(accountId)) {
     return res.status(409).json({ error: 'Account already connected' })
   }
+  connectingNow.add(accountId)
 
   if (method === 'pairing' || method === 'pairing-code') {
     if (!phoneNumber) {
@@ -170,10 +216,17 @@ app.post('/connect', async (req, res) => {
     res.json({ status: 'connecting' })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
+  } finally {
+    connectingNow.delete(accountId)
   }
 })
 
 app.get('/qr/:accountId', (req, res) => {
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   const qr = qrCache.get<string>(req.params.accountId)
   if (!qr) {
     return res.status(404).json({ error: 'QR not available' })
@@ -182,6 +235,11 @@ app.get('/qr/:accountId', (req, res) => {
 })
 
 app.get('/pairing-code/:accountId', (req, res) => {
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   const code = pairingCache.get<string>(req.params.accountId)
   if (!code) {
     return res.status(404).json({ error: 'Code not available' })
@@ -190,6 +248,11 @@ app.get('/pairing-code/:accountId', (req, res) => {
 })
 
 app.get('/status/:accountId', (req, res) => {
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   const sock = connections.get(req.params.accountId)
   if (!sock) {
     return res.json({ status: 'disconnected' })
@@ -202,6 +265,11 @@ app.get('/status/:accountId', (req, res) => {
 })
 
 app.post('/disconnect/:accountId', (req, res) => {
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   const sock = connections.get(req.params.accountId)
   if (sock) {
     sock.end(undefined)
@@ -210,11 +278,17 @@ app.post('/disconnect/:accountId', (req, res) => {
   sessionManager.deleteSession(req.params.accountId)
   qrCache.del(req.params.accountId)
   pairingCache.del(req.params.accountId)
+  knownGroups.delete(req.params.accountId)
   res.json({ removed: true })
 })
 
 // Groups learned from history sync + live messages (fallback when groupFetchAllParticipating fails)
 app.get('/known-groups/:accountId', (req, res) => {
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   const known = knownGroups.get(req.params.accountId)
   if (!known) {
     return res.json({ groups: [], note: 'no sync data yet, wait for history sync or incoming messages' })
@@ -225,6 +299,11 @@ app.get('/known-groups/:accountId', (req, res) => {
 })
 
 app.get('/my-groups/:accountId', async (req, res) => {  const sock = connections.get(req.params.accountId)
+  try {
+    assertAccountId(req.params.accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   if (!sock) {
     return res.status(400).json({ error: 'Account not connected' })
   }
@@ -246,6 +325,11 @@ app.post('/parse-groups', async (req, res) => {
   const { accountId, groupLinks, groupIds, leave } = req.body
   // ponytail: leave=false when parsing own groups — never kick the user out of their groups
   const shouldLeave = leave !== false
+  try {
+    assertAccountId(accountId)
+  } catch {
+    return res.status(400).json({ error: 'invalid account id' })
+  }
   if (!accountId || (!groupLinks && !groupIds)) {
     return res.status(400).json({ error: 'accountId and groupLinks/groupIds required' })
   }
@@ -262,7 +346,7 @@ app.post('/parse-groups', async (req, res) => {
   }
 
   const members: { phone?: string; name?: string; wa_id: string; group_id: string }[] = []
-  const groups: { group_id: string; name: string; members_count: number }[] = []
+  const groups: { group_id: string; name: string; members_count: number; reachable_count: number }[] = []
   const errors: { target?: string; link?: string; error: string }[] = []
 
   const collect = (groupId: string, groupName: string, parts: any[]) => {
@@ -275,7 +359,7 @@ app.post('/parse-groups', async (req, res) => {
         phones++
       }
     }
-    groups.push({ group_id: groupId, name: groupName, members_count: parts.length })
+    groups.push({ group_id: groupId, name: groupName, members_count: parts.length, reachable_count: phones })
     return phones
   }
 
@@ -346,6 +430,9 @@ app.post('/check-whatsapp', async (req, res) => {
   if (!accountId || !numbers) {
     return res.status(400).json({ error: 'accountId and numbers required' })
   }
+  if (!Array.isArray(numbers) || numbers.length > MAX_NUMBERS_PER_CALL) {
+    return res.status(400).json({ error: `Max ${MAX_NUMBERS_PER_CALL} numbers per call` })
+  }
 
   const sock = connections.get(accountId)
   if (!sock) {
@@ -361,19 +448,29 @@ app.post('/check-whatsapp', async (req, res) => {
   }
 
   try {
-    const results = await Promise.all(
-      numbers.map(async (phone: string) => {
-        try {
-          const normalized = normalizePhone(phone)
-          const jid = normalized.substring(1) + '@s.whatsapp.net'
-          const results = await withTimeout(sock.onWhatsApp(jid), 30000)
-          const result = results?.[0]
-          return { phone, exists: result?.exists ?? false }
-        } catch {
-          return { phone, exists: false }
-        }
-      })
-    )
+    // ponytail: sequential batches of 10, not Promise.all over thousands —
+    // one flood of concurrent WA queries looks exactly like abuse.
+    const results: { phone: string; exists: boolean }[] = []
+    for (let i = 0; i < numbers.length; i += 10) {
+      const batch = numbers.slice(i, i + 10)
+      const out = await Promise.all(
+        batch.map(async (phone: string) => {
+          try {
+            const normalized = normalizePhone(phone)
+            const jid = normalized.substring(1) + '@s.whatsapp.net'
+            const r = await withTimeout(sock.onWhatsApp(jid), 30000)
+            const result = r?.[0]
+            return { phone, exists: result?.exists ?? false }
+          } catch {
+            return { phone, exists: false }
+          }
+        })
+      )
+      results.push(...out)
+      if (i + 10 < numbers.length) {
+        await sleep(2000 + Math.random() * 3000)
+      }
+    }
     res.json({ results })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
