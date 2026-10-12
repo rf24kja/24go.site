@@ -9,6 +9,32 @@ on:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: test_pw
+          POSTGRES_DB: app_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app_user -d app_db"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      ENCRYPTION_KEY: ci-test-encryption-key-32bytes!!
+      JWT_SECRET: ci-test-jwt-secret
+      DATABASE_URL: postgresql+asyncpg://app_user:test_pw@localhost:5432/app_db
+      DATABASE_URL_SYNC: postgresql://app_user:test_pw@localhost:5432/app_db
+      REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,7 +42,45 @@ jobs:
           python-version: "3.11"
       - run: pip install -r services/backend/requirements.txt
       - run: pip install pytest pytest-asyncio httpx
+      - run: cd services/backend && alembic upgrade head
       - run: cd services/backend && python -m pytest tests/ -v --tb=short
+
+  test-worker:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      ENCRYPTION_KEY: ci-test-encryption-key-32bytes!!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install celery redis asyncpg httpx pytest croniter
+      - run: cd services/worker && python -m pytest tests/ -v --tb=short
+
+  test-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: services/dashboard/package-lock.json
+      - run: cd services/dashboard && npm ci && npm test
+
+  test-sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: services/wa-sidecar/package-lock.json
+      - run: cd services/wa-sidecar && npm ci && npm test
 
   lint:
     runs-on: ubuntu-latest

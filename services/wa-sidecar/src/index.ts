@@ -53,6 +53,8 @@ function validateE164(phone: string): boolean {
   return /^\+[1-9]\d{1,14}$/.test(phone)
 }
 
+export { validateE164, normalizePhone };
+
 function normalizePhone(phone: string): string {
   const cleaned = phone.replace(/[^\d+]/g, '')
   if (!cleaned.startsWith('+')) {
@@ -479,6 +481,18 @@ app.post('/check-whatsapp', async (req, res) => {
 
 const PORT = process.env.PORT || 3100
 
-app.listen(PORT, () => {
-  console.log(`wa-sidecar listening on port ${PORT}`)
-})
+// ponytail: importable without side effects (tests import helpers;
+// only listen when executed directly, not when imported)
+import { pathToFileURL } from 'node:url'
+const isMain = (() => {
+  try {
+    return import.meta.url === pathToFileURL(process.argv[1] ?? '').href
+  } catch {
+    return false
+  }
+})()
+if (isMain) {
+  app.listen(PORT, () => {
+    console.log(`wa-sidecar listening on port ${PORT}`)
+  })
+}
