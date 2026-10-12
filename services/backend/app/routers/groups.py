@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.audit import log_event
 from app.database import get_db
-from app.models import MonitoredGroup, AccountPool, User, Target
+from app.models import MonitoredGroup, AccountPool, User
 from app.quota import PLAN_LIMITS, get_subscription_plan
 from app.security import get_current_user
 
@@ -47,7 +47,7 @@ def _del_scanner(group_id: str):
 async def _resolve_proxy_for_account(account_id) -> tuple | None:
     """Look up proxy for account from DB. Returns Telethon proxy tuple or None."""
     try:
-        import os, asyncpg
+        import asyncpg
         from urllib.parse import urlparse
         from app.config import settings
         db_url = settings.DATABASE_URL.replace("+asyncpg", "")
@@ -527,7 +527,7 @@ async def discover_groups(
     """
     # Check target limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    _limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
 
     from app.tenant_settings import get_section
     from app.config import settings as app_settings
@@ -558,7 +558,6 @@ async def discover_groups(
     log.info(f"Filter results: {len(results)} → {len(filtered)} (min_members={min_members}, prefer_open={prefer_open})")
 
     # Persist discovered results as targets so the frontend can list them
-    from app.models import Target
     from app.config import settings as _s
     import asyncpg as _asyncpg
     conn_url = _s.DATABASE_URL.replace("+asyncpg", "")
@@ -624,7 +623,6 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
             conn = await asyncpg.connect(conn_url)
             try:
-                from app.models import AccountPool
                 row = await conn.fetchrow(
                     "SELECT s.session_data FROM account_sessions s WHERE s.account_id = $1",
                     __import__('uuid').UUID(account_id),
@@ -664,9 +662,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             return []
 
         try:
-            from telethon.tl.functions.messages import SearchGlobalRequest
             from telethon.tl.functions.contacts import SearchRequest as ContactsSearchRequest
-            from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
 
             for query in queries:
                 try:

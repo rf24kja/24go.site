@@ -158,13 +158,13 @@ def _classify_by_keywords(text: str, cfg: dict | None = None) -> dict:
 
 def _is_spam_message(text: str) -> bool:
     """Pre-check for obvious spam/low-value messages before classification.
-    
+
     Detects: URL-only, verification codes, @username-only, very short.
     """
     text = text.strip()
     if not text:
         return True
-    
+
     # URL-only messages (t.me/ links, http links with no other content)
     url_pattern = re.compile(r'(https?://|t\.me/)', re.IGNORECASE)
     if url_pattern.search(text):
@@ -172,21 +172,21 @@ def _is_spam_message(text: str) -> bool:
         words = text.split()
         if len(words) <= 3 and len(text) < 100:
             return True
-    
+
     # Verification codes (digits only or "code: 123456")
     code_pattern = re.compile(r'^(\d{4,6}|code\s*:?\s*\d{4,6}|код\s*:?\s*\d{4,6})$', re.IGNORECASE)
     if code_pattern.match(text):
         return True
-    
+
     # @username only (no other content)
     at_pattern = re.compile(r'^@\w+$')
     if at_pattern.match(text):
         return True
-    
+
     # Very short messages (< 5 chars) with no commercial keywords
     if len(text) < 5:
         return True
-    
+
     return False
 
 

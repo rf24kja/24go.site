@@ -8,16 +8,14 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-import asyncpg
 import httpx
 import stripe
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app import db_pool
 from app.database import get_db
 from app.models import User
@@ -269,7 +267,7 @@ async def create_checkout(
     current_user: User = Depends(get_current_user),
 ):
     """Create a payment checkout session (Stripe or YooKassa)."""
-    limits = get_plan_limits(body.plan)
+    _limits = get_plan_limits(body.plan)
 
     if body.provider == "stripe":
         url = await _create_stripe_checkout(
@@ -459,7 +457,8 @@ async def yookassa_webhook(request: Request):
     provider_tx_id = obj.get("id", "")
     if YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY and provider_tx_id:
         try:
-            import base64, urllib.request
+            import base64
+            import urllib.request
             auth_str = base64.b64encode(
                 f"{YOOKASSA_SHOP_ID}:{YOOKASSA_SECRET_KEY}".encode()
             ).decode()

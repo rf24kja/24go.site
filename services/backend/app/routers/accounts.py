@@ -116,9 +116,9 @@ async def bulk_create_accounts(
 
     # Check account limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    _limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
     from sqlalchemy import func as _func
-    count = (await db.execute(
+    _count = (await db.execute(
         _func.count()).select_from(
         select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
     )).scalar() or 0
@@ -180,9 +180,9 @@ async def bulk_import_accounts(
     """
     # Check account limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    _limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
     from sqlalchemy import func as _func
-    count = (await db.execute(
+    _count = (await db.execute(
         _func.count()).select_from(
         select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
     )).scalar() or 0
@@ -496,9 +496,9 @@ async def create_account(
 ):
     # Check account limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
+    _limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
     from sqlalchemy import func as _func
-    count = (await db.execute(
+    _count = (await db.execute(
         _func.count()).select_from(
         select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id).subquery()
     )).scalar() or 0
@@ -819,7 +819,7 @@ async def confirm_password(
 
         stored = _json.loads(raw)
         pending_session = stored["session_string"]
-        phone = stored["phone"]
+        _phone = stored["phone"]
 
         proxy = await _resolve_proxy_for_account(account_id)
         client = TelegramClient(StringSession(pending_session), api_id, api_hash, proxy=proxy)

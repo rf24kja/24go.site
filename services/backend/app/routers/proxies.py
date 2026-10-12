@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database import get_db
 from app.models import Proxy, AccountPool, User
 from app.security import get_current_user
@@ -135,7 +134,6 @@ async def test_proxy(proxy_id: UUID, db: AsyncSession = Depends(get_db), user: U
     try:
         from urllib.parse import urlparse
         import socks
-        import socket
 
         parsed = urlparse(proxy.proxy_url)
         scheme = parsed.scheme.lower()
@@ -161,7 +159,7 @@ async def test_proxy(proxy_id: UUID, db: AsyncSession = Depends(get_db), user: U
         return {"status": "ok", "message": f"Connection successful via {scheme}://{host}:{port}"}
     except ImportError:
         return {"status": "error", "message": "pysocks not installed on server"}
-    except Exception as e:
+    except Exception:
         return {"status": "error", "message": "Proxy connection failed"}
 
 

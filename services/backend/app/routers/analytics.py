@@ -1,6 +1,6 @@
 """Time-series analytics endpoint for charts.
 
-ponytail: single GROUP BY queries, fill gaps in Python. 
+ponytail: single GROUP BY queries, fill gaps in Python.
 """
 from datetime import date, timedelta
 
@@ -370,28 +370,31 @@ async def get_vk_overview(
     )
     recent_leads = [
         {
-            "id": str(l.id),
-            "user_handle": l.user_handle,
-            "intent_score": l.intent_score,
-            "source": l.source,
-            "status": l.status,
-            "created_at": l.created_at.isoformat() if l.created_at else None,
+            "id": str(lead.id),
+            "user_handle": lead.user_handle,
+            "intent_score": lead.intent_score,
+            "source": lead.source,
+            "status": lead.status,
+            "created_at": lead.created_at.isoformat() if lead.created_at else None,
         }
-        for l in recent_q.scalars().all()
+        for lead in recent_q.scalars().all()
     ]
 
     # Community performance (group by target)
+    # Community performance (group by target).
+    # ponytail: Lead has no target_name column — join Target for the title.
     community_q = await db.execute(
         select(
-            Lead.target_name,
+            Target.title.label("target_name"),
             func.count(Lead.id).label("leads"),
             func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),
         ).where(
             Lead.tenant_id == tenant_id,
             Lead.platform == "vkontakte",
             Lead.created_at >= since,
-            Lead.target_name.isnot(None),
-        ).group_by(Lead.target_name)
+            Lead.target_id.isnot(None),
+        ).join(Target, Target.id == Lead.target_id)
+        .group_by(Target.title)
         .order_by(func.count(Lead.id).desc())
         .limit(10)
     )

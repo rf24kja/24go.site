@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models import AutoReply, AutoReplyAnswer, User
 from app.security import get_current_user
 from app.schemas import AutoReplyCreate, AutoReplyUpdate, AutoReplyAnswerCreate
-from app.crypto import encrypt as crypto_encrypt, decrypt as crypto_decrypt
+from app.crypto import encrypt as crypto_encrypt
 
 router = APIRouter(prefix="/api/v1/auto-replies", tags=["auto-replies"])
 
@@ -175,7 +175,7 @@ async def add_answer(
     if not ar:
         raise HTTPException(404, "Auto-reply not found")
 
-    count_q = select(func.count()).where(AutoReplyAnswer.auto_reply_id == ar.id)
+    _count_q = select(func.count()).where(AutoReplyAnswer.auto_reply_id == ar.id)
     max_order = (await db.execute(select(func.coalesce(func.max(AutoReplyAnswer.sort_order), 0)).where(AutoReplyAnswer.auto_reply_id == ar.id))).scalar() or 0
 
     answer = AutoReplyAnswer(
