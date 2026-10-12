@@ -1,7 +1,8 @@
 """Account Pool CRUD + Telegram connection endpoints."""
 import logging
-import re
+import time
 import json as _json
+from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import asyncpg
 from app.config import settings
 from app.audit import log_event
-from app.crypto import encrypt, decrypt
+from app.crypto import encrypt
 from app.database import get_db
 from app.models import AccountPool, User
 from app.quota import PLAN_LIMITS, get_subscription_plan
@@ -28,8 +29,6 @@ log = logging.getLogger(__name__)
 async def _resolve_proxy_for_account(account_id: UUID) -> tuple | None:
     """Look up proxy for account from DB. Returns Telethon proxy tuple or None."""
     try:
-        import os
-        from urllib.parse import urlparse
         db_url = settings.DATABASE_URL.replace("+asyncpg", "")
         conn = await asyncpg.connect(db_url)
         try:
@@ -380,7 +379,7 @@ async def bulk_import_vk_accounts(
                 "error": None,
             })
 
-        except Exception as e:
+        except Exception:
             failed += 1
             results.append({"identifier": str(group_id or i), "status": "failed", "error": "Import failed"})
 
@@ -442,7 +441,8 @@ async def bulk_connect_accounts(
             session_string = client.session.save()
             await client.disconnect()
 
-            import redis, json as _json
+            import redis
+            import json as _json
             r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
             r.setex(f"tg_code:{account_id}", 600, _json.dumps({
                 "phone": account.account_identifier,
@@ -474,11 +474,11 @@ async def list_accounts(
     q = select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id)
     if status_filter:
         q = q.where(AccountPool.status == status_filter)
-    
+
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
-    
+
     result = await db.execute(q.order_by(AccountPool.created_at.desc()).limit(limit).offset(offset))
     accounts = result.scalars().all()
     # Strip session_data from list response (sensitive)
@@ -599,7 +599,8 @@ async def connect_telegram(
         log.info(f"connect_telegram: phone={_mask_phone(body.phone)} has_hash=True")
 
         # Store BOTH session string and phone_code_hash in Redis
-        import redis, json
+        import redis
+        import json
         r = redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
         r.setex(f"tg_code:{account_id}", 600, json.dumps({
             "phone": body.phone,
@@ -660,7 +661,8 @@ async def confirm_telegram(
         from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneCodeExpiredError
 
         # Retrieve phone_code_hash from Redis
-        import redis as _redis, json as _json
+        import redis as _redis
+        import json as _json
         r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
         raw = r.get(f"tg_code:{account_id}")
         if not raw:
@@ -808,7 +810,8 @@ async def confirm_password(
         from telethon import TelegramClient
         from telethon.sessions import StringSession
 
-        import redis as _redis, json as _json
+        import redis as _redis
+        import json as _json
         r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"))
         raw = r.get(f"tg_2fa:{account_id}")
         if not raw:
@@ -928,19 +931,14 @@ async def delete_account(
     from app.celery_app import celery
     celery.control.revoke(f"listener-{account_id}", terminate=True, signal="SIGTERM")
 
-    # Delete session and proxy from DB
+    # Delete all associated data from DB
     import uuid as _uuid
     import asyncpg
     conn = await asyncpg.connect(settings.DATABASE_URL.replace("+asyncpg", ""))
     try:
-        await conn.execute(
-            "DELETE FROM account_sessions WHERE account_id = $1",
-            _uuid.UUID(str(account_id)),
-        )
-        await conn.execute(
-            "DELETE FROM account_proxies WHERE account_id = $1",
-            _uuid.UUID(str(account_id)),
-        )
+        aid = _uuid.UUID(str(account_id))
+        for table in ("account_sessions", "account_proxies"):
+            await conn.execute(f"DELETE FROM {table} WHERE account_id = $1", aid)
     finally:
         await conn.close()
 
@@ -978,7 +976,7 @@ async def disconnect_account(
 
     # Also revoke VK listener by task name
     if platform == "vkontakte":
-        import redis as _redis, json as _json
+        import redis as _redis
         r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
         vk_task_id = r.get(f"listener_task:{account_id}")
         if vk_task_id:
@@ -1118,7 +1116,8 @@ async def reconnect_account(
             args=[str(current_user.tenant_id), str(account_id), vk_gid],
         )
         # Set VK status
-        import redis as _redis, json as _json
+        import redis as _redis
+        import json as _json
         r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
         r.set(f"vk_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
     else:
@@ -1129,7 +1128,8 @@ async def reconnect_account(
             queue="listener",
         )
         # Set TG status
-        import redis as _redis, json as _json
+        import redis as _redis
+        import json as _json
         r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
         r.set(f"tg_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
 
@@ -1182,7 +1182,7 @@ async def connect_vk(
             raise HTTPException(400, f"Token belongs to community {g['id']} ({g['name']}), not {body.group_id}")
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(400, "Invalid VK token — check token permissions")
 
     # Store group token encrypted in session_data

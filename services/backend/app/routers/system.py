@@ -13,7 +13,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
-from app.database import get_db
 from app.models import User
 from app.security import get_current_user
 
@@ -129,7 +128,7 @@ async def system_info(
         # Count records
         ALLOWED_TABLES = frozenset({"leads", "campaigns", "targets", "account_pool", "subscriptions", "audit_log", "scoring_rules"})
         counts = {}
-        for table in tables:
+        for table in ALLOWED_TABLES:
             if table not in ALLOWED_TABLES:
                 continue
             try:

@@ -5,7 +5,7 @@ without needing a live Telegram listener — useful for testing and manual ops.
 """
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,12 +67,12 @@ async def list_leads(
     # ponytail: dashboard sends platform=; honor it or the toggle lies
     if platform in ("telegram", "vkontakte", "whatsapp", "max"):
         q = q.where(Lead.platform == platform)
-    
+
     # Get total count for pagination
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
-    
+
     result = await db.execute(q.order_by(Lead.created_at.desc()).limit(limit).offset(offset))
     return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 

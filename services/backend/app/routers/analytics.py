@@ -2,7 +2,6 @@
 
 ponytail: single GROUP BY queries, fill gaps in Python. 
 """
-import uuid
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query
@@ -11,7 +10,7 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import DailyAnalytic, Lead, LeadIntentLevel, PostingLog, Target, User
+from app.models import DailyAnalytic, Lead, LeadIntentLevel, PostingLog, Target, User, AccountPool
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])

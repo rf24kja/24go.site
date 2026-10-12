@@ -57,7 +57,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install celery redis asyncpg httpx pytest croniter
+      - run: pip install celery redis asyncpg httpx pytest croniter sqlalchemy
       - run: cd services/worker && python -m pytest tests/ -v --tb=short
 
   test-dashboard:

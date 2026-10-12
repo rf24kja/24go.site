@@ -3,11 +3,9 @@ import logging
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import User
 from app.security import get_current_user
 from app.tenant_settings import DEFAULTS, get_settings, get_section, upsert_settings, reset_section

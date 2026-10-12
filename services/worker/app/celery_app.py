@@ -28,7 +28,8 @@ celery.conf.update(
     enable_utc=True,
     result_expires=3600,
     task_routes={
-        "app.tasks.parser.*": {"queue": "parser"},
+        # ponytail: parser.py is a stub with no tasks — no app.tasks.parser.* route
+        # (dead globs hide misroutes; the beat-guard test enforces this).
         "app.tasks.poster.*": {"queue": "poster"},
         "app.tasks.warmup.*": {"queue": "warmup"},
         "app.tasks.listener.*": {"queue": "listener"},

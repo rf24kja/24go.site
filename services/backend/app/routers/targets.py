@@ -35,11 +35,11 @@ async def list_targets(
         q = q.where(Target.niche == niche)
     if platform:
         q = q.where(Target.platform == platform)
-    
+
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
-    
+
     result = await db.execute(q.order_by(Target.created_at.desc()).limit(limit).offset(offset))
     return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 
@@ -195,7 +195,8 @@ async def check_membership(
     async def _check():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
-        import os, asyncpg
+        import os
+        import asyncpg
         from app.crypto import decrypt as dec
         from app.config import settings as cfg
 
@@ -256,6 +257,7 @@ async def join_target(
     body: JoinTargetRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    request: Request = None,
 ):
     """Join a target group/channel with selected or all active accounts."""
     import asyncio
@@ -302,7 +304,8 @@ async def join_target(
     async def _join():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
-        import os, asyncpg
+        import os
+        import asyncpg
         from app.crypto import decrypt as dec
         from app.config import settings as cfg
 
@@ -338,7 +341,7 @@ async def join_target(
                     pass
                 await client.join_chat(entity)
                 results.append({"account_id": str(account.id), "status": "joined"})
-            except Exception as e:
+            except Exception:
                 results.append({"account_id": str(account.id), "status": "error", "error": "Scrape failed"})
             finally:
                 await client.disconnect()
@@ -449,7 +452,8 @@ async def recent_posts(
     async def _fetch():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
-        import os, asyncpg
+        import os
+        import asyncpg
         from app.crypto import decrypt as dec
         from app.config import settings as cfg
 
