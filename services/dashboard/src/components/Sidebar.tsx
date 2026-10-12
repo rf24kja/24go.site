@@ -36,7 +36,6 @@ export function Sidebar() {
     { href: "/targets", label: t("sidebar.groupSearch"), icon: Radar, feature: "targets" },
     { href: "/groups", label: t("sidebar.monitoring"), icon: Radio, feature: "groups" },
     { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle, feature: "accounts" },
-    { href: "/max-accounts", label: t("sidebar.maxAccounts"), icon: Bot, feature: "accounts" },
     { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.mailings"), icon: Send, feature: "mailings" },
@@ -56,7 +55,6 @@ export function Sidebar() {
     { href: "/targets", label: t("sidebar.vkGroupSearch"), icon: Radar, feature: "targets" },
     { href: "/groups", label: t("sidebar.vkMonitoring"), icon: Radio, feature: "groups" },
     { href: "/accounts", label: t("sidebar.vkCommunities"), icon: UserCircle, feature: "accounts" },
-    { href: "/max-accounts", label: t("sidebar.maxAccounts"), icon: Bot, feature: "accounts" },
     { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
     { href: "/campaigns", label: t("sidebar.vkCampaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.vkMailings"), icon: Send, feature: "mailings" },
@@ -69,11 +67,17 @@ export function Sidebar() {
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
     { href: "/vk-settings", label: t("sidebar.vkSettings"), icon: Cog },
+  ] : platform === "max" ? [
+    // ponytail: MAX is a full 4th section — bots, shared leads/billing/settings.
+    // No campaigns/mailings/targets here: those creation flows are TG/VK-only.
+    { href: "/max-accounts", label: t("sidebar.maxAccounts"), icon: Bot, feature: "accounts" },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
+    { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
+    { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : [
     { href: "/wa-overview", label: t("sidebar.waOverview"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/wa-accounts", label: t("sidebar.waAccounts"), icon: UserCircle, feature: "accounts" },
-    { href: "/max-accounts", label: t("sidebar.maxAccounts"), icon: Bot, feature: "accounts" },
     { href: "/wa-groups", label: t("sidebar.waGroups"), icon: Radio, feature: "groups" },
     { href: "/contacts", label: t("sidebar.contacts"), icon: UsersGroup, feature: "groups" },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
@@ -159,6 +163,12 @@ export function Sidebar() {
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "whatsapp" ? "bg-green-500/20 text-green-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               WA
+            </button>
+            <button
+              onClick={() => setPlatform("max")}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "max" ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              MAX
             </button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">

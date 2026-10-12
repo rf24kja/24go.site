@@ -68,7 +68,8 @@ export default function MailingsPage() {
         delay_seconds: parseInt(form.delay_seconds) || 30,
       });
       setShowCreate(false);
-      setForm({ name: "", message_text: "", platform, delay_seconds: "30" });
+      // ponytail: mailings are TG/VK-only — never seed "max" (backend would 422)
+      setForm({ name: "", message_text: "", platform: platform === "max" ? "telegram" : platform, delay_seconds: "30" });
       load();
       toast(t("mailings.created"), "success");
     } catch (e: any) {
