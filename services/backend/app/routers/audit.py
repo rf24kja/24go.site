@@ -1,6 +1,7 @@
 """Audit log endpoints: view change history."""
+import os
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -11,7 +12,7 @@ from app.audit import get_audit_log
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 
-OWNER_EMAIL = "rf24krsk@gmail.com"
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "rf24krsk@gmail.com")
 
 
 @router.get("/")

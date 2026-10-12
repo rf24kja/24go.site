@@ -1,7 +1,6 @@
 """Middleware to set PostgreSQL RLS tenant context per request."""
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
 from jose import JWTError, jwt
 
 from app.config import settings

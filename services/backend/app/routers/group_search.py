@@ -1,6 +1,5 @@
 """Group Search API — TgStat-powered group discovery with caching and billing."""
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func

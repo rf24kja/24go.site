@@ -3,7 +3,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.config import settings
@@ -61,7 +61,7 @@ async def test_smtp(
             server.sendmail(body.user, body.to_email, msg.as_string())
 
         return SmtpTestResponse(status="ok", message=f"Test email sent to {body.to_email}")
-    except Exception as e:
+    except Exception:
         return SmtpTestResponse(status="error", message="SMTP connection failed — check host, port, and credentials")
 
 

@@ -5,7 +5,6 @@ Automatically logs lead status changes, campaign edits, and billing events.
 import json
 import logging
 import uuid
-from datetime import datetime
 
 import asyncpg
 

@@ -4,9 +4,8 @@ Ponytail: Redis fast-path for quota checks, PostgreSQL for persistence.
 """
 import json
 import logging
-import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import asyncpg
 import redis

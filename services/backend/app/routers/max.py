@@ -10,11 +10,10 @@ import logging
 import os
 import secrets
 import uuid as _uuid
-from datetime import datetime, timezone
 
 import asyncpg
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 

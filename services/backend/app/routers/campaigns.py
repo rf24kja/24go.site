@@ -24,11 +24,11 @@ async def list_campaigns(
     current_user: User = Depends(get_current_user),
 ):
     q = select(Campaign).where(Campaign.tenant_id == current_user.tenant_id, Campaign.is_active == True)
-    
+
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
-    
+
     result = await db.execute(q.order_by(Campaign.created_at.desc()).limit(limit).offset(offset))
     return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
 

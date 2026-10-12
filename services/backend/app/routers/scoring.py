@@ -1,11 +1,9 @@
 """Scoring rules API: manage lead classification rules."""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.audit import log_event
-from app.database import get_db
 from app.models import User
 from app.security import get_current_user
 from app.scoring import get_rules, create_rule, delete_rule

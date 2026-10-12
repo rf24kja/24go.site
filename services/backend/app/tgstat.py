@@ -1,6 +1,5 @@
 """TgStat API integration for group discovery."""
 import hashlib
-import json
 import logging
 import os
 import re

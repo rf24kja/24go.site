@@ -8,7 +8,7 @@ import uuid
 from collections import deque
 
 import sentry_sdk
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query, Request, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from jose import JWTError, jwt

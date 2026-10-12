@@ -1,6 +1,4 @@
 """Mailing (broadcasting) endpoints: CRUD, import recipients, start/pause/stop."""
-import csv
-import io
 import uuid as _uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -117,14 +115,14 @@ async def import_recipients(
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            
+
             # Extract username from various formats
             username = line
             if "t.me/" in line:
                 # Extract from URL: https://t.me/username or https://t.me/+invite
                 username = line.split("t.me/")[-1].split("/")[0].split("?")[0]
             username = username.lstrip("@").strip()
-            
+
             if not username or len(username) < 3:
                 errors.append(f"Line {i}: invalid username '{line}'")
                 skipped += 1

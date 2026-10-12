@@ -2,7 +2,6 @@
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,10 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User, UserBalance, SearchQueryLog
+from app.models import User, SearchQueryLog
 from app.schemas import BalanceResponse, TopUpRequest, TopUpResponse, QueryLogResponse
 from app.security import get_current_user
-from app.balance import get_or_create_balance, deduct_balance
+from app.balance import get_or_create_balance
 
 log = logging.getLogger(__name__)
 
