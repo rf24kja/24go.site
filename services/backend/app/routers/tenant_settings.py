@@ -30,35 +30,6 @@ async def list_settings(
     return {"settings": cfg, "defaults": DEFAULTS}
 
 
-@router.get("/{section}")
-async def get_settings_section(
-    section: str,
-    current_user: User = Depends(get_current_user),
-):
-    """Get a single section (llm, warmup, posting, notifications, groups)."""
-    if section not in DEFAULTS:
-        return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
-    cfg = await get_section(DATABASE_URL, str(current_user.tenant_id), section)
-    return {"section": section, "settings": cfg, "defaults": DEFAULTS.get(section, {})}
-
-
-@router.put("/{section}")
-async def update_settings_section(
-    section: str,
-    body: SettingsUpdate,
-    current_user: User = Depends(get_current_user),
-):
-    """Update a single section. Merges with existing (deep merge)."""
-    if section not in DEFAULTS:
-        return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
-
-    # Wrap in section key if not already
-    update = body.settings
-    if section not in update:
-        update = {section: update}
-
-    merged = await upsert_settings(DATABASE_URL, str(current_user.tenant_id), update)
-    return {"section": section, "settings": merged.get(section, {}), "status": "saved"}
 
 
 @router.post("/reset/{section}")
@@ -240,3 +211,35 @@ async def delete_account(body: DeleteAccountRequest, current_user: User = Depend
     finally:
         await conn.close()
     return {"status": "deleted"}
+
+# ponytail: parameterized section routes live LAST — literal routes above must match first
+# (precedent: /api-keys and /export were shadowed for months, 2026-10 audit)
+@router.get("/{section}")
+async def get_settings_section(
+    section: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Get a single section (llm, warmup, posting, notifications, groups)."""
+    if section not in DEFAULTS:
+        return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
+    cfg = await get_section(DATABASE_URL, str(current_user.tenant_id), section)
+    return {"section": section, "settings": cfg, "defaults": DEFAULTS.get(section, {})}
+
+
+@router.put("/{section}")
+async def update_settings_section(
+    section: str,
+    body: SettingsUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update a single section. Merges with existing (deep merge)."""
+    if section not in DEFAULTS:
+        return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
+
+    # Wrap in section key if not already
+    update = body.settings
+    if section not in update:
+        update = {section: update}
+
+    merged = await upsert_settings(DATABASE_URL, str(current_user.tenant_id), update)
+    return {"section": section, "settings": merged.get(section, {}), "status": "saved"}

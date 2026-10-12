@@ -891,7 +891,5 @@ export async function bulkTagContacts(token: string, contactIds: string[], tags:
 }
 
 // ── WA Overview ─────────────────────────────────────────────────────
+// ponytail: wa-overview page composes client-side; no such backend route.
 
-export async function getWaOverview(token: string) {
-  return api<any>("/api/v1/wa/overview", { token });
-}

@@ -34,4 +34,15 @@ async def _clean_auth_tables():
             await conn.commit()
     finally:
         await engine.dispose()
+    # ponytail: flush Redis too — register/login rate limits would bleed across tests
+    try:
+        import redis.asyncio as aioredis
+
+        r = aioredis.from_url(
+            os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True
+        )
+        await r.flushdb()
+        await r.aclose()
+    except Exception:
+        pass
     yield
