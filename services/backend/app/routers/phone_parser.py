@@ -432,14 +432,17 @@ async def list_contacts(
     if search:
         q = q.where(Contact.phone.ilike(f"%{search}%") | Contact.name.ilike(f"%{search}%"))
     if has_tg is not None:
+        # ponytail: real boolean column (Contact has no metadata_ JSONB)
         if has_tg:
-            q = q.where(Contact.metadata_["has_tg"].as_boolean() == True)
+            q = q.where(Contact.has_tg == True)
         else:
-            q = q.where(Contact.metadata_["has_tg"].as_boolean() != True)
+            q = q.where(Contact.has_tg != True)
     if tags:
         tag_list = [t.strip() for t in tags.split(",")]
         for tag in tag_list:
-            q = q.where(Contact.metadata_["tags"].astext.contains(tag))
+            # ponytail: tags is a JSONB array — @> containment, not text search
+            # (Contact has no .astext on this column; that 500'd every filtered call)
+            q = q.where(Contact.tags.contains([tag]))
     if date_from:
         q = q.where(Contact.created_at >= date_from)
     if date_to:
@@ -462,12 +465,61 @@ async def contact_stats(
     base = select(func.count()).where(Contact.tenant_id == current_user.tenant_id)
     total = (await db.execute(base)).scalar() or 0
     with_tg = (await db.execute(
-        base.where(Contact.metadata_["has_tg"].as_boolean() == True)
+        base.where(Contact.has_tg == True)
     )).scalar() or 0
     with_viber = (await db.execute(
-        base.where(Contact.metadata_["has_viber"].as_boolean() == True)
+        base.where(Contact.has_viber == True)
     )).scalar() or 0
     return {"total": total, "with_tg": with_tg, "with_viber": with_viber}
+
+
+@router.get("/contacts/export")
+async def export_contacts_get(
+    phone: str | None = None,
+    platform: str | None = None,
+    tags: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CSV export with optional filters. Lives ABOVE /{contact_id} on purpose:
+    ponytail: FastAPI matches in registration order — /{contact_id} would
+    swallow 'export' and 422 on UUID parse (found by tests, 2026-10)."""
+    q = select(Contact).where(Contact.tenant_id == current_user.tenant_id)
+    if phone:
+        q = q.where(Contact.phone.ilike(f"%{phone}%"))
+    if tags:
+        for tag in [t.strip() for t in tags.split(",")]:
+            q = q.where(Contact.tags.contains([tag]))
+    if platform == "telegram":
+        q = q.where(Contact.has_tg == True)
+    elif platform == "viber":
+        q = q.where(Contact.has_viber == True)
+
+    result = await db.execute(q.order_by(Contact.created_at.desc()))
+    contacts = result.scalars().all()
+
+    def generate():
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["phone", "name", "wa_jid", "has_tg", "has_viber", "tags", "notes", "created_at"])
+        for c in contacts:
+            writer.writerow([
+                c.phone,
+                c.name or "",
+                c.wa_jid or "",
+                c.has_tg or False,
+                c.has_viber or False,
+                ",".join(c.tags or []),
+                c.notes or "",
+                c.created_at.isoformat() if c.created_at else "",
+            ])
+            yield buf.getvalue()
+            buf.seek(0)
+            buf.truncate(0)
+
+    return StreamingResponse(generate(), media_type="text/csv", headers={
+        "Content-Disposition": "attachment; filename=contacts.csv"
+    })
 
 
 @router.get("/contacts/{contact_id}")
@@ -494,12 +546,10 @@ async def update_contact(
 ):
     """Update contact tags/notes."""
     contact = await _get_contact(db, contact_id, current_user.tenant_id)
-    meta = dict(contact.metadata_ or {})
     if body.tags is not None:
-        meta["tags"] = body.tags
+        contact.tags = body.tags
     if body.notes is not None:
-        meta["notes"] = body.notes
-    contact.metadata_ = meta
+        contact.notes = body.notes
     await db.commit()
     await db.refresh(contact)
     return contact
@@ -551,16 +601,16 @@ async def export_contacts(
     def generate():
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(["phone", "name", "wa_id", "is_group", "tags", "notes", "created_at"])
+        writer.writerow(["phone", "name", "wa_jid", "has_tg", "has_viber", "tags", "notes", "created_at"])
         for c in contacts:
-            meta = c.metadata_ or {}
             writer.writerow([
                 c.phone,
                 c.name or "",
-                c.wa_id or "",
-                c.is_group,
-                ",".join(meta.get("tags", [])),
-                meta.get("notes", ""),
+                c.wa_jid or "",
+                c.has_tg or False,
+                c.has_viber or False,
+                ",".join(c.tags or []),
+                c.notes or "",
                 c.created_at.isoformat() if c.created_at else "",
             ])
             yield buf.getvalue()
@@ -588,14 +638,12 @@ async def bulk_tag(
     updated = 0
     for cid in body.contact_ids:
         contact = await _get_contact(db, cid, current_user.tenant_id)
-        meta = dict(contact.metadata_ or {})
-        existing_tags = set(meta.get("tags", []))
+        existing_tags = set(contact.tags or [])
         if body.action == "add":
             existing_tags.update(body.tags)
         else:
             existing_tags -= set(body.tags)
-        meta["tags"] = sorted(existing_tags)
-        contact.metadata_ = meta
+        contact.tags = sorted(existing_tags)
         updated += 1
     await db.commit()
     return {"updated": updated}
@@ -616,13 +664,8 @@ async def assign_campaign(
     updated = 0
     for cid in body.contact_ids:
         contact = await _get_contact(db, cid, current_user.tenant_id)
-        meta = dict(contact.metadata_ or {})
-        campaigns = meta.get("campaigns", [])
-        cid_str = str(body.campaign_id)
-        if cid_str not in [str(c) for c in campaigns]:
-            campaigns.append(cid_str)
-        meta["campaigns"] = campaigns
-        contact.metadata_ = meta
+        # ponytail: single FK column is the honest mapping (no metadata_ JSONB on Contact)
+        contact.last_mailing_campaign_id = body.campaign_id
         updated += 1
     await db.commit()
     return {"updated": updated, "campaign_id": str(body.campaign_id)}
