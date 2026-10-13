@@ -3,12 +3,9 @@
 ponytail: list/bulk-tag live in phone_parser.py (registered first wins).
 This module keeps only the endpoints unique to it.
 """
-import csv
-import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
