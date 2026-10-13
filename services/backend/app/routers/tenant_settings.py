@@ -198,10 +198,23 @@ async def delete_account(body: DeleteAccountRequest, current_user: User = Depend
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         tenant_id = current_user.tenant_id
-        ALLOWED_TABLES = frozenset({"leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"})
-        for table in ["leads", "account_pool", "monitored_groups", "campaigns", "mailings", "auto_replies", "api_keys"]:
-            if table not in ALLOWED_TABLES:
-                continue
+        # ponytail: every tenant-owned table, no exceptions — the old list kept
+        # contacts (PII!), targets, proxies, wa_*, users (login still worked!).
+        # Order-free: all FKs are ON DELETE CASCADE / SET NULL.
+        # billing_transactions intentionally kept — money trail for accounting.
+        # search_cache is global (no tenant_id) and TTL-expires — untouched.
+        TABLES = (
+            "posting_logs", "daily_analytics",
+            "mailing_recipients", "mailings",
+            "auto_reply_answers", "auto_replies",
+            "leads", "targets", "proxies",
+            "account_sessions", "account_pool",
+            "monitored_groups", "campaigns",
+            "contacts", "wa_accounts", "wa_groups",
+            "user_balances", "search_query_logs", "blog_posts",
+            "api_keys", "subscriptions", "usage_logs", "users",
+        )
+        for table in TABLES:
             try:
                 await conn.execute(f"DELETE FROM {table} WHERE tenant_id = $1", tenant_id)
             except Exception:
