@@ -6,7 +6,9 @@
 export function getApiBase(): string {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
   if (typeof window === "undefined") return "https://api.24go.site"; // SSR: always use full URL
-  if (window.location.hostname === "localhost") return "http://localhost:8000";
+  // ponytail: compose maps fastapi to host :8001 (container :8000 is unreachable
+  // from the browser). Direct-uvicorn devs override via .env.local.
+  if (window.location.hostname === "localhost") return "http://localhost:8001";
   return "https://api.24go.site";
 }
 

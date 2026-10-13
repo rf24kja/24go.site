@@ -281,8 +281,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
+    # ponytail: no NEXT_PUBLIC_API_URL here — it inlines at BUILD time and would
+    # poison prod browsers with localhost. The app falls back to api.24go.site
+    # in prod and localhost:8001 (this compose's fastapi mapping) locally.
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8001
+      PORT: 3000
     deploy:
       resources:
         limits:
