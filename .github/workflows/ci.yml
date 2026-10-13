@@ -93,3 +93,5 @@ jobs:
       # ponytail: E501 line length, E712 SQLAlchemy `== True` idiom,
       # E402 intentional lazy imports (heavy deps) are accepted project-wide
       - run: ruff check services/backend/app/ --select E,F,W --ignore E501,E712,E402
+      # ponytail: bot ships to prod with no test suite — at least gate syntax
+      - run: python -m py_compile services/bot/bot.py
