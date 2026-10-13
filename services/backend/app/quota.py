@@ -63,12 +63,20 @@ LLM_COST_PER_MILLION = {
 }
 
 
+# ponytail: one shared client — from_url per call built a throwaway pool
+# (new TCP connection on every quota check, the hot path)
+_redis: redis.Redis | None = None
+
+
 def _get_redis() -> redis.Redis:
-    try:
-        return redis.from_url(settings.REDIS_URL, decode_responses=True)
-    except Exception:
-        # ponytail: fallback if REDIS_URL format is wrong
-        return redis.from_url("redis://redis:6379/0", decode_responses=True)
+    global _redis
+    if _redis is None:
+        try:
+            _redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
+        except Exception:
+            # ponytail: fallback if REDIS_URL format is wrong
+            _redis = redis.from_url("redis://redis:6379/0", decode_responses=True)
+    return _redis
 
 
 async def check_quota(
