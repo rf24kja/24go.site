@@ -23,23 +23,31 @@ import httpx
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 API_URL = os.getenv("API_URL", "http://fastapi:8000")
+BOT_API_KEY = os.getenv("BOT_API_KEY", "")
 OWNER_CHAT_ID = int(os.getenv("OWNER_CHAT_ID", "0"))
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("bot")
 
+if not BOT_API_KEY:
+    log.warning("BOT_API_KEY not set — backend calls will 401.")
+
 # ── Helpers ──────────────────────────────────────────────────────────────
+
+def _headers() -> dict:
+    return {"X-API-Key": BOT_API_KEY} if BOT_API_KEY else {}
+
 
 async def api_get(path: str) -> dict | list | None:
     async with httpx.AsyncClient(timeout=10) as c:
-        r = await c.get(f"{API_URL}{path}")
+        r = await c.get(f"{API_URL}{path}", headers=_headers())
         if r.status_code == 200:
             return r.json()
     return None
 
 async def api_post(path: str, data: dict) -> dict | None:
     async with httpx.AsyncClient(timeout=10) as c:
-        r = await c.post(f"{API_URL}{path}", json=data)
+        r = await c.post(f"{API_URL}{path}", json=data, headers=_headers())
         if r.status_code == 200:
             return r.json()
     return None

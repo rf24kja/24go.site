@@ -20,7 +20,7 @@ from app import db_pool
 from app.database import get_db
 from app.models import User
 from app.quota import PLAN_LIMITS, get_plan_limits
-from app.security import get_current_user
+from app.security import get_current_user, get_current_user_or_api_key
 
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
@@ -89,7 +89,8 @@ class InvoiceItem(BaseModel):
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # ponytail: bot reads this with X-API-Key
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     """Get current subscription details for the tenant."""
     from app.billing_models import Subscription
@@ -161,7 +162,8 @@ async def cancel_subscription(
 @router.get("/usage", response_model=UsageSummary)
 async def get_usage(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # ponytail: bot reads this with X-API-Key
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     """Get usage summary for the current billing period."""
     from app.billing_models import Subscription, UsageLog

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Lead, Target, User
-from app.security import get_current_user
+from app.security import get_current_user, get_current_user_or_api_key
 from app.schemas import LeadResponse
 from app.config import settings
 
@@ -57,7 +57,8 @@ async def list_leads(
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # ponytail: bot reads this with X-API-Key
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     q = select(Lead).where(Lead.tenant_id == current_user.tenant_id)
     if intent_score:
@@ -99,7 +100,8 @@ class QualifyResponse(BaseModel):
 @router.post("/qualify", response_model=QualifyResponse)
 async def qualify_lead(
     body: QualifyRequest,
-    current_user: User = Depends(get_current_user),
+    # ponytail: bot calls this with X-API-Key
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     """Classify a message for buying intent using LLM.
 

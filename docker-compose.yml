@@ -337,6 +337,7 @@ services:
       - fastapi
     environment:
       BOT_TOKEN: ${BOT_TOKEN:-}
+      BOT_API_KEY: ${BOT_API_KEY:-}
       API_URL: http://fastapi:8000
       OWNER_CHAT_ID: ${OWNER_CHAT_ID:-0}
     deploy:
