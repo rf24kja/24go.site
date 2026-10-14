@@ -66,7 +66,7 @@ async def get_analytics(
 
     def _pf():
         # ponytail: dashboard sends platform=; honor it or per-platform numbers lie
-        if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
             return [Lead.platform == platform]
         return []
 
@@ -250,7 +250,7 @@ async def leaderboard(
         Campaign.last_posted_at,
     ).where(Campaign.tenant_id == tenant_id, Campaign.is_active == True)
     # ponytail: leaderboard ranks campaigns — per-service like everything else
-    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+    if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
         camp_q = camp_q.where(Campaign.platform == platform)
     result = await db.execute(camp_q)
     campaigns = result.all()

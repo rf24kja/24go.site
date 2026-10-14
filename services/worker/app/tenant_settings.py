@@ -166,7 +166,7 @@ def _migrate_old_sections(raw: dict) -> dict:
 
 # Services with per-service settings overlays (mirrors backend
 # app/tenant_settings.py — same shape, workers read their platform's view).
-SERVICES = ("telegram", "vkontakte", "whatsapp", "max")
+SERVICES = ("telegram", "vkontakte", "whatsapp", "max", "facebook")
 
 
 def _apply_service_overlay(merged: dict, raw: dict, service: str | None) -> dict:

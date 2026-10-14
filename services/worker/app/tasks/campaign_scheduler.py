@@ -117,6 +117,11 @@ async def _run():
             log.debug(f"Campaign {c['id']}: skipping WhatsApp target (unsupported)")
             continue
 
+        # ponytail: no FB poster in v1 either — same bogus-URL class as above.
+        if platform == "facebook":
+            log.debug(f"Campaign {c['id']}: skipping Facebook target (unsupported)")
+            continue
+
         # ── Pick an available account (matching platform) ────────
         account = await fetchrow(
             "SELECT id, account_identifier FROM account_pool "

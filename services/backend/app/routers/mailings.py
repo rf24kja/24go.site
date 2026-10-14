@@ -43,7 +43,7 @@ async def list_mailings(
 ):
     q = select(Mailing).where(Mailing.tenant_id == current_user.tenant_id)
     # ponytail: mailings are per-service — dashboard toggle sends ?platform=
-    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+    if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
         q = q.where(Mailing.platform == platform)
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0

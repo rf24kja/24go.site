@@ -905,3 +905,25 @@ export async function bulkTagContacts(token: string, contactIds: string[], tags:
 // ── WA Overview ─────────────────────────────────────────────────────
 // ponytail: wa-overview page composes client-side; no such backend route.
 
+// ── Facebook ────────────────────────────────────────────────────────
+export async function fbConnect(token: string, data: { profile_name: string; c_user: string; xs: string }) {
+  return api<{ id: string; status: string; note?: string }>("/api/v1/fb/connect", {
+    method: "POST", body: JSON.stringify(data), token,
+  });
+}
+export async function fbMarketplaceSearch(token: string, data: {
+  query: string; account_id?: string; location?: string;
+  min_price?: number; max_price?: number; bedrooms?: number; limit?: number;
+}) {
+  return api<{ job_id: string; status: string }>("/api/v1/fb/marketplace/search", {
+    method: "POST", body: JSON.stringify(data), token,
+  });
+}
+export async function fbMarketplaceStatus(token: string, jobId: string) {
+  return api<{ job_id: string; status: string; done?: boolean; found?: number; errors?: string[]; error?: string | null }>(`/api/v1/fb/marketplace/status/${jobId}`, { token });
+}
+export async function fbMarketplaceResults(token: string, query: string, limit = 50) {
+  return api<{ items: { title: string; price: number | null; link: string; image?: string; bedrooms?: number | null; first_seen: string; last_seen: string }[]; query: string }>(
+    `/api/v1/fb/marketplace/results?query=${encodeURIComponent(query)}&limit=${limit}`, { token });
+}
+

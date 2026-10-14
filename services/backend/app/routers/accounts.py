@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import asyncpg
@@ -241,18 +241,15 @@ async def bulk_import_accounts(
             db.add(account)
             await db.flush()  # get the ID
 
-            # Insert session into account_sessions table
+            # Insert session into account_sessions table — SAME session:
+            # a separate connection can't see our uncommitted account row
+            # (FK violation). Fixes silent bulk-import failures.
             import uuid as _uuid
-            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
-            conn = await asyncpg.connect(conn_url)
-            try:
-                await conn.execute(
-                    """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
-                       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
-                    _uuid.UUID(str(account.id)), encrypted_session,
-                )
-            finally:
-                await conn.close()
+            await db.execute(
+                text("""INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                       VALUES (gen_random_uuid(), :a, :s, NOW(), NOW())"""),
+                {"a": _uuid.UUID(str(account.id)), "s": encrypted_session},
+            )
 
             # Dispatch validation task
             try:
@@ -345,29 +342,25 @@ async def bulk_import_vk_accounts(
             db.add(account)
             await db.flush()
 
-            # Store encrypted token in account_sessions
+            # Store encrypted token in account_sessions — SAME session:
+            # a separate connection can't see our uncommitted account row.
             import uuid as _uuid
             encrypted = encrypt(token)
-            conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
-            conn = await asyncpg.connect(conn_url)
-            try:
-                existing = await conn.fetchrow(
-                    "SELECT id FROM account_sessions WHERE account_id = $1",
-                    _uuid.UUID(str(account.id)),
+            existing = (await db.execute(
+                text("SELECT id FROM account_sessions WHERE account_id = :a"),
+                {"a": _uuid.UUID(str(account.id))},
+            )).first()
+            if existing:
+                await db.execute(
+                    text("UPDATE account_sessions SET session_data = :s, updated_at = NOW() WHERE account_id = :a"),
+                    {"s": encrypted, "a": _uuid.UUID(str(account.id))},
                 )
-                if existing:
-                    await conn.execute(
-                        "UPDATE account_sessions SET session_data = $1, updated_at = NOW() WHERE account_id = $2",
-                        encrypted, _uuid.UUID(str(account.id)),
-                    )
-                else:
-                    await conn.execute(
-                        """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
-                           VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
-                        _uuid.UUID(str(account.id)), encrypted,
-                    )
-            finally:
-                await conn.close()
+            else:
+                await db.execute(
+                    text("""INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                           VALUES (gen_random_uuid(), :a, :s, NOW(), NOW())"""),
+                    {"a": _uuid.UUID(str(account.id)), "s": encrypted},
+                )
 
             imported += 1
             results.append({
@@ -477,7 +470,7 @@ async def list_accounts(
         q = q.where(AccountPool.status == status_filter)
     # ponytail: dashboard sends ?platform= with the service toggle — honor it
     # (accounts leaked across TG/VK/WA/MAX views)
-    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+    if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
         q = q.where(AccountPool.platform == platform)
 
     from sqlalchemy import func

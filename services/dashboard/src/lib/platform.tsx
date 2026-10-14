@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Platform = "telegram" | "vkontakte" | "whatsapp" | "max";
+// ponytail: services with dedicated tabs. billing stays shared across all.
+export type Platform = "telegram" | "vkontakte" | "whatsapp" | "max" | "facebook";
+
+export const PLATFORMS: Platform[] = ["telegram", "vkontakte", "whatsapp", "max", "facebook"];
+
+export function isPlatform(p: string | null): p is Platform {
+  return (PLATFORMS as string[]).includes(p ?? "");
+}
 
 interface PlatformContextType {
   platform: Platform;
@@ -18,8 +25,8 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const [platform, setPlatformState] = useState<Platform>("telegram");
 
   useEffect(() => {
-    const saved = localStorage.getItem("platform") as Platform | null;
-    if (saved === "telegram" || saved === "vkontakte" || saved === "whatsapp" || saved === "max") {
+    const saved = localStorage.getItem("platform");
+    if (isPlatform(saved)) {
       setPlatformState(saved);
     }
   }, []);

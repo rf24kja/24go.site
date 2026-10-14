@@ -49,6 +49,8 @@ celery.conf.update(
         "app.tasks.mailer.*": {"queue": "poster"},
         "app.tasks.wa_*": {"queue": "parser"},
         "app.tasks.wa_check_telegram_phones": {"queue": "parser"},
+        "app.tasks.fb_monitor.*": {"queue": "fb"},
+        "app.tasks.fb_marketplace.*": {"queue": "fb"},
     },
     # ── Periodic Task Schedule (Celery Beat) ──────────────────────────
     beat_schedule={
@@ -93,6 +95,11 @@ celery.conf.update(
             "task": "app.tasks.vk_health_check.check_vk_listeners",
             "schedule": crontab(minute="*/5"),
             "options": {"queue": "warmup"},
+        },
+        "fb-groups-scan": {
+            "task": "app.tasks.fb_monitor.scan_groups",
+            "schedule": crontab(minute="*/15"),
+            "options": {"queue": "fb"},
         },
     },
 )

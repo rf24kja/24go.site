@@ -249,7 +249,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 # Services with per-service settings overlays. Anything else is rejected
 # at the router (unknown service = error, like unknown section).
-SERVICES = ("telegram", "vkontakte", "whatsapp", "max")
+SERVICES = ("telegram", "vkontakte", "whatsapp", "max", "facebook")
 
 
 async def get_settings(url: str, tenant_id: str, service: str | None = None) -> dict:

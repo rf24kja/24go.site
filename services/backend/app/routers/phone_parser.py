@@ -588,8 +588,8 @@ async def check_tg(
     current_user: User = Depends(get_current_user),
 ):
     """Dispatch Celery task to check phones against Telegram."""
-    from app.celery_app import celery_app
-    task = celery_app.send_task(
+    from app.celery_app import celery
+    task = celery.send_task(
         # ponytail: full task path — short "tasks.check_tg_phones" never
         # matched the worker registration and dispatched into the void
         "app.tasks.wa_check_telegram_phones",

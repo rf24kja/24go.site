@@ -9,3 +9,4 @@ telethon==1.37.0
 pysocks>=1.7.1
 vk_api==11.9.9
 croniter>=1.4.0
+playwright==1.49.1

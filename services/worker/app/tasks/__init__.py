@@ -19,3 +19,5 @@ from app.tasks import drip_emailer  # noqa: F401
 from app.tasks import mailer  # noqa: F401
 from app.tasks import wa_tasks  # noqa: F401
 from app.tasks import account_validator  # noqa: F401
+from app.tasks import fb_monitor  # noqa: F401
+from app.tasks import fb_marketplace  # noqa: F401

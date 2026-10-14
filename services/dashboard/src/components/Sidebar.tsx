@@ -75,6 +75,16 @@ export function Sidebar() {
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
+  ] : platform === "facebook" ? [
+    // ponytail: FB is the 5th section — groups monitoring + marketplace +
+    // connect. No campaigns/mailings (no FB sender in v1, like MAX).
+    { href: "/groups", label: t("sidebar.fbGroups"), icon: Radio, feature: "groups" },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
+    { href: "/contacts", label: t("sidebar.contacts"), icon: UsersGroup, feature: "groups" },
+    { href: "/fb-marketplace", label: t("sidebar.fbMarketplace"), icon: Megaphone, feature: "groups" },
+    { href: "/fb-connect", label: t("sidebar.fbConnect"), icon: UserCircle, feature: "accounts" },
+    { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
+    { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : [
     { href: "/wa-overview", label: t("sidebar.waOverview"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
@@ -171,6 +181,12 @@ export function Sidebar() {
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "max" ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               MAX
+            </button>
+            <button
+              onClick={() => { setPlatform("facebook"); router.push("/groups"); }}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "facebook" ? "bg-sky-500/20 text-sky-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              FB
             </button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">

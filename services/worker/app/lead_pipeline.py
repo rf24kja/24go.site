@@ -57,6 +57,7 @@ async def process_incoming_message(
     geo_tag: str = "",
     source: str = "dm",
     post_id: str | None = None,
+    source_url: str | None = None,
 ) -> dict:
     """Full pipeline: classify → upsert → dispatch webhook.
 
@@ -88,6 +89,9 @@ async def process_incoming_message(
         dialog_url = f"https://t.me/{user_handle.lstrip('@')}"
     elif platform == "vkontakte":
         dialog_url = f"https://vk.com/{user_handle.lstrip('@')}"
+    elif platform == "facebook":
+        # ponytail: FB posts carry their canonical link (no handle-based URL)
+        dialog_url = source_url or ""
     else:
         dialog_url = ""
 

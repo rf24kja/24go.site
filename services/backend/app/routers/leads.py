@@ -66,7 +66,7 @@ async def list_leads(
     if status_filter:
         q = q.where(Lead.status == status_filter)
     # ponytail: dashboard sends platform=; honor it or the toggle lies
-    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+    if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
         q = q.where(Lead.platform == platform)
 
     # Get total count for pagination

@@ -26,7 +26,7 @@ async def list_campaigns(
 ):
     q = select(Campaign).where(Campaign.tenant_id == current_user.tenant_id, Campaign.is_active == True)
     # ponytail: campaigns are per-service — dashboard toggle sends ?platform=
-    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+    if platform in ("telegram", "vkontakte", "whatsapp", "max", "facebook"):
         q = q.where(Campaign.platform == platform)
 
     from sqlalchemy import func

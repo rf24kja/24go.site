@@ -17,7 +17,7 @@ from app.config import settings
 from app.logging_config import setup_logging
 from app.middleware import TenantRLSMiddleware
 from app.rate_limiter import RateLimitMiddleware
-from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics, phone_parser, contacts, max
+from app.routers import auth, tenants, targets, accounts, campaigns, leads, tasks, billing, analytics, listeners, audit, campaign_analytics, scoring, system, groups, notifications, tenant_settings, blog, group_search, auto_replies, balance, proxies, tools, mailings, metrics, phone_parser, contacts, max, fb
 
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN"),
@@ -335,6 +335,7 @@ app.include_router(metrics.router)
 app.include_router(phone_parser.router)
 app.include_router(contacts.router)
 app.include_router(max.router)
+app.include_router(fb.router)
 
 
 @app.get("/health")
