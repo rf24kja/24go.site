@@ -37,10 +37,14 @@ async def create_mailing(
 async def list_mailings(
     limit: int = 50,
     offset: int = 0,
+    platform: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(Mailing.tenant_id == current_user.tenant_id)
+    # ponytail: mailings are per-service — dashboard toggle sends ?platform=
+    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        q = q.where(Mailing.platform == platform)
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
     result = await db.execute(q.order_by(Mailing.created_at.desc()).limit(limit).offset(offset))

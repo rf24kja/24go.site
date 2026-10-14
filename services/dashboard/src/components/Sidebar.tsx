@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useI18n } from "@/lib/i18n";
@@ -17,6 +17,7 @@ import {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { auth, logout } = useAuth();
   const { connected } = useWebSocket(auth?.user?.tenant_id ?? null, auth?.token ?? null);
   const { t, lang, setLang } = useI18n();
@@ -144,28 +145,29 @@ export function Sidebar() {
               RU
             </button>
           </div>
-          {/* Platform toggle */}
+          {/* Platform toggle — each tab opens that service's dashboard
+              (billing stays shared: same href in every menu) */}
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
-              onClick={() => setPlatform("telegram")}
+              onClick={() => { setPlatform("telegram"); router.push("/analytics"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "telegram" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               TG
             </button>
             <button
-              onClick={() => setPlatform("vkontakte")}
+              onClick={() => { setPlatform("vkontakte"); router.push("/vk-overview"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               VK
             </button>
             <button
-              onClick={() => setPlatform("whatsapp")}
+              onClick={() => { setPlatform("whatsapp"); router.push("/wa-overview"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "whatsapp" ? "bg-green-500/20 text-green-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               WA
             </button>
             <button
-              onClick={() => setPlatform("max")}
+              onClick={() => { setPlatform("max"); router.push("/max-accounts"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "max" ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               MAX

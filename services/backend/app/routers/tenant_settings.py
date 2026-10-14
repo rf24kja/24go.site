@@ -8,13 +8,21 @@ from pydantic import BaseModel
 
 from app.models import User
 from app.security import get_current_user
-from app.tenant_settings import DEFAULTS, get_settings, get_section, upsert_settings, reset_section
+from app.tenant_settings import DEFAULTS, SERVICES, get_settings, get_section, upsert_settings, reset_section
 from app.config import settings as app_settings
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 DATABASE_URL = app_settings.DATABASE_URL.replace("+asyncpg", "")
+
+
+def _check_service(service: str | None) -> str | None:
+    # ponytail: per-service overlays live under services.{service} — same
+    # strictness as unknown sections (explicit error, not silent ignore)
+    if service is not None and service not in SERVICES:
+        raise HTTPException(400, f"Unknown service: {service}. Available: {list(SERVICES)}")
+    return service
 
 
 class SettingsUpdate(BaseModel):
@@ -24,9 +32,15 @@ class SettingsUpdate(BaseModel):
 @router.get("/")
 async def list_settings(
     current_user: User = Depends(get_current_user),
+    service: str | None = None,
 ):
-    """Get all settings for the current tenant (merged with defaults)."""
-    cfg = await get_settings(DATABASE_URL, str(current_user.tenant_id))
+    """Get all settings for the current tenant (merged with defaults).
+
+    With ?service=: per-service overlay applied — each service tab
+    sees its own values.
+    """
+    cfg = await get_settings(DATABASE_URL, str(current_user.tenant_id),
+                             service=_check_service(service))
     return {"settings": cfg, "defaults": DEFAULTS}
 
 
@@ -36,12 +50,19 @@ async def list_settings(
 async def reset_settings_section(
     section: str,
     current_user: User = Depends(get_current_user),
+    service: str | None = None,
 ):
-    """Reset a section to defaults."""
+    """Reset a section to defaults (or drop the service overlay)."""
     if section not in DEFAULTS:
         return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
 
-    merged = await reset_section(DATABASE_URL, str(current_user.tenant_id), section)
+    merged = await reset_section(DATABASE_URL, str(current_user.tenant_id), section,
+                                 service=_check_service(service))
+    # ponytail: with service, merged holds the base — re-read the service view
+    if service:
+        merged = await get_section(DATABASE_URL, str(current_user.tenant_id),
+                                   section, service=service)
+        return {"section": section, "settings": merged, "status": "reset_to_defaults"}
     return {"section": section, "settings": merged.get(section, {}), "status": "reset_to_defaults"}
 
 
@@ -231,11 +252,13 @@ async def delete_account(body: DeleteAccountRequest, current_user: User = Depend
 async def get_settings_section(
     section: str,
     current_user: User = Depends(get_current_user),
+    service: str | None = None,
 ):
     """Get a single section (llm, warmup, posting, notifications, groups)."""
     if section not in DEFAULTS:
         return {"error": f"Unknown section: {section}", "available": list(DEFAULTS.keys())}
-    cfg = await get_section(DATABASE_URL, str(current_user.tenant_id), section)
+    cfg = await get_section(DATABASE_URL, str(current_user.tenant_id), section,
+                            service=_check_service(service))
     return {"section": section, "settings": cfg, "defaults": DEFAULTS.get(section, {})}
 
 
@@ -244,6 +267,7 @@ async def update_settings_section(
     section: str,
     body: SettingsUpdate,
     current_user: User = Depends(get_current_user),
+    service: str | None = None,
 ):
     """Update a single section. Merges with existing (deep merge)."""
     if section not in DEFAULTS:
@@ -254,5 +278,11 @@ async def update_settings_section(
     if section not in update:
         update = {section: update}
 
-    merged = await upsert_settings(DATABASE_URL, str(current_user.tenant_id), update)
+    merged = await upsert_settings(DATABASE_URL, str(current_user.tenant_id), update,
+                                   service=_check_service(service))
+    # ponytail: with service, merged holds the base — re-read the service view
+    if service:
+        cfg = await get_section(DATABASE_URL, str(current_user.tenant_id),
+                                section, service=service)
+        return {"section": section, "settings": cfg, "status": "saved"}
     return {"section": section, "settings": merged.get(section, {}), "status": "saved"}

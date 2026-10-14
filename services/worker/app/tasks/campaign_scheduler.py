@@ -33,7 +33,7 @@ async def _run():
     # ponytail: one-shot helpers (open-use-close per query) — no shared pool
     # across per-task event loops, structurally leak-proof.
     campaigns = await fetch(
-        "SELECT id, tenant_id, base_text, target_geos, target_niches, "
+        "SELECT id, tenant_id, base_text, platform, target_geos, target_niches, "
         "schedule_cron, posts_per_day, timezone, last_posted_at, "
         "ab_enabled, ab_variants "
         "FROM campaigns WHERE is_active = true"
@@ -93,10 +93,14 @@ async def _run():
         target = await fetchrow(
             "SELECT id, target_id_code, title, platform FROM targets "
             "WHERE tenant_id = $1 AND is_active = true "
+            "AND platform = $3 "
             "AND (geo_tag = ANY($2) OR $2 = '{}') "
             "ORDER BY random() LIMIT 1",
             c["tenant_id"],
             target_geos,
+            # ponytail: campaigns are per-service — a VK campaign posts
+            # to VK targets (used to pick any platform, building bogus URLs)
+            c.get("platform") or "telegram",
         )
         if not target:
             continue

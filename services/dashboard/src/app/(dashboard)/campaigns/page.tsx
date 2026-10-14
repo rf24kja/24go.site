@@ -138,6 +138,8 @@ export default function CampaignsPage() {
         timezone: form.timezone,
         ab_enabled: form.ab_enabled,
         ab_variants: form.ab_enabled ? form.ab_variants : [],
+        // ponytail: new campaigns belong to the active service tab
+        platform,
       };
       if (modalMode === "edit" && editingId) {
         await updateCampaign(auth.token, editingId, data);

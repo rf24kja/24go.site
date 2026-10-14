@@ -123,6 +123,8 @@ class CampaignCreate(BaseModel):
     description: str | None = None
     emoji: str | None = None
     base_text: str
+    platform: str = Field(default="telegram",
+                          pattern="^(telegram|vkontakte|whatsapp|max)$")
     target_geos: list[str]
     target_niches: list[str]
     media_urls: list[str] = []
@@ -139,6 +141,7 @@ class CampaignResponse(BaseModel):
     description: str | None = None
     emoji: str | None = None
     base_text: str
+    platform: str = "telegram"
     target_geos: list
     target_niches: list
     media_urls: list = []

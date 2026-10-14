@@ -13,12 +13,15 @@ type WaAccount = {
   status: string;
 };
 
+// ponytail: mirrors backend WaGroupResponse (schemas.py) — the old shape
+// (group_name/participant_count/parsed_at) rendered every row as "— / 0".
 type WaGroup = {
   id: string;
-  group_name: string;
-  participant_count: number;
-  parsed_at: string | null;
-  source_link: string;
+  group_id: string;
+  name: string;
+  members_count: number;
+  reachable_count: number;
+  last_scan_at: string | null;
 };
 
 export default function WaGroupsPage() {
@@ -33,6 +36,8 @@ export default function WaGroupsPage() {
   const [selectedAccount, setSelectedAccount] = useState("");
   const [progress, setProgress] = useState({ current: 0, total: 0, done: false });
   const [parsingGroups, setParsingGroups] = useState<string[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [createdContacts, setCreatedContacts] = useState<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(() => {
@@ -74,7 +79,15 @@ export default function WaGroupsPage() {
           if (job.status === "failed") {
             toast(job.error || "Parse failed", "error");
           } else {
-            toast(t("waGroups.parsed"), "success");
+            // ponytail: backend now reports per-group errors + created count —
+            // "done" with 0 contacts used to toast success silently
+            setCreatedContacts(job.created_contacts ?? 0);
+            setParseErrors(job.errors || []);
+            if ((job.errors || []).length > 0) {
+              toast(t("waGroups.partialFail"), "error");
+            } else {
+              toast(t("waGroups.parsed"), "success");
+            }
           }
           load();
         }
@@ -90,6 +103,8 @@ export default function WaGroupsPage() {
 
     setParsing(true);
     setParsingGroups(linkLines);
+    setParseErrors([]);
+    setCreatedContacts(null);
     setProgress({ current: 0, total: linkLines.length, done: false });
 
     try {
@@ -108,7 +123,7 @@ export default function WaGroupsPage() {
 
   const showRateLimitWarning = parsingGroups.length > 5;
 
-  const totalParticipants = groups.reduce((sum, g) => sum + (g.participant_count || 0), 0);
+  const totalParticipants = groups.reduce((sum, g) => sum + (g.members_count || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-slide-in">
@@ -195,6 +210,18 @@ export default function WaGroupsPage() {
         )}
       </div>
 
+      {/* Parse result */}
+      {(createdContacts !== null || parseErrors.length > 0) && (
+        <div className={`border rounded-xl p-4 text-sm ${parseErrors.length > 0 ? "bg-rose-950/40 border-rose-800" : "bg-emerald-950/40 border-emerald-800"}`}>
+          {createdContacts !== null && (
+            <p className="text-zinc-200 mb-1">{t("waGroups.createdContacts")}: <span className="font-bold">{createdContacts}</span></p>
+          )}
+          {parseErrors.map((e, i) => (
+            <p key={i} className="text-rose-300 text-xs font-mono break-all">{e}</p>
+          ))}
+        </div>
+      )}
+
       {/* Stats */}
       {groups.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
@@ -217,7 +244,7 @@ export default function WaGroupsPage() {
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("waGroups.colName")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("waGroups.colParticipants")}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("waGroups.colParsedAt")}</th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("waGroups.colSourceLink")}</th>
+                <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("waGroups.colReachable")}</th>
             </tr>
           </thead>
           <tbody>
@@ -237,18 +264,15 @@ export default function WaGroupsPage() {
             ) : (
               groups.map((g) => (
                 <tr key={g.id} className="border-b border-zinc-800 last:border-0 hover:bg-zinc-800/30">
-                  <td className="px-4 py-3 text-zinc-100 font-medium">{g.group_name || "—"}</td>
-                  <td className="px-4 py-3 text-zinc-400">{(g.participant_count || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-zinc-100 font-medium">{g.name || "—"}</td>
+                  <td className="px-4 py-3 text-zinc-400">{(g.members_count || 0).toLocaleString()}</td>
                   <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">
-                    {g.parsed_at ? new Date(g.parsed_at).toLocaleString() : <span className="text-zinc-600">—</span>}
+                    {g.last_scan_at ? new Date(g.last_scan_at).toLocaleString() : <span className="text-zinc-600">—</span>}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
-                    {g.source_link ? (
-                      <a href={g.source_link} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-emerald-400 hover:text-emerald-300 truncate max-w-[200px] block">
-                        {g.source_link}
-                      </a>
-                    ) : <span className="text-zinc-600">—</span>}
+                    {(g.reachable_count ?? 0) > 0 ? (
+                      <span className="text-xs text-emerald-400">{g.reachable_count}</span>
+                    ) : <span className="text-zinc-600 text-xs">—</span>}
                   </td>
                 </tr>
               ))

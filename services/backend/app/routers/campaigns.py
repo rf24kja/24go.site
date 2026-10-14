@@ -20,10 +20,14 @@ router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
 async def list_campaigns(
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
+    platform: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Campaign).where(Campaign.tenant_id == current_user.tenant_id, Campaign.is_active == True)
+    # ponytail: campaigns are per-service — dashboard toggle sends ?platform=
+    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        q = q.where(Campaign.platform == platform)
 
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())

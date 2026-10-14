@@ -247,8 +247,18 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
-async def get_settings(url: str, tenant_id: str) -> dict:
-    """Get merged settings for a tenant (defaults + overrides)."""
+# Services with per-service settings overlays. Anything else is rejected
+# at the router (unknown service = error, like unknown section).
+SERVICES = ("telegram", "vkontakte", "whatsapp", "max")
+
+
+async def get_settings(url: str, tenant_id: str, service: str | None = None) -> dict:
+    """Get merged settings for a tenant (defaults + overrides).
+
+    With service: per-service overlay services.{service}.{section} is
+    deep-merged over the base section. Workers call without service and
+    keep reading the base — zero behavior change for them.
+    """
     try:
         conn = await asyncpg.connect(url)
         try:
@@ -286,21 +296,38 @@ async def get_settings(url: str, tenant_id: str) -> dict:
                         log.warning(f"Migration save failed for {tenant_id}: {e}")
                     raw = migrated
 
-            return _deep_merge(DEFAULTS, raw)
-        return DEFAULTS.copy()
+            return _apply_service_overlay(_deep_merge(DEFAULTS, raw), raw, service)
+        return _apply_service_overlay(DEFAULTS.copy(), {}, service)
     except Exception as e:
         log.warning(f"Failed to load tenant settings, using defaults: {e}")
         return DEFAULTS.copy()
 
 
-async def get_section(url: str, tenant_id: str, section: str) -> dict:
-    """Get a single section's merged settings."""
-    cfg = await get_settings(url, tenant_id)
+def _apply_service_overlay(merged: dict, raw: dict, service: str | None) -> dict:
+    """Deep-merge services.{service}.* over each base section."""
+    if not service:
+        return merged
+    overlays = (raw.get("services") or {}).get(service) or {}
+    for section, override in overlays.items():
+        if section in merged and isinstance(override, dict):
+            merged[section] = _deep_merge(merged[section], override)
+    return merged
+
+
+async def get_section(url: str, tenant_id: str, section: str, service: str | None = None) -> dict:
+    """Get a single section's merged settings (service overlay applied)."""
+    cfg = await get_settings(url, tenant_id, service=service)
     return cfg.get(section, DEFAULTS.get(section, {}))
 
 
-async def upsert_settings(url: str, tenant_id: str, new_settings: dict) -> dict:
-    """Merge new_settings into existing and save. Returns full merged settings."""
+async def upsert_settings(url: str, tenant_id: str, new_settings: dict, service: str | None = None) -> dict:
+    """Merge new_settings into existing and save. Returns full merged settings.
+
+    With service: writes go under services.{service} instead of the base,
+    so one service never overwrites another's values.
+    """
+    if service:
+        new_settings = {"services": {service: new_settings}}
     existing = await get_settings(url, tenant_id)
     merged = _deep_merge(existing, new_settings)
 
@@ -320,10 +347,20 @@ async def upsert_settings(url: str, tenant_id: str, new_settings: dict) -> dict:
     return merged
 
 
-async def reset_section(url: str, tenant_id: str, section: str) -> dict:
-    """Reset a section to defaults and save."""
+async def reset_section(url: str, tenant_id: str, section: str, service: str | None = None) -> dict:
+    """Reset a section to defaults and save.
+
+    With service: only the service overlay is dropped, base stays intact.
+    """
     existing = await get_settings(url, tenant_id)
-    existing[section] = DEFAULTS.get(section, {})
+    if service:
+        services = existing.get("services") or {}
+        if service in services and section in (services[service] or {}):
+            del services[service][section]
+            if not services[service]:
+                del services[service]
+    else:
+        existing[section] = DEFAULTS.get(section, {})
     conn = await asyncpg.connect(url)
     try:
         await conn.execute(

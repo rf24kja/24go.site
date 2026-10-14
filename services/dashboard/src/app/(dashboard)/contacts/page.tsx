@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { getContacts, getContactStats, exportContactsCsv, refreshPlatforms, bulkTagContacts } from "@/lib/api";
+import { getContacts, getContactStats, exportContactsCsv, refreshPlatforms, bulkTagContacts, checkPlatforms } from "@/lib/api";
 import type { Contact, ContactPlatform } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
@@ -37,6 +37,22 @@ export default function ContactsPage() {
   const [tagInput, setTagInput] = useState("");
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // ponytail: arbitrary-phone cross-service lookup (knowing a phone,
+  // check which services it's on) — backend endpoint existed, UI didn't
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupResult, setLookupResult] = useState<Record<string, any> | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  const handleLookup = async () => {
+    if (!auth?.token || !lookupPhone.trim()) return;
+    setLookupLoading(true);
+    setLookupResult(null);
+    try {
+      const res = await checkPlatforms(auth.token, [lookupPhone.trim()]);
+      setLookupResult(res.results?.[0] ?? null);
+    } catch { toast(t("contacts.checkFailed"), "error"); }
+    finally { setLookupLoading(false); }
+  };
 
   const load = useCallback((p = 0) => {
     if (!auth?.token) return;
@@ -130,8 +146,32 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      {/* Cross-service phone lookup */}
+      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+        <input type="text" value={lookupPhone} onChange={(e) => setLookupPhone(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
+          placeholder={t("contacts.phonePlaceholder")}
+          className="flex-1 min-w-[160px] px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500" />
+        <button onClick={handleLookup} disabled={lookupLoading || !lookupPhone.trim()}
+          className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-500 disabled:opacity-50 btn-press whitespace-nowrap">
+          {lookupLoading ? "..." : t("contacts.checkPhone")}
+        </button>
+        {lookupResult && (
+          <div className="flex items-center gap-2 text-sm flex-wrap">
+            <span className="text-zinc-400 font-mono">{lookupResult.phone}</span>
+            {(["telegram", "vkontakte", "whatsapp"] as const).map(p => (
+              <span key={p} className={`px-2 py-0.5 rounded text-xs font-medium ${lookupResult[p]?.exists ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
+                {PLATFORM_SHORT[p as ContactPlatform]}{lookupResult[p]?.exists ? " ✓" : ""}
+              </span>
+            ))}
+            {!lookupResult.telegram?.exists && !lookupResult.vkontakte?.exists && !lookupResult.whatsapp?.exists && (
+              <span className="text-zinc-500 text-xs">{t("contacts.phoneNotFound")}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stats cards */}      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
           { label: t("contacts.statTotal"), value: stats?.total ?? "—", color: "text-zinc-100" },
           { label: "TG", value: stats?.telegram ?? "—", color: "text-sky-400" },

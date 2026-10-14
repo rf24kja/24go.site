@@ -230,6 +230,7 @@ async def get_analytics(
 @router.get("/leaderboard")
 async def leaderboard(
     days: int = Query(default=30, le=90),
+    platform: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -240,22 +241,23 @@ async def leaderboard(
     since = date.today() - timedelta(days=days)
 
     # Get campaigns with lead counts
-    result = await db.execute(
-        select(
-            Campaign.id,
-            Campaign.name,
-            Campaign.is_active,
-            Campaign.schedule_cron,
-            Campaign.timezone,
-            Campaign.last_posted_at,
-        ).where(Campaign.tenant_id == tenant_id, Campaign.is_active == True)
-    )
+    camp_q = select(
+        Campaign.id,
+        Campaign.name,
+        Campaign.is_active,
+        Campaign.schedule_cron,
+        Campaign.timezone,
+        Campaign.last_posted_at,
+    ).where(Campaign.tenant_id == tenant_id, Campaign.is_active == True)
+    # ponytail: leaderboard ranks campaigns — per-service like everything else
+    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        camp_q = camp_q.where(Campaign.platform == platform)
+    result = await db.execute(camp_q)
     campaigns = result.all()
 
     leaderboard = []
     for c in campaigns:
         # Count leads matching this campaign's geos
-        # ponytail: per-campaign view stays unfiltered by platform by design
         lead_q = select(
             func.count(Lead.id).label("total"),
             func.count(case((Lead.intent_score == LeadIntentLevel.HOT, 1))).label("hot"),

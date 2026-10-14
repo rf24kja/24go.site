@@ -52,12 +52,13 @@ export default function SettingsPage() {
     if (!auth?.token) return;
     setLoading(true);
     try {
-      const data = await getTenantSettings(auth.token);
+      // ponytail: service view — each service tab edits its own overlay
+      const data = await getTenantSettings(auth.token, platform);
       setSettings(data.settings || {});
       setDefaults(data.defaults || {});
     } catch { setError(t("settings.loadFailed")); }
     setLoading(false);
-  }, [auth?.token]);
+  }, [auth?.token, platform]);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
 
@@ -65,7 +66,7 @@ export default function SettingsPage() {
     if (!auth?.token) return;
     setSaving(true); setError(""); setSaved(false);
     try {
-      await updateSettingsSection(auth.token, section, values);
+      await updateSettingsSection(auth.token, section, values, platform);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       await loadSettings();
@@ -79,7 +80,7 @@ export default function SettingsPage() {
   const handleResetSection = async (section: string) => {
     if (!auth?.token || !confirm(t("settings.resetConfirm").replace("{section}", section))) return;
     try {
-      await resetSettingsSection(auth.token, section);
+      await resetSettingsSection(auth.token, section, platform);
       await loadSettings();
     } catch { setError(t("settings.resetFailed")); }
   };

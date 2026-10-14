@@ -466,6 +466,7 @@ async def bulk_connect_accounts(
 @router.get("/")
 async def list_accounts(
     status_filter: str | None = None,
+    platform: str | None = None,
     limit: int = Query(default=settings.DEFAULT_PAGE_SIZE, le=settings.MAX_PAGE_SIZE),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -474,6 +475,10 @@ async def list_accounts(
     q = select(AccountPool).where(AccountPool.tenant_id == current_user.tenant_id)
     if status_filter:
         q = q.where(AccountPool.status == status_filter)
+    # ponytail: dashboard sends ?platform= with the service toggle — honor it
+    # (accounts leaked across TG/VK/WA/MAX views)
+    if platform in ("telegram", "vkontakte", "whatsapp", "max"):
+        q = q.where(AccountPool.platform == platform)
 
     from sqlalchemy import func
     count_q = select(func.count()).select_from(q.subquery())

@@ -624,17 +624,23 @@ export async function testSmtp(token: string, data: { host: string; port: number
 }
 
 // ── Tenant Settings ──────────────────────────────────────────────
-export async function getTenantSettings(token: string) {
-  return api<{ settings: Record<string, any>; defaults: Record<string, any> }>("/api/v1/settings/", { token });
+// ponytail: service scopes values per service tab (telegram/vkontakte/
+// whatsapp/max) via services.{service} overlays; omit for shared base.
+export async function getTenantSettings(token: string, service?: string) {
+  const qs = service ? `?service=${service}` : "";
+  return api<{ settings: Record<string, any>; defaults: Record<string, any> }>(`/api/v1/settings/${qs}`, { token });
 }
-export async function getSettingsSection(token: string, section: string) {
-  return api<{ section: string; settings: Record<string, any>; defaults: Record<string, any> }>(`/api/v1/settings/${section}`, { token });
+export async function getSettingsSection(token: string, section: string, service?: string) {
+  const qs = service ? `?service=${service}` : "";
+  return api<{ section: string; settings: Record<string, any>; defaults: Record<string, any> }>(`/api/v1/settings/${section}${qs}`, { token });
 }
-export async function updateSettingsSection(token: string, section: string, settings: Record<string, any>) {
-  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/${section}`, { method: "PUT", body: JSON.stringify({ settings }), token });
+export async function updateSettingsSection(token: string, section: string, settings: Record<string, any>, service?: string) {
+  const qs = service ? `?service=${service}` : "";
+  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/${section}${qs}`, { method: "PUT", body: JSON.stringify({ settings }), token });
 }
-export async function resetSettingsSection(token: string, section: string) {
-  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/reset/${section}`, { method: "POST", token });
+export async function resetSettingsSection(token: string, section: string, service?: string) {
+  const qs = service ? `?service=${service}` : "";
+  return api<{ section: string; settings: Record<string, any>; status: string }>(`/api/v1/settings/reset/${section}${qs}`, { method: "POST", token });
 }
 
 export async function testWebhook(token: string, url: string) {
@@ -823,7 +829,7 @@ export async function parseWaGroupsAsync(token: string, data: { account_id: stri
 }
 
 export async function getWaParseStatus(token: string, jobId: string) {
-  return api<{ job_id: string; status: string; total_groups: number; done_groups: number; created_contacts: number; error?: string | null }>(`/api/v1/wa/parse-status/${jobId}`, { token });
+  return api<{ job_id: string; status: string; total_groups: number; done_groups: number; created_contacts: number; errors?: string[]; error?: string | null }>(`/api/v1/wa/parse-status/${jobId}`, { token });
 }
 
 export async function getWaGroups(token: string) {
@@ -867,8 +873,10 @@ export async function deleteContact(token: string, contactId: string) {
 }
 
 export async function checkPlatforms(token: string, phoneNumbers: string[]) {
+  // ponytail: backend CheckPlatformsRequest takes `phones`, not `phone_numbers`
+  // (mismatch = silent 422, the lookup never worked)
   return api<any>("/api/v1/contacts/check-platforms", {
-    method: "POST", body: JSON.stringify({ phone_numbers: phoneNumbers }), token,
+    method: "POST", body: JSON.stringify({ phones: phoneNumbers }), token,
   });
 }
 

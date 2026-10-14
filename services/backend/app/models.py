@@ -184,6 +184,9 @@ class Campaign(Base):
     description = Column(Text, nullable=True)
     emoji = Column(String(100), nullable=True)
     base_text = Column(Text, nullable=False)
+    # ponytail: plain string, not Enum — CampaignResponse uses from_attributes
+    # and an Enum member would fail str validation; API pattern guards values.
+    platform = Column(String(20), nullable=False, default="telegram")
     target_geos = Column(JSONB, nullable=False)
     target_niches = Column(JSONB, nullable=False)
     media_urls = Column(JSONB, default=list)

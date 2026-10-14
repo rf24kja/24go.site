@@ -316,6 +316,7 @@ async def _run_parse_job(job_id: str, tenant_id: str, account_id: str,
 
     targets = [("link", x) for x in links] + [("id", x) for x in ids]
     created_total = 0
+    errors: list[str] = []
     try:
         await save({"status": "running"})
         async with async_session() as db:
@@ -326,18 +327,26 @@ async def _run_parse_job(job_id: str, tenant_id: str, account_id: str,
                     payload["groupLinks"] = [target]
                 else:
                     payload["groupIds"] = [target]
-                async with _sidecar_client(timeout=120) as client:
-                    resp = await client.post(f"{WASIDECAR_URL}/parse-groups", json=payload)
+                try:
+                    async with _sidecar_client(timeout=120) as client:
+                        resp = await client.post(f"{WASIDECAR_URL}/parse-groups", json=payload)
+                except Exception as e:
+                    # ponytail: sidecar unreachable is a per-group error, not a job crash
+                    errors.append(f"{target}: sidecar unreachable ({str(e)[:120]})")
+                    await save({"done_groups": i + 1, "created_contacts": created_total, "errors": errors})
+                    continue
                 if resp.status_code != 200:
-                    log.warning(f"parse job {job_id}: group {i} failed: {resp.status_code}")
+                    # ponytail: used to be log-only — job ended "done" with 0
+                    # contacts and the UI toasted success. Now surfaced.
+                    errors.append(f"{target}: sidecar {resp.status_code} {resp.text[:150]}")
                 else:
                     summary = await _store_parse_result(db, _uuid.UUID(tenant_id), resp.json())
                     created_total += summary.get("created_contacts", 0)
-                await save({"done_groups": i + 1, "created_contacts": created_total})
+                await save({"done_groups": i + 1, "created_contacts": created_total, "errors": errors})
                 if i < len(targets) - 1:
                     # ponytail: pacing lives here now (single-group sidecar calls don't sleep)
                     await asyncio.sleep(15 + random.random() * 30)
-        await save({"status": "done", "created_contacts": created_total})
+        await save({"status": "done", "created_contacts": created_total, "errors": errors})
     except Exception as e:
         log.error(f"parse job {job_id} failed: {e}")
         await save({"status": "failed", "error": str(e)[:300]})
@@ -581,7 +590,9 @@ async def check_tg(
     """Dispatch Celery task to check phones against Telegram."""
     from app.celery_app import celery_app
     task = celery_app.send_task(
-        "tasks.check_tg_phones",
+        # ponytail: full task path — short "tasks.check_tg_phones" never
+        # matched the worker registration and dispatched into the void
+        "app.tasks.wa_check_telegram_phones",
         args=[str(current_user.tenant_id), body.phones],
     )
     return {"task_id": task.id, "status": "dispatched"}
