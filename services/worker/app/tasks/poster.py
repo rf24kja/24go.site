@@ -99,7 +99,7 @@ def publish_post(self, tenant_id: str, campaign_id: str, target_id: str, account
             raise self.retry(countdown=30, exc=Exception("Account lock active"))
 
         from app.tenant_settings import get_tenant_settings_sync
-        posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
+        posting_cfg = get_tenant_settings_sync(tenant_id, service="telegram").get("posting", {})
         limit = posting_cfg.get("stage3_daily_limit", WARMUP_LIMITS.get(3, 20))
 
         # Atomic daily limit via Lua script (no race between INCR/check/DECR)

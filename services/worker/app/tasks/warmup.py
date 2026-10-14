@@ -74,7 +74,7 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     from app.tenant_settings import get_tenant_settings_from_db
 
     # Load tenant settings
-    warmup_cfg = (await get_tenant_settings_from_db(tenant_id)).get("warmup", {})
+    warmup_cfg = (await get_tenant_settings_from_db(tenant_id, service="telegram")).get("warmup", {})
     channels = warmup_cfg.get("channels", WARMUP_CHANNELS)
     reactions = warmup_cfg.get("reactions", WARMUP_REACTIONS)
     stage1_days = warmup_cfg.get("stage1_days", 3)
@@ -126,6 +126,10 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
             # Stage 1: Read channels, leave reactions
             log.info(f"Stage 1 warmup: passive reading for {account_id}")
             for channel_url in channels[:3]:
+                # ponytail: stage limits were loaded but never enforced —
+                # lowering them in settings did nothing. Enforced now.
+                if actions >= stage1_limit:
+                    break
                 try:
                     await client.get_messages(channel_url, limit=3)
                     actions += 1
@@ -138,6 +142,8 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
             try:
                 messages = await client.get_messages(channels[0], limit=5)
                 for msg in messages[:2]:
+                    if actions >= stage1_limit:
+                        break
                     if msg.reactions is not None:
                         emoji = random.choice(reactions)
                         await client.send_reaction(msg, emoji)
@@ -150,6 +156,8 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
             # Stage 2: Read + join a neutral group
             log.info(f"Stage 2 warmup: soft engagement for {account_id}")
             for channel_url in channels[:2]:
+                if actions >= stage2_limit:
+                    break
                 try:
                     await client.get_messages(channel_url, limit=3)
                     actions += 1
@@ -158,14 +166,15 @@ async def _run_warmup(tenant_id: str, account_id: str) -> dict:
                     continue
 
             # Join a neutral group
-            try:
-                entity = await client.get_entity(channels[1] if len(channels) > 1 else channels[0])
-                await client.join_chat(entity)
-                actions += 1
-                await asyncio.sleep(random.uniform(delay_min * 2, delay_max * 2))
-            except Exception as e:
-                if "already" not in str(e).lower():
-                    log.warning(f"Join failed: {e}")
+            if actions < stage2_limit:
+                try:
+                    entity = await client.get_entity(channels[1] if len(channels) > 1 else channels[0])
+                    await client.join_chat(entity)
+                    actions += 1
+                    await asyncio.sleep(random.uniform(delay_min * 2, delay_max * 2))
+                except Exception as e:
+                    if "already" not in str(e).lower():
+                        log.warning(f"Join failed: {e}")
 
     except Exception as e:
         log.error(f"Warmup actions failed: {e}")

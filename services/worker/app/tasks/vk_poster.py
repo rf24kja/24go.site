@@ -33,7 +33,7 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     log.info(f"post_to_vk: tenant={tenant_id} group={group_id}")
 
     from app.tenant_settings import get_tenant_settings_sync
-    posting_cfg = get_tenant_settings_sync(tenant_id).get("posting", {})
+    posting_cfg = get_tenant_settings_sync(tenant_id, service="vkontakte").get("posting", {})
 
     rendered = _render_spintax(text, posting_cfg.get("spintax_max_depth", 10))
 
@@ -50,7 +50,7 @@ def post_to_vk(self, tenant_id: str, account_id: str,
     try:
         result = loop.run_until_complete(
             _publish_vk_post(tenant_id, account_id, group_id, rendered,
-                             campaign_id, target_id)
+                             campaign_id, target_id, selected_index)
         )
     except Exception as e:
         log.error(f"post_to_vk failed: {e}")
@@ -78,7 +78,8 @@ def _render_spintax(text: str, max_depth: int = 10) -> str:
 
 async def _publish_vk_post(tenant_id: str, account_id: str,
                            group_id: int, text: str,
-                           campaign_id: str, target_id: str) -> dict:
+                           campaign_id: str, target_id: str,
+                           selected_index: int = -1) -> dict:
     from app.vk_client import (
         get_vk_group_session_for, check_rate_limit, check_warmup,
         record_action, wait_for_rate_limit, handle_flood_wait, _handle_vk_error,

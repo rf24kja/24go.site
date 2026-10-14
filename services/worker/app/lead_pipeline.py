@@ -64,8 +64,11 @@ async def process_incoming_message(
     Returns lead_id and intent_score.
     """
     # 1. Classify via LLM (keyword heuristic fallback)
-    from app.tenant_settings import get_tenant_settings_from_db
-    tenant_cfg = await get_tenant_settings_from_db(tenant_id)
+    from app.tenant_settings import SERVICES, get_tenant_settings_from_db
+    # ponytail: ai config follows the message's service — TG tab edits
+    # must not rewrite VK classification prompts
+    service = platform if platform in SERVICES else None
+    tenant_cfg = await get_tenant_settings_from_db(tenant_id, service=service)
     ai_cfg = tenant_cfg.get("ai_auto_reply", {})
     try:
         classification = await classify_message(message_text, geo_tag, ai_cfg=ai_cfg)

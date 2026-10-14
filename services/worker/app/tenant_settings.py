@@ -164,8 +164,27 @@ def _migrate_old_sections(raw: dict) -> dict:
     return raw
 
 
-async def get_tenant_settings_from_db(tenant_id: str) -> dict:
-    """Async version — use when already in async context."""
+# Services with per-service settings overlays (mirrors backend
+# app/tenant_settings.py — same shape, workers read their platform's view).
+SERVICES = ("telegram", "vkontakte", "whatsapp", "max")
+
+
+def _apply_service_overlay(merged: dict, raw: dict, service: str | None) -> dict:
+    """Deep-merge services.{service}.* over each base section."""
+    if not service:
+        return merged
+    overlays = (raw.get("services") or {}).get(service) or {}
+    for section, override in overlays.items():
+        if section in merged and isinstance(override, dict):
+            merged[section] = _deep_merge(merged[section], override)
+    return merged
+
+
+async def get_tenant_settings_from_db(tenant_id: str, service: str | None = None) -> dict:
+    """Async version — use when already in async context.
+
+    With service: per-service overlay applied. Base behavior unchanged.
+    """
     from app.config import DATABASE_URL
     url = DATABASE_URL.replace("+asyncpg", "")
     conn = await asyncpg.connect(url)
@@ -179,7 +198,7 @@ async def get_tenant_settings_from_db(tenant_id: str) -> dict:
             if isinstance(raw, str):
                 raw = json.loads(raw)
             raw = _migrate_old_sections(raw)
-            return _deep_merge(DEFAULTS, raw)
+            return _apply_service_overlay(_deep_merge(DEFAULTS, raw), raw, service)
         return DEFAULTS.copy()
     except Exception as e:
         log.warning(f"Failed to load tenant settings for {tenant_id}: {e}")
@@ -188,15 +207,15 @@ async def get_tenant_settings_from_db(tenant_id: str) -> dict:
         await conn.close()
 
 
-def get_tenant_settings_sync(tenant_id: str) -> dict:
+def get_tenant_settings_sync(tenant_id: str, service: str | None = None) -> dict:
     """Sync version — use from sync Celery tasks."""
     import concurrent.futures
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, get_tenant_settings_from_db(tenant_id)).result()
+                return pool.submit(asyncio.run, get_tenant_settings_from_db(tenant_id, service)).result()
         else:
-            return loop.run_until_complete(get_tenant_settings_from_db(tenant_id))
+            return loop.run_until_complete(get_tenant_settings_from_db(tenant_id, service))
     except RuntimeError:
-        return asyncio.run(get_tenant_settings_from_db(tenant_id))
+        return asyncio.run(get_tenant_settings_from_db(tenant_id, service))

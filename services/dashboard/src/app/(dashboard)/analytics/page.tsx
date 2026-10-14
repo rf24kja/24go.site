@@ -121,6 +121,9 @@ export default function AnalyticsPage() {
     { name: t("analytics.noData"), value: Math.max(0, (funnel.leads_captured || 0) - (funnel.hot_leads || 0) - (funnel.warm_leads || 0)), color: COLORS.slate },
   ].filter((d) => d.value > 0);
 
+  const isEmpty = !loading && (funnel.discovered_targets || 0) === 0
+    && (funnel.published_posts || 0) === 0 && (funnel.leads_captured || 0) === 0;
+
   return (
     <div className="space-y-8 animate-fade-slide-in">
       <div className="flex items-center justify-between">
@@ -134,6 +137,19 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+
+      {/* ponytail: U2 — empty analytics points at setup steps, not a void */}
+      {isEmpty && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <p className="text-zinc-200 font-medium mb-1">{t("analytics.emptyTitle")}</p>
+          <p className="text-sm text-zinc-500 mb-4">{t("analytics.emptyDesc")}</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/targets" className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-500 btn-press">{t("analytics.emptyStep1")}</a>
+            <a href="/accounts" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep2")}</a>
+            <a href="/onboarding" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep3")}</a>
+          </div>
+        </div>
+      )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

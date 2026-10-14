@@ -133,7 +133,10 @@ async def _run():
 
             # ── Dispatch ───────────────────────────────────────────────
         from app.tenant_settings import get_tenant_settings_from_db
-        posting_cfg = (await get_tenant_settings_from_db(str(c["tenant_id"]))).get("posting", {})
+        # ponytail: UTM/limits follow the campaign's service (targets are
+        # already constrained to it above)
+        posting_cfg = (await get_tenant_settings_from_db(
+            str(c["tenant_id"]), service=platform)).get("posting", {})
         utm_source = posting_cfg.get("utm_source", "leadgen")
         utm_medium = posting_cfg.get("utm_medium", "post")
 

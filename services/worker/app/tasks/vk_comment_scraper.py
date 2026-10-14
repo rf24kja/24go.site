@@ -105,7 +105,7 @@ async def _scrape_vk_and_classify(tenant_id: str, account_id: str,
     from app.lead_pipeline import process_incoming_message
     from app.tenant_settings import get_tenant_settings_from_db
 
-    posting_cfg = (await get_tenant_settings_from_db(tenant_id)).get("posting", {})
+    posting_cfg = (await get_tenant_settings_from_db(tenant_id, service="vkontakte")).get("posting", {})
     max_comments = posting_cfg.get("max_comment_replies_per_post", 100)
 
     vk_session = await get_vk_group_session_for(account_id)
