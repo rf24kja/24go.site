@@ -200,7 +200,7 @@ async def send_trial_day12(email: str, company: str, days_left: int) -> None:
     </div>
     <p style="color:#ef4444;font-weight:600;">Upgrade today to keep everything running.</p>
     """
-    _send_html(email, f"24GO trial ending soon — upgrade to keep your leads", _wrap_html(body))
+    _send_html(email, "24GO trial ending soon — upgrade to keep your leads", _wrap_html(body))
 
 
 async def notify_daily_summary(tenant_id: str, stats: dict) -> None:

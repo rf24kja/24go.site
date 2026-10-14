@@ -5,15 +5,12 @@ Concurrency: Solo Sync Worker
 Retry: Strictly 5 retries
 Timeout: 30s
 """
-import json
 import logging
 import uuid
-from datetime import datetime
 
-from celery import shared_task
 
 from app.celery_app import celery
-from app.config import DATABASE_URL, REDIS_URL
+from app.config import REDIS_URL
 from app.db_pool import fetchrow as pool_fetchrow, fetch as pool_fetch, execute as pool_execute
 
 log = logging.getLogger(__name__)
@@ -154,10 +151,10 @@ def expire_trials():
 
     async def _run():
         expired = await pool_execute(
-            """UPDATE subscriptions 
+            """UPDATE subscriptions
                SET status = 'expired', updated_at = NOW()
-               WHERE plan = 'trial' 
-               AND status = 'active' 
+               WHERE plan = 'trial'
+               AND status = 'active'
                AND current_period_end < NOW()"""
         )
         count = int(expired.split()[-1])

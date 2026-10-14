@@ -1,5 +1,4 @@
 """n8n webhook relay for lead alerts and CRM dispatch."""
-import os
 import httpx
 
 from app.config import N8N_WEBHOOK_URL

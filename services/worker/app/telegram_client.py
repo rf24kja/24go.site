@@ -9,11 +9,9 @@ Architecture:
 - Connection status tracked in Redis for monitoring
 - Per-account proxy support: 1 proxy = 1 account permanently
 """
-import asyncio
 import json
 import logging
 import os
-import re
 import time
 from urllib.parse import urlparse
 
@@ -55,7 +53,8 @@ def _get_fernet():
             "Set ENCRYPTION_KEY in your .env file."
         )
     try:
-        import base64, hashlib
+        import base64
+        import hashlib
         from cryptography.fernet import Fernet
         key = hashlib.sha256(encryption_key.encode()).digest()
         fernet_key = base64.urlsafe_b64encode(key)
@@ -304,7 +303,7 @@ async def get_client(account_id: str):
 
         _clients[account_id] = client
         _set_status(account_id, "online")
-        proxy_info = f" via proxy" if proxy else ""
+        proxy_info = " via proxy" if proxy else ""
         log.info(f"Client connected for account {account_id}{proxy_info}")
         return client
     except Exception as e:

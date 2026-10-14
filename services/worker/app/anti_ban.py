@@ -4,7 +4,6 @@ Rate limiting, account rotation, cooldowns, and warmup.
 """
 
 import asyncio
-import json
 import logging
 import random
 import time
@@ -48,7 +47,6 @@ class RateLimiter:
 
     async def is_allowed(self, account_id: str, action_type: str, limits: dict) -> bool:
         """Check if an action is allowed — atomic INCR+check+DECR."""
-        r = await self._get_redis()
         hourly_key = f"rate:{account_id}:{action_type}:hourly"
         daily_key = f"rate:{account_id}:{action_type}:daily"
         max_per_hour = limits.get("max_per_hour", 30)

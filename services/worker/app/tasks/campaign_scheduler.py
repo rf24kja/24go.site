@@ -6,8 +6,6 @@ Logic: For each campaign whose cron fires now (in its TZ), post once.
 """
 import asyncio
 import logging
-import random
-import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 

@@ -11,12 +11,9 @@ Flow:
 """
 import asyncio
 import logging
-import time
 
-from celery import shared_task
 
 from app.celery_app import celery
-from app.locks import acquire_account_lock
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +59,6 @@ async def _scrape_and_classify(tenant_id: str, account_id: str,
     from app.telegram_client import get_client
     from app.lead_pipeline import process_incoming_message
     from app.tenant_settings import get_tenant_settings_from_db
-    import os
 
     posting_cfg = (await get_tenant_settings_from_db(tenant_id, service="telegram")).get("posting", {})
     max_comments = posting_cfg.get("max_comment_replies_per_post", 10)
@@ -146,7 +142,6 @@ def auto_scrape_after_post(self, tenant_id: str, account_id: str,
     First scrape uses comment_scrape_delay_sec from tenant settings.
     """
     from app.tenant_settings import get_tenant_settings_sync
-    import os
 
     posting_cfg = get_tenant_settings_sync(tenant_id, service="telegram").get("posting", {})
     scrape_delay = posting_cfg.get("comment_scrape_delay_sec", 120)

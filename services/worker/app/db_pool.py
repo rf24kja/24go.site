@@ -6,7 +6,6 @@ Every helper opens what it needs on the current loop and closes it before
 return. Cost is one TCP+auth per call — negligible at our task rates, and
 structurally leak-proof (no cross-loop close, no private attrs).
 """
-import asyncio
 import os
 
 import asyncpg

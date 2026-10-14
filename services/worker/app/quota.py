@@ -3,7 +3,6 @@
 Ponytail: mirrors backend/app/quota.py's record_post/record_usage
 using the worker's own asyncpg pool. Same SQL, same guarantees.
 """
-import json
 import logging
 import uuid
 

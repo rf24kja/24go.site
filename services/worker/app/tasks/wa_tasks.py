@@ -9,7 +9,6 @@ Flow:
 import asyncio
 import logging
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
@@ -44,7 +43,6 @@ def check_telegram_phones(self, tenant_id: str, phone_numbers: list[str],
 async def _check_phones(task, tenant_id: str, phone_numbers: list[str],
                         account_id: str):
     """Async runner: import contacts and check Telegram presence."""
-    from telethon import TelegramClient
     from telethon.tl.functions.contacts import ImportContactsRequest, DeleteContactsRequest
     from app.telegram_client import get_client
     from app.config import DATABASE_URL

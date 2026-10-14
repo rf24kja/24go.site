@@ -12,10 +12,8 @@ Flow:
 """
 import asyncio
 import logging
-import time
 import uuid
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
@@ -58,7 +56,7 @@ async def _run_group_scanner(task, tenant_id: str, account_id: str,
     from app.telegram_client import get_client, _set_status
     from app.lead_pipeline import process_incoming_message
     from app.config import DATABASE_URL
-    import asyncpg, os
+    import asyncpg
 
     client = await get_client(account_id)
     if client is None:

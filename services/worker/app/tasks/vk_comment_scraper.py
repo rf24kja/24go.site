@@ -13,9 +13,7 @@ Flow:
 """
 import asyncio
 import logging
-import time
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)

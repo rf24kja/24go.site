@@ -9,11 +9,8 @@ Uses telegram_client.py factory for session management.
 """
 import asyncio
 import logging
-import time
 import uuid as uuid_mod
 
-from celery import shared_task
-from celery.signals import worker_shutting_down
 
 from app.celery_app import celery
 
@@ -57,7 +54,7 @@ def start_lead_listener(self, tenant_id: str, account_id: str):
 
 async def _run_listener(task, tenant_id: str, account_id: str):
     """Async runner: connects to Telegram via factory and listens for DMs."""
-    from app.telegram_client import get_client, heartbeat, disconnect_client, _set_status
+    from app.telegram_client import get_client, heartbeat, _set_status
     from app.lead_pipeline import process_incoming_message
 
     client = await get_client(account_id)

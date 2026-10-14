@@ -4,10 +4,8 @@ Runs every 5 minutes via Celery Beat.
 Checks vk_status:{account_id} keys in Redis.
 If an account should be active but has no status, re-dispatches the listener.
 """
-import json
 import logging
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
@@ -27,7 +25,7 @@ def check_vk_listeners():
 async def _check_listeners():
     import redis.asyncio as aioredis
     from app.config import REDIS_URL
-    from app.db_pool import fetch as pool_fetch, fetchrow as pool_fetchrow
+    from app.db_pool import fetch as pool_fetch
 
     r = aioredis.from_url(REDIS_URL, decode_responses=True)
     try:

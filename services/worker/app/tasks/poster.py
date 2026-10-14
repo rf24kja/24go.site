@@ -14,7 +14,7 @@ import re
 import uuid as uuid_mod
 
 from app.celery_app import celery
-from app.locks import acquire_account_lock, increment_daily_actions
+from app.locks import acquire_account_lock
 from app.config import WARMUP_LIMITS
 from app.telegram_client import disconnect_client
 
@@ -159,7 +159,6 @@ return 1
                         v["posts"] = v.get("posts", 0) + 1
                         break
                 try:
-                    import json as _json
                     _update_variant_stats(tenant_id, campaign_id, ab_variants)
                 except Exception as e:
                     log.warning(f"Failed to update A/B variant stats: {e}")

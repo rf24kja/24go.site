@@ -12,7 +12,6 @@ import json
 import logging
 import time
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
@@ -52,7 +51,6 @@ async def _run_vk_listener(task, tenant_id: str, account_id: str, group_id: int)
         get_vk_group_session_for, get_longpoll_server,
         _handle_vk_error, handle_flood_wait,
     )
-    from app.lead_pipeline import process_incoming_message
     import httpx
 
     vk_session = await get_vk_group_session_for(account_id)

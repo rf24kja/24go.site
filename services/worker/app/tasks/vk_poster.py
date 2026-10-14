@@ -17,7 +17,6 @@ import logging
 import random
 import re
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)
@@ -82,9 +81,8 @@ async def _publish_vk_post(tenant_id: str, account_id: str,
                            selected_index: int = -1) -> dict:
     from app.vk_client import (
         get_vk_group_session_for, check_rate_limit, check_warmup,
-        record_action, wait_for_rate_limit, handle_flood_wait, _handle_vk_error,
+        record_action, handle_flood_wait, _handle_vk_error,
     )
-    from app.config import DATABASE_URL
     from app.db_pool import execute as pool_execute
     import uuid
 

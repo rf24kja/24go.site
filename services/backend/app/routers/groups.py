@@ -542,7 +542,8 @@ async def discover_groups(
     if body.platform == "telegram":
         results = await _discover_telegram_groups(body.geo_tag, body.niche, body.account_id, tenant_id=current_user.tenant_id)
     elif body.platform == "vkontakte":
-        results = await _discover_vk_groups(body.geo_tag, body.niche)
+        results = await _discover_vk_groups(body.geo_tag, body.niche,
+                                            tenant_id=str(current_user.tenant_id))
 
     # Apply tenant filters
     filtered = []
@@ -731,12 +732,30 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
         return []
 
 
-async def _discover_vk_groups(geo_tag: str, niche: str) -> list:
+async def _resolve_vk_service_token(tenant_id: str) -> str:
+    """Tenant's VK service token from settings, "" if unset.
+
+    ponytail: pure lookup split out for tests — the vk-settings page saves
+    service_token into the vk section, previously read by nothing.
+    """
+    try:
+        from app.tenant_settings import get_section
+        from app.config import settings as app_settings
+        db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")
+        cfg = await get_section(db_url, tenant_id, "vk")
+        return (cfg.get("service_token") or "").strip()
+    except Exception:
+        return ""
+
+
+async def _discover_vk_groups(geo_tag: str, niche: str, tenant_id: str | None = None) -> list:
     """Search VK for communities matching GEO + niche."""
     import os
     import vk_api
 
-    service_token = os.getenv("VK_SERVICE_TOKEN", "")
+    service_token = await _resolve_vk_service_token(tenant_id) if tenant_id else ""
+    if not service_token:
+        service_token = os.getenv("VK_SERVICE_TOKEN", "")
     if not service_token:
         return []
 

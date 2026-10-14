@@ -8,11 +8,10 @@ import logging
 import random
 import uuid as uuid_mod
 
-from celery import shared_task
 
 from app.celery_app import celery
-from app.locks import acquire_account_lock, increment_daily_actions
-from app.config import WARMUP_LIMITS, DATABASE_URL
+from app.locks import increment_daily_actions
+from app.config import DATABASE_URL
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ def process_mailing(self, mailing_id: str, tenant_id: str):
 
 async def _process_mailing_async(task, mailing_id: str, tenant_id: str, db_url: str):
     import asyncpg
-    from app.telegram_client import get_client, disconnect_client, _set_status
+    from app.telegram_client import disconnect_client
 
     conn = await asyncpg.connect(db_url)
     try:

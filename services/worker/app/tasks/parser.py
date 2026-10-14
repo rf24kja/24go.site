@@ -6,15 +6,8 @@ Retry: Exponential backoff, 3 retries
 Timeout: 300s
 """
 import logging
-from datetime import datetime, timezone
-from uuid import uuid4
 
-import httpx
-from celery import shared_task
-from sqlalchemy import text
 
-from app.celery_app import celery
-from app.locks import acquire_proxy_lock
 
 log = logging.getLogger(__name__)
 

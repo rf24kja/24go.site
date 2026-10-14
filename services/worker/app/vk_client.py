@@ -14,10 +14,9 @@ import threading
 import time
 from typing import Optional
 
-import asyncpg
 
-from .config import DATABASE_URL, REDIS_URL, WARMUP_LIMITS
-from .anti_ban import get_rate_limiter, get_account_rotation, get_warmup_manager
+from .config import REDIS_URL, WARMUP_LIMITS
+from .anti_ban import get_rate_limiter, get_warmup_manager
 
 log = logging.getLogger(__name__)
 

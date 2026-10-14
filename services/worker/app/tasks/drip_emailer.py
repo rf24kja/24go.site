@@ -27,7 +27,6 @@ def send_drip_emails():
 
 
 async def _send_drip_emails_async():
-    from app.notifications import _send_html, _wrap_html
 
     conn = await asyncpg.connect(DB_URL_SYNC)
     try:

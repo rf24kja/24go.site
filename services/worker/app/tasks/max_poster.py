@@ -12,7 +12,6 @@ import logging
 import random
 import uuid
 
-from celery import shared_task
 from app.celery_app import celery
 
 log = logging.getLogger(__name__)

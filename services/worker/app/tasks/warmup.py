@@ -18,11 +18,9 @@ import random
 import uuid as uuid_mod
 from datetime import datetime, timezone, timedelta
 
-from celery import shared_task
 
 from app.celery_app import celery
-from app.locks import acquire_account_lock, increment_daily_actions
-from app.config import WARMUP_LIMITS
+from app.locks import increment_daily_actions
 from app.telegram_client import disconnect_client
 from app.db_pool import fetchrow as pool_fetchrow, fetch as pool_fetch, execute as pool_execute
 
@@ -70,7 +68,7 @@ def run_warmup_cycle(self, tenant_id: str, account_id: str):
 
 async def _run_warmup(tenant_id: str, account_id: str) -> dict:
     """Run warmup actions via Telethon."""
-    from app.telegram_client import get_client, _set_status
+    from app.telegram_client import get_client
     from app.tenant_settings import get_tenant_settings_from_db
 
     # Load tenant settings

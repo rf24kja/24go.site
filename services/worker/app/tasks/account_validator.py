@@ -11,7 +11,6 @@ import logging
 import uuid as uuid_mod
 
 import asyncpg
-from celery import shared_task
 
 from app.celery_app import celery
 from app.config import DATABASE_URL

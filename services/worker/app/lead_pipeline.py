@@ -9,11 +9,10 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-import asyncpg
 import httpx
 
 from app.config import DATABASE_URL
-from app.db_pool import get_pool, fetchrow, execute
+from app.db_pool import fetchrow
 DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")  # asyncpg needs plain postgresql://
 from app.llm_classifier import classify_message
 from app.webhooks import notify_lead_captured
