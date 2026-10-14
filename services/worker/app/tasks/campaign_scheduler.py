@@ -113,6 +113,12 @@ async def _run():
             log.debug(f"Campaign {c['id']}: skipping MAX target (unsupported)")
             continue
 
+        # ponytail: same as MAX — no WA poster exists; the TG poster would
+        # send to a t.me URL built from a WA group code. Skip, don't misfire.
+        if platform == "whatsapp":
+            log.debug(f"Campaign {c['id']}: skipping WhatsApp target (unsupported)")
+            continue
+
         # ── Pick an available account (matching platform) ────────
         account = await fetchrow(
             "SELECT id, account_identifier FROM account_pool "
