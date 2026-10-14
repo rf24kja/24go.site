@@ -1,7 +1,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+# ponytail: lockfile + npm ci — fresh `npm install` under npm 10 crashes
+# with `edgesOut` null and ignores the tested tree; npm 11 everywhere.
+COPY package.json package-lock.json ./
+RUN npm install -g npm@11 && npm ci
 COPY . .
 
 # Inject standalone output for Docker
