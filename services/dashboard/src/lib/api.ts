@@ -666,7 +666,9 @@ export async function deleteBlogPost(token: string, postId: string) {
 }
 
 export async function getPublicBlogPosts(locale = "en") {
-  return api<any>(`/api/v1/blog?locale=${locale}`);
+  // ponytail: explicit limit — backend defaults to 50, and the blog index
+  // must link every post (orphaned posts index poorly)
+  return api<any>(`/api/v1/blog?locale=${locale}&limit=200`);
 }
 
 export async function getPublicBlogPost(slug: string, locale = "en") {
