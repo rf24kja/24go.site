@@ -1,4 +1,7 @@
-FROM python:3.11-slim
+# ponytail: official Playwright image — browsers + OS deps baked.
+# `playwright install --with-deps` on python:slim misdetects the distro
+# (bookworm) and dies on ubuntu20.04-only font packages.
+FROM mcr.microsoft.com/playwright/python:v1.49.1
 
 WORKDIR /app
 
@@ -7,10 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev &
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# ponytail: FB module needs headless Chromium (baked in — runtime download
-# would stall cold starts and fail air-gapped deploys)
-RUN python -m playwright install --with-deps chromium
 
 COPY . .
 

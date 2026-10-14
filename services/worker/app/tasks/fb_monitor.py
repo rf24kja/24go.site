@@ -8,14 +8,11 @@ cookies from account_sessions instead of a local persistent profile.
 
 Queue: fb. Beat: every 15 min (see celery_app).
 """
-import asyncio
 import hashlib
 import json
 import logging
 import re
 import uuid as uuid_mod
-
-from celery import shared_task
 
 from app.celery_app import celery
 from app.db_pool import fetch, fetchrow, execute
