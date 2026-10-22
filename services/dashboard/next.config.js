@@ -6,6 +6,9 @@ const nextConfig = {
   env: {
     API_URL: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
   },
+  async rewrites() {
+    return [{ source: "/sitemap.xml", destination: "/_sm" }];
+  },
   async headers() {
     return [
       {
