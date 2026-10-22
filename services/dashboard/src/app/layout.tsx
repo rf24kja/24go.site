@@ -64,9 +64,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang={locale} className="dark" suppressHydrationWarning>
       <head>
         <link rel="alternate" type="application/rss+xml" title="24GO Blog RSS" href="https://www.24go.site/feed.xml" />
-        <link rel="alternate" hrefLang="en" href="https://www.24go.site?locale=en" />
-        <link rel="alternate" hrefLang="ru" href="https://www.24go.site?locale=ru" />
-        <link rel="alternate" hrefLang="x-default" href="https://www.24go.site" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#10b981" />
       </head>

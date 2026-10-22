@@ -17,6 +17,10 @@ export async function generateMetadata({ searchParams }: { searchParams: { local
       canonical: "https://www.24go.site/blog",
       languages: { en: "https://www.24go.site/blog?locale=en", ru: "https://www.24go.site/blog?locale=ru", "x-default": "https://www.24go.site/blog?locale=en" },
     },
+    openGraph: {
+      locale: locale === "ru" ? "ru_RU" : "en_US",
+      localeAlternate: locale === "ru" ? "en_US" : "ru_RU",
+    },
   };
 }
 
