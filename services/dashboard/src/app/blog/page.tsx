@@ -19,7 +19,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { local
     },
     openGraph: {
       locale: locale === "ru" ? "ru_RU" : "en_US",
-      localeAlternate: locale === "ru" ? "en_US" : "ru_RU",
+      localeAlternate: [locale === "ru" ? "en_US" : "ru_RU"],
     },
   };
 }

@@ -129,7 +129,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         publishedTime: post.created_at,
         tags: post.tags,
         locale: locale === "ru" ? "ru_RU" : "en_US",
-        localeAlternate: locale === "ru" ? "en_US" : "ru_RU",
+        localeAlternate: [locale === "ru" ? "en_US" : "ru_RU"],
       },
       twitter: {
         card: "summary_large_image",

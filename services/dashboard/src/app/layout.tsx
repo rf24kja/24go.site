@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     description: "Автоматическая лидогенерация в Telegram и ВКонтакте. AI-классификация лидов, парсинг групп, умные кампании.",
     url: "https://www.24go.site",
     siteName: "24GO.SITE",
-    locale: "en_US",
     type: "website",
     images: [
       {
@@ -66,6 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="alternate" type="application/rss+xml" title="24GO Blog RSS" href="https://www.24go.site/feed.xml" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#10b981" />
+        <meta property="og:locale" content={locale === "ru" ? "ru_RU" : "en_US"} />
+        <meta property="og:locale:alternate" content={locale === "ru" ? "en_US" : "ru_RU"} />
       </head>
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         <ErrorBoundary>
