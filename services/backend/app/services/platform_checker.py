@@ -2,7 +2,6 @@
 import re
 import httpx
 
-from app.config import settings
 
 TIMEOUT = 30  # ponytail: 30s as per global constraint
 
@@ -16,65 +15,37 @@ def normalize_phone(phone: str) -> str:
 
 
 async def check_telegram(phone: str) -> dict:
-    """Check if phone number is registered on Telegram via delfi/phone-check API.
-
-    Returns {"exists": bool, "phone": str}.
-    ponytail: uses a free API or scrapes t.me lookup. If rate-limited, add Redis cache.
-    """
-    norm = normalize_phone(phone)
-    try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            resp = await client.post(
-                "https://api.telegram.org/bot{token}/getContact".replace("{token}", settings.TG_BOT_TOKEN or ""),
-                json={"phone": norm},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return {"exists": bool(data.get("user")), "phone": norm}
-    except Exception:
-        pass
-    # ponytail: fallback — return unknown if API fails, let caller handle
-    return {"exists": False, "phone": norm, "error": "check_failed"}
+    """Bot API cannot resolve arbitrary phone numbers via getContact."""
+    return {"exists": None, "phone": normalize_phone(phone), "error": "phone_lookup_unsupported"}
 
 
 async def check_vkontakte(phone: str) -> dict:
-    """Check if phone number is registered on VKontakte.
-
-    Returns {"exists": bool, "phone": str}.
-    ponytail: VK has no public phone lookup API. Stub with metadata check.
-    """
-    norm = normalize_phone(phone)
-    try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            resp = await client.get(
-                "https://api.vk.com/method/users.search",
-                params={"q": norm, "access_token": settings.VK_ACCESS_TOKEN or "", "v": "5.131"},
-            )
-            if resp.status_code == 200:
-                data = resp.json().get("response", {})
-                count = data.get("count", 0) if isinstance(data, dict) else 0
-                return {"exists": count > 0, "phone": norm}
-    except Exception:
-        pass
-    return {"exists": False, "phone": norm, "error": "check_failed"}
+    """Text-search matches are not verified phone-number identities."""
+    return {"exists": None, "phone": normalize_phone(phone), "error": "phone_lookup_unsupported"}
 
 
 async def check_whatsapp(phone: str, account_id: str | None = None) -> dict:
-    """Check if phone number is on WhatsApp via wa-sidecar.
-
-    Returns {"exists": bool, "phone": str, "wa_id": str | None}.
-    """
+    """Use an owned connected account; transport failures are not absence."""
+    import os
     norm = normalize_phone(phone)
-    wasidecar_url = "http://wa-sidecar:3100"
+    unknown = {"exists": None, "phone": norm, "wa_id": None}
+    if not account_id:
+        return {**unknown, "error": "account_not_connected"}
+    key = os.getenv("SIDECAR_API_KEY", "")
+    if not key:
+        return {**unknown, "error": "sidecar_not_configured"}
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            payload: dict = {"phone": norm}
-            if account_id:
-                payload["accountId"] = account_id
-            resp = await client.post(f"{wasidecar_url}/check-phone", json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                return {"exists": data.get("is_registered", False), "phone": norm, "wa_id": data.get("wa_id")}
-    except Exception:
-        pass
-    return {"exists": False, "phone": norm, "wa_id": None, "error": "check_failed"}
+        async with httpx.AsyncClient(timeout=TIMEOUT, headers={"X-Sidecar-Key": key}) as client:
+            resp = await client.post("http://wa-sidecar:3100/check-whatsapp",
+                                     json={"accountId": account_id, "numbers": [norm]})
+            if resp.status_code != 200:
+                return {**unknown, "error": "sidecar_unavailable"}
+            rows = resp.json().get("results", [])
+            row = next((r for r in rows if r.get("phone") == norm), None)
+            if not row or row.get("error") or not isinstance(row.get("exists"), bool):
+                return {**unknown, "error": "check_failed"}
+            exists = row["exists"]
+            return {"exists": exists, "phone": norm,
+                    "wa_id": norm[1:] + "@s.whatsapp.net" if exists else None}
+    except (httpx.HTTPError, ValueError, TypeError, AttributeError):
+        return {**unknown, "error": "check_failed"}

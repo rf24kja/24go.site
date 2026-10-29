@@ -4,19 +4,17 @@ import { Suspense } from "react";
 import { Calculator, Search, Shield, Plug, BookOpen } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Free Telegram Marketing Tools — ROI Calculator, Group Analyzer, Account Checker | 24GO",
   description: "Free tools for Telegram marketers: ROI calculator, group analyzer, account health checker, integration guides, and step-by-step tutorials.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/tools",
-    languages: {
-      en: "https://www.24go.site/tools?locale=en",
-      ru: "https://www.24go.site/tools?locale=ru",
-      "x-default": "https://www.24go.site/tools",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/tools", searchParams?.locale, pageMetadata);
+}
 
 const t = {
   en: {
@@ -83,7 +81,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: { loca
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
+          <Link href={`/?locale=${locale}`} className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex items-center gap-3">
             <Suspense><LanguageSwitcher /></Suspense>
             <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">{c.cta}</Link>
@@ -103,7 +101,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: { loca
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Calculator className="w-6 h-6 text-emerald-400" /> {c.toolsTitle}</h2>
           <div className="grid sm:grid-cols-3 gap-6">
             {c.tools.map((tool) => (
-              <Link key={tool.href} href={tool.href} className="group block bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+              <Link key={tool.href} href={`${tool.href}?locale=${locale}`} className="group block bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
                 <tool.icon className={`w-8 h-8 ${tool.color} mb-3`} />
                 <h3 className="font-bold mb-2 group-hover:text-emerald-400 transition">{tool.title}</h3>
                 <p className="text-sm text-zinc-500">{tool.desc}</p>
@@ -116,7 +114,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: { loca
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Plug className="w-6 h-6 text-emerald-400" /> {c.intTitle}</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {c.int.map((int) => (
-              <Link key={int.href} href={int.href} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition text-center font-medium text-zinc-300 hover:text-emerald-400">{int.name}</Link>
+              <Link key={int.href} href={`${int.href}?locale=${locale}`} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition text-center font-medium text-zinc-300 hover:text-emerald-400">{int.name}</Link>
             ))}
           </div>
         </section>
@@ -125,7 +123,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: { loca
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><BookOpen className="w-6 h-6 text-emerald-400" /> {c.tutTitle}</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {c.tut.map((tut) => (
-              <Link key={tut.href} href={tut.href} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition text-center font-medium text-zinc-300 hover:text-emerald-400">{tut.title}</Link>
+              <Link key={tut.href} href={`${tut.href}?locale=${locale}`} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition text-center font-medium text-zinc-300 hover:text-emerald-400">{tut.title}</Link>
             ))}
           </div>
         </section>

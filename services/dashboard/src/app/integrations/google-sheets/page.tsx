@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import IntegrationTemplate from "../IntegrationTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Telegram → Google Sheets Integration — Auto-Export Leads | 24GO",
   description: "Export Telegram leads to Google Sheets automatically. Real-time sync, custom columns, and formula-ready data.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/integrations/google-sheets",
-    languages: {
-      en: "https://www.24go.site/integrations/google-sheets?locale=en",
-      ru: "https://www.24go.site/integrations/google-sheets?locale=ru",
-      "x-default": "https://www.24go.site/integrations/google-sheets",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/integrations/google-sheets", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {

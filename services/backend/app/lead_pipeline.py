@@ -49,25 +49,13 @@ ORDER BY created_at DESC LIMIT 1;
 """
 
 
-async def process_incoming_message(
-    tenant_id: str,
-    platform: str,
-    target_id: str,
-    account_id: str,
-    user_handle: str,
-    user_full_name: str,
-    message_text: str,
-    geo_tag: str = "",
-) -> dict:
-    """Full pipeline: classify → upsert → dispatch webhook.
-
-    Returns lead_id and intent_score.
-    """
+async def classify_incoming_message(tenant_id: str, platform: str, message_text: str, geo_tag: str = "") -> dict:
+    """Shared tenant/service-aware rules-first classification, without persistence or dispatch."""
     # 1. Try custom scoring rules first, fallback to LLM/keyword
     try:
         # Load tenant settings for LLM config
         from app.tenant_settings import get_settings as _get_tenant_settings
-        tenant_cfg = await _get_tenant_settings(DATABASE_URL, tenant_id)
+        tenant_cfg = await _get_tenant_settings(DATABASE_URL, tenant_id, service=platform)
 
         custom_rules = await get_rules(DATABASE_URL, tenant_id)
         if custom_rules:
@@ -83,6 +71,24 @@ async def process_incoming_message(
     except Exception as e:
         log.warning(f"Custom scoring failed, falling back to LLM: {e}")
         classification = await classify_message(message_text, geo_tag, tenant_cfg=locals().get("tenant_cfg"))
+    return classification
+
+
+async def process_incoming_message(
+    tenant_id: str,
+    platform: str,
+    target_id: str,
+    account_id: str,
+    user_handle: str,
+    user_full_name: str,
+    message_text: str,
+    geo_tag: str = "",
+) -> dict:
+    """Full pipeline: classify → upsert → dispatch webhook.
+
+    Returns lead_id and intent_score.
+    """
+    classification = await classify_incoming_message(tenant_id, platform, message_text, geo_tag)
     intent_score = classification["intent_score"]
 
     # 2. Build dialog URL

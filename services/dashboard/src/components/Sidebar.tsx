@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/PlatformLink";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
+import { platformHref } from "@/lib/platform-routes";
 import { usePlatform } from "@/lib/platform";
 import {
   ChartBar, Crosshair, Scales, Radar, Radio, UserCircle,
@@ -67,11 +68,12 @@ export function Sidebar() {
     { href: "/admin", label: "Owner Dashboard", icon: Shield, ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
     { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
-    { href: "/vk-settings", label: t("sidebar.vkSettings"), icon: Cog },
+    { href: "/settings", label: t("sidebar.vkSettings"), icon: Cog },
   ] : platform === "max" ? [
     // ponytail: MAX is a full 4th section — bots, shared leads/billing/settings.
     // No campaigns/mailings/targets here: those creation flows are TG/VK-only.
     { href: "/max-accounts", label: t("sidebar.maxAccounts"), icon: Bot, feature: "accounts" },
+    { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
@@ -83,12 +85,14 @@ export function Sidebar() {
     { href: "/contacts", label: t("sidebar.contacts"), icon: UsersGroup, feature: "groups" },
     { href: "/fb-marketplace", label: t("sidebar.fbMarketplace"), icon: Megaphone, feature: "groups" },
     { href: "/fb-connect", label: t("sidebar.fbConnect"), icon: UserCircle, feature: "accounts" },
+    { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : [
     { href: "/wa-overview", label: t("sidebar.waOverview"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/wa-accounts", label: t("sidebar.waAccounts"), icon: UserCircle, feature: "accounts" },
+    { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/wa-groups", label: t("sidebar.waGroups"), icon: Radio, feature: "groups" },
     { href: "/contacts", label: t("sidebar.contacts"), icon: UsersGroup, feature: "groups" },
     { href: "/campaigns", label: t("sidebar.campaigns"), icon: Megaphone, feature: "campaigns" },
@@ -128,7 +132,7 @@ export function Sidebar() {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                  pathname === item.href || pathname.startsWith(item.href + "/")
+                  pathname === platformHref(item.href, platform) || pathname.startsWith(platformHref(item.href, platform) + "/")
                     ? "bg-zinc-800 text-zinc-100"
                     : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                 }`}
@@ -159,31 +163,31 @@ export function Sidebar() {
               (billing stays shared: same href in every menu) */}
           <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
             <button
-              onClick={() => { setPlatform("telegram"); router.push("/analytics"); }}
+              onClick={() => { setPlatform("telegram"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "telegram" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               TG
             </button>
             <button
-              onClick={() => { setPlatform("vkontakte"); router.push("/vk-overview"); }}
+              onClick={() => { setPlatform("vkontakte"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "vkontakte" ? "bg-blue-500/20 text-blue-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               VK
             </button>
             <button
-              onClick={() => { setPlatform("whatsapp"); router.push("/wa-overview"); }}
+              onClick={() => { setPlatform("whatsapp"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "whatsapp" ? "bg-green-500/20 text-green-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               WA
             </button>
             <button
-              onClick={() => { setPlatform("max"); router.push("/max-accounts"); }}
+              onClick={() => { setPlatform("max"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "max" ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               MAX
             </button>
             <button
-              onClick={() => { setPlatform("facebook"); router.push("/groups"); }}
+              onClick={() => { setPlatform("facebook"); }}
               className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "facebook" ? "bg-sky-500/20 text-sky-400" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               FB

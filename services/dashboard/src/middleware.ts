@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { routePlatform, platformDestination } from "./lib/platform-routes";
 
 const LOCALES = ["en", "ru"] as const;
 const DEFAULT_LOCALE = "en";
@@ -42,7 +43,13 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-locale", locale);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const platform = routePlatform(pathname);
+  const destination = request.nextUrl.clone();
+  if (platform) destination.pathname = platformDestination(pathname);
+  const response = platform
+    ? NextResponse.rewrite(destination, { request: { headers: requestHeaders } })
+    : NextResponse.next({ request: { headers: requestHeaders } });
+  if (platform) response.headers.set("X-Robots-Tag", "noindex, nofollow");
 
   // Also set cookie for client-side reading
   response.cookies.set("NEXT_LOCALE", locale, {

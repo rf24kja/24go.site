@@ -33,10 +33,20 @@ export default function UsersPage() {
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
 
-  const load = () => {
+  const [loadError, setLoadError] = useState("");
+  const [pendingUser, setPendingUser] = useState<string | null>(null);
+
+  const load = async () => {
     if (!auth?.token) return;
     setLoading(true);
-    getUsers(auth.token).then(setUsers).catch(() => setUsers([])).finally(() => setLoading(false));
+    setLoadError("");
+    try {
+      setUsers(await getUsers(auth.token));
+    } catch (err: any) {
+      setLoadError(err.message || t("users.loadFailed"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [auth?.token]);
@@ -49,7 +59,7 @@ export default function UsersPage() {
     try {
       await inviteUser(auth.token, inviteEmail, inviteRole);
       setInviteEmail("");
-      load();
+      await load();
     } catch (err: any) {
       setError(err.message || t("users.inviteFailed"));
     } finally {
@@ -58,19 +68,31 @@ export default function UsersPage() {
   };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!auth?.token) return;
+    if (!auth?.token || pendingUser) return;
+    setPendingUser(userId);
+    setError("");
     try {
       await updateUserRole(auth.token, userId, newRole);
-      load();
-    } catch {}
+      await load();
+    } catch (err: any) {
+      setError(err.message || t("users.roleFailed"));
+    } finally {
+      setPendingUser(null);
+    }
   };
 
   const handleRemove = async (userId: string) => {
-    if (!auth?.token || !confirm(t("users.removeConfirm"))) return;
+    if (!auth?.token || pendingUser || !confirm(t("users.removeConfirm"))) return;
+    setPendingUser(userId);
+    setError("");
     try {
       await removeUser(auth.token, userId);
-      load();
-    } catch {}
+      await load();
+    } catch (err: any) {
+      setError(err.message || t("users.removeFailed"));
+    } finally {
+      setPendingUser(null);
+    }
   };
 
   const isOwner = auth?.user?.role === "owner";
@@ -99,7 +121,8 @@ export default function UsersPage() {
           </button>
         </form>
       )}
-      {error && <p className="text-rose-400 text-sm">{error}</p>}
+      {error && <p role="alert" className="text-rose-400 text-sm">{error}</p>}
+      {loadError && <div role="alert" className="text-rose-400 text-sm">{loadError} <button onClick={load} disabled={loading}>{t("users.retry")}</button></div>}
 
       {/* Users table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
@@ -126,7 +149,7 @@ export default function UsersPage() {
                   ))}
                 </div>
               </td></tr>
-            ) : users.length === 0 ? (
+            ) : loadError && users.length === 0 ? null : users.length === 0 ? (
               <tr><td colSpan={4} className="px-4 py-8 text-center text-zinc-500">{t("users.empty")}</td></tr>
             ) : (
               users.map((u) => (
@@ -145,6 +168,7 @@ export default function UsersPage() {
                       <div className="flex gap-2">
                         {u.role !== "owner" && (
                           <select
+                            disabled={pendingUser !== null || loading}
                             value={u.role}
                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                             className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-zinc-300">
@@ -155,6 +179,7 @@ export default function UsersPage() {
                         )}
                         {u.role !== "owner" && u.id !== auth?.user?.id && (
                           <button onClick={() => handleRemove(u.id)}
+                            disabled={pendingUser !== null || loading}
                             className="px-2 py-1 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition">
                             {t("users.remove")}
                           </button>

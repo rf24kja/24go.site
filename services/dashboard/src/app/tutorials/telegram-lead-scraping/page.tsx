@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import TutorialTemplate from "../TutorialTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "How to Scrape Telegram Leads — Complete Guide (2026) | 24GO",
   description: "Step-by-step guide to collecting leads from Telegram groups. Extract usernames, messages, and intent data for B2B outreach.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/tutorials/telegram-lead-scraping",
-    languages: {
-      en: "https://www.24go.site/tutorials/telegram-lead-scraping?locale=en",
-      ru: "https://www.24go.site/tutorials/telegram-lead-scraping?locale=ru",
-      "x-default": "https://www.24go.site/tutorials/telegram-lead-scraping",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/tutorials/telegram-lead-scraping", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {

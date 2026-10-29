@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getContacts, getContactStats, exportContactsCsv, refreshPlatforms, bulkTagContacts, checkPlatforms } from "@/lib/api";
@@ -26,12 +26,12 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stats, setStats] = useState<{ total: number; telegram: number; vkontakte: number; whatsapp: number; viber: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const requestId = useRef(0);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("");
-  const [countryFilter, setCountryFilter] = useState("");
-  const [qualityFilter, setQualityFilter] = useState("");
+  const [loadError, setLoadError] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tagInput, setTagInput] = useState("");
@@ -56,34 +56,39 @@ export default function ContactsPage() {
 
   const load = useCallback((p = 0) => {
     if (!auth?.token) return;
+    const request = ++requestId.current;
     setLoading(true);
     const params: any = { limit: PAGE_SIZE, page: p };
     if (search.trim()) params.search = search.trim();
     if (platformFilter) params.platform = platformFilter;
-    if (countryFilter) params.country = countryFilter;
-    if (qualityFilter) params.quality = qualityFilter;
+    setLoadError(false);
     if (selectedTags.length > 0) params.tags = selectedTags.join(",");
     Promise.all([
       getContacts(auth.token, params),
       getContactStats(auth.token).catch(() => null),
     ]).then(([res, s]) => {
-      setContacts(res.items || []);
+      if (request !== requestId.current) return;
+      setContacts(prev => p > 0 ? [...prev, ...(res.items || [])] : (res.items || []));
       setTotal(res.total || 0);
       if (s) setStats(s);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [auth?.token, search, platformFilter, countryFilter, qualityFilter, selectedTags]);
+    }).catch(() => { if (request !== requestId.current) return; setContacts([]); setTotal(0); setLoadError(true); }).finally(() => { if (request === requestId.current) setLoading(false); });
+  }, [auth?.token, search, platformFilter, selectedTags]);
 
-  useEffect(() => { setPage(0); load(0); }, [auth?.token, platformFilter, countryFilter, qualityFilter, selectedTags]);
+  useEffect(() => { setPage(0); setSelected(new Set()); load(0); return () => { requestId.current++; }; }, [auth?.token, platformFilter, selectedTags]);
   useEffect(() => {
     const timer = setTimeout(() => { setPage(0); load(0); }, 300);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); requestId.current++; };
   }, [search]);
 
   const handleExport = async () => {
     if (!auth?.token) return;
     setExporting(true);
     try {
-      const blob = await exportContactsCsv(auth.token);
+      const blob = await exportContactsCsv(auth.token, {
+        ...(search.trim() ? { search: search.trim() } : {}),
+        ...(platformFilter ? { platform: platformFilter } : {}),
+        ...(selectedTags.length ? { tags: selectedTags.join(",") } : {}),
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = `contacts_${new Date().toISOString().slice(0, 10)}.csv`;
       a.click(); URL.revokeObjectURL(url);
@@ -127,7 +132,7 @@ export default function ContactsPage() {
     else setSelected(new Set(contacts.map(c => c.id)));
   };
 
-  const countries = [...new Set(contacts.map(c => c.country).filter(Boolean))] as string[];
+
   const allTags = [...new Set(contacts.flatMap(c => c.tags))];
 
   return (
@@ -161,11 +166,14 @@ export default function ContactsPage() {
             <span className="text-zinc-400 font-mono">{lookupResult.phone}</span>
             {(["telegram", "vkontakte", "whatsapp"] as const).map(p => (
               <span key={p} className={`px-2 py-0.5 rounded text-xs font-medium ${lookupResult[p]?.exists ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
-                {PLATFORM_SHORT[p as ContactPlatform]}{lookupResult[p]?.exists ? " ✓" : ""}
+                {PLATFORM_SHORT[p as ContactPlatform]}{lookupResult[p]?.exists === true ? " ✓" : lookupResult[p]?.exists === false ? " —" : " ?"}
               </span>
             ))}
-            {!lookupResult.telegram?.exists && !lookupResult.vkontakte?.exists && !lookupResult.whatsapp?.exists && (
+            {(["telegram", "vkontakte", "whatsapp"] as const).every(p => lookupResult[p]?.exists === false) && (
               <span className="text-zinc-500 text-xs">{t("contacts.phoneNotFound")}</span>
+            )}
+            {(["telegram", "vkontakte", "whatsapp"] as const).some(p => lookupResult[p]?.error || typeof lookupResult[p]?.exists !== "boolean") && (
+              <span role="status" className="text-amber-400 text-xs">{t("contacts.checkFailed")}</span>
             )}
           </div>
         )}
@@ -196,17 +204,13 @@ export default function ContactsPage() {
           <option value="">{t("contacts.allPlatforms")}</option>
           {PLATFORMS.map(p => <option key={p} value={p}>{PLATFORM_SHORT[p]}</option>)}
         </select>
-        <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}
+        <select disabled aria-label={t("contacts.country")} value=""
           className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-          <option value="">{t("contacts.country")}</option>
-          {countries.map(c => <option key={c} value={c}>{c}</option>)}
+          <option value="">{t("contacts.country")} — {t("contacts.unavailable")}</option>
         </select>
-        <select value={qualityFilter} onChange={(e) => setQualityFilter(e.target.value)}
+        <select disabled aria-label={t("contacts.quality")} value=""
           className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100">
-          <option value="">{t("contacts.quality")}</option>
-          <option value="high">{t("contacts.high")}</option>
-          <option value="medium">{t("contacts.medium")}</option>
-          <option value="low">{t("contacts.low")}</option>
+          <option value="">{t("contacts.quality")} — {t("contacts.unavailable")}</option>
         </select>
         <div className="flex flex-wrap gap-1">
           {allTags.map(tag => (
@@ -243,6 +247,8 @@ export default function ContactsPage() {
         </div>
       )}
 
+      {loadError && <div role="alert">{t("contacts.loadFailed")} <button onClick={() => load(page)}>{t("contacts.retry")}</button></div>}
+      <p className="text-xs text-zinc-500">{t("contacts.filterScope")}</p>
       {/* Desktop table */}
       <div className="hidden md:block bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
@@ -267,7 +273,7 @@ export default function ContactsPage() {
               <tr><td colSpan={10} className="px-4 py-8">
                 <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="flex gap-4"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-20" /><Skeleton className="h-4 flex-1" /></div>)}</div>
               </td></tr>
-            ) : contacts.length === 0 ? (
+            ) : loadError ? null : contacts.length === 0 ? (
               <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-500">
                 <p className="text-zinc-300 font-medium mb-1">{t("contacts.empty")}</p>
                 <p className="text-xs text-zinc-500">{t("contacts.emptyDesc")}</p>
@@ -315,7 +321,7 @@ export default function ContactsPage() {
       <div className="md:hidden space-y-3">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-20" /></div>)
-        ) : contacts.length === 0 ? (
+        ) : loadError ? null : contacts.length === 0 ? (
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center text-zinc-500">{t("contacts.empty")}</div>
         ) : (
           contacts.map((c) => (

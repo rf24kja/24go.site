@@ -19,4 +19,11 @@ celery.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    task_routes={
+        "app.tasks.listener.*": {"queue": "listener"},
+        "app.tasks.vk_listener.*": {"queue": "listener"},
+        "app.tasks.max_listener.*": {"queue": "listener"},
+        "app.tasks.group_scanner.*": {"queue": "scanner"},
+        "app.tasks.vk_group_scanner.*": {"queue": "scanner"},
+    },
 )

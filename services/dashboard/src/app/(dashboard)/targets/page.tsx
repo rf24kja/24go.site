@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { BatchDiscovery } from '@/components/BatchDiscovery';
+import { vkDiscoveryError } from '@/lib/vk-discovery';
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts, checkMembership, joinTarget, getAccounts } from "@/lib/api";
+import { createTarget, getTargets, discoverGroups, scrapeTargetComments, searchGroupsTgstat, getRecentPosts, checkMembership, joinTarget, getAccounts } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
@@ -71,11 +73,14 @@ function PlatformIcon({ platform }: { platform: string }) {
 export default function TargetsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { platform } = usePlatform();
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchMode, setSearchMode] = useState<SearchMode>("free");
+  const [requestedMode, setSearchMode] = useState<SearchMode>("free");
+  const searchMode = platform === "telegram" ? requestedMode : "free";
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const generation = useRef(0);
   const [scanning, setScanning] = useState(false);
 
   const [scanGeo, setScanGeo] = useState("Moscow");
@@ -99,6 +104,8 @@ export default function TargetsPage() {
 
   const [tgstatResults, setTgstatResults] = useState<any[]>([]);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const adding = useRef(new Set<string>());
+  const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
 
   const [joinModal, setJoinModal] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -109,14 +116,19 @@ export default function TargetsPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getTargets(auth.token, { platform }).then((res) => setTargets(res.items || res)).catch(() => setTargets([])).finally(() => setLoading(false));
+    const current = ++generation.current;
+    getTargets(auth.token, { platform }).then((res) => {
+      if (current !== generation.current) return;
+      setTargets(res.items || res); setLoadError(null);
+    }).catch((error) => { if (current === generation.current) setLoadError(error.message); })
+      .finally(() => { if (current === generation.current) setLoading(false); });
   };
 
-  useEffect(() => { load(); }, [auth?.token, platform]);
+  useEffect(() => { setTargets([]); setAccounts([]); setJoinModal(null); setSearchMode("free"); load(); return () => { generation.current++; }; }, [auth?.token, platform]);
 
   const loadAccounts = () => {
     if (!auth?.token) return;
-    getAccounts(auth.token).then((res) => setAccounts(Array.isArray(res) ? res : res.items || [])).catch(() => {});
+    getAccounts(auth.token, { platform, status_filter: "active" }).then((res) => setAccounts((Array.isArray(res) ? res : res.items || []).filter((a: any) => a.platform === platform && a.status === "active"))).catch((e) => toast(e.message, "error"));
   };
 
   const openJoinModal = (targetId: string) => {
@@ -127,10 +139,10 @@ export default function TargetsPage() {
   };
 
   const handleJoin = async () => {
-    if (!auth?.token || !joinModal) return;
+    if (!auth?.token || !joinModal || platform !== "telegram" || accounts.length === 0) return;
     setJoining(true);
     try {
-      const ids = selectedAccounts.size > 0 ? Array.from(selectedAccounts) : undefined;
+      const ids = accounts.filter(a => selectedAccounts.size === 0 || selectedAccounts.has(a.id)).map(a => a.id);
       const res = await joinTarget(auth.token, joinModal, ids);
       setJoinResults(res.results);
       load();
@@ -155,14 +167,17 @@ export default function TargetsPage() {
       }
       load();
     } catch (e: any) {
-      toast(e.message || t("targets.scanFailed"), "error");
+      toast(platform === "vkontakte" ? vkDiscoveryError(e, lang) : e.message || t("targets.scanFailed"), "error");
     } finally {
       setScanning(false);
     }
   };
 
   const handleTgstatSearch = async () => {
-    if (!auth?.token || !tgstatQuery.trim()) return;
+    if (platform !== "telegram" || !auth?.token || scanning || tgstatQuery.trim().length < 3) return;
+    if (!window.confirm(lang === "ru"
+      ? "TgStat — платный поиск. Запрос может списать средства с баланса. Продолжить?"
+      : "TgStat is a paid search. This request may charge your balance. Continue?")) return;
     setScanning(true);
     setTgstatResults([]);
     try {
@@ -172,6 +187,7 @@ export default function TargetsPage() {
         language: tgstatLanguage,
         category: tgstatCategory || undefined,
         limit: 20,
+        use_tgstat: true,
       });
       setTgstatResults(res.results || []);
       setTgstatBalance(res.balance ?? null);
@@ -188,18 +204,32 @@ export default function TargetsPage() {
   };
 
   const handleAddTarget = async (result: any) => {
-    if (!auth?.token) return;
+    if (platform !== "telegram" || !auth?.token) return;
+    const username = result.username;
+    if (typeof username !== "string" || !username.trim()) {
+      toast(lang === "ru" ? "У результата нет username: добавить нельзя." : "This result has no username and cannot be added.", "error");
+      return;
+    }
+    if (addedIds.has(username) || adding.current.has(username) || targets.some(target => target.target_id_code === username)) return;
+    adding.current.add(username);
+    setAddingIds(new Set(adding.current));
     try {
-      await discoverGroups(auth.token, {
-        geo_tag: tgstatCountry,
-        niche: tgstatQuery.trim(),
+      await createTarget(auth.token, {
         platform: "telegram",
+        target_id_code: username,
+        title: result.title || username,
+        geo_tag: result.country || tgstatCountry,
+        niche: tgstatQuery.trim(),
+        access: "open_wall",
       });
-      setAddedIds((prev) => new Set(prev).add(result.username));
+      setAddedIds((prev) => new Set(prev).add(username));
       toast(t("targets.added"), "success");
       load();
     } catch (e: any) {
       toast(e.message || t("targets.addFailed"), "error");
+    } finally {
+      adding.current.delete(username);
+      setAddingIds(new Set(adding.current));
     }
   };
 
@@ -257,6 +287,7 @@ export default function TargetsPage() {
 
   return (
     <div className="space-y-6 animate-fade-slide-in">
+      {loadError && <div role="alert" className="text-rose-400">{loadError}<button onClick={load} className="ml-3 underline">{lang === "ru" ? "Повторить" : "Retry"}</button></div>}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("targets.title")}</h1>
       </div>
@@ -265,13 +296,13 @@ export default function TargetsPage() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-300 mb-2">{t("targets.howItWorks")}</h2>
         <p className="text-xs text-zinc-500">
-          {t("targets.howDesc")}{" "}
-          {t("targets.howScan")}{" "}
-          {t("targets.howAction")}
+          {platform === "vkontakte" ? (lang === "ru" ? "VK: поиск сообществ через отдельный пользовательский токен из раздела Интеграции. Проверка доступа не означает вступление. Вступайте в группы вручную в VK." : "VK: discover communities using a separate user token connected in Integrations. Access checks do not mean membership. Join groups manually in VK.") : <>{t("targets.howDesc")}{" "}{t("targets.howScan")}{" "}{t("targets.howAction")}</>}
         </p>
       </div>
 
+      {(platform === 'telegram' || platform === 'vkontakte') && <BatchDiscovery key={`${auth?.token}:${platform}`} token={auth?.token || null} platform={platform} lang={lang} readOnly={auth?.user?.role === 'viewer'} onRefresh={load} />}
       {/* Search mode toggle + form */}
+      {platform === "vkontakte" && <a className="text-blue-400 underline" href="/VK/integrations">{lang === "ru" ? "Подключить пользовательский токен VK" : "Connect VK user token"}</a>}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <div className="flex items-center gap-4 mb-4">
           <h2 className="text-sm font-medium text-zinc-400">{t("targets.discoverNew")}</h2>
@@ -300,7 +331,7 @@ export default function TargetsPage() {
             )}
           </div>
           <span className="text-[10px] text-zinc-600">
-            {searchMode === "free" ? t("targets.freeDesc") : t("targets.tgstatDesc")}
+            {searchMode === "free" ? (platform === "vkontakte" ? (lang === "ru" ? "Поиск сообществ через VK API" : "Community search via VK API") : t("targets.freeDesc")) : t("targets.tgstatDesc")}
           </span>
           {searchMode === "tgstat" && tgstatBalance !== null && (
             <span className="text-[10px] text-zinc-500 ml-auto">
@@ -394,7 +425,7 @@ export default function TargetsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">
-                    {(r.members_count || 0).toLocaleString()}
+                    {(r.subscribers || 0).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     {r.engagement_rate != null ? (
@@ -406,12 +437,12 @@ export default function TargetsPage() {
                   <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">{r.country || "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      {addedIds.has(r.username) ? (
+                      {addedIds.has(r.username) || targets.some(target => target.target_id_code === r.username) ? (
                         <span className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
                           {t("targets.added")}
                         </span>
                       ) : (
-                        <button onClick={() => handleAddTarget(r)}
+                        <button onClick={() => handleAddTarget(r)} disabled={!r.username?.trim() || addingIds.has(r.username)}
                           className="px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition">
                           {t("targets.addToList")}
                         </button>
@@ -466,10 +497,10 @@ export default function TargetsPage() {
                   ))}
                 </div>
               </td></tr>
-            ) : targets.length === 0 ? (
+            ) : loadError ? (<tr><td colSpan={9} className="p-4 text-rose-400">{loadError}</td></tr>) : targets.length === 0 ? (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-500">
                 <p className="text-zinc-300 font-medium mb-2">{t("targets.empty")}</p>
-                <p className="text-xs text-zinc-500 mb-1">{t("targets.emptyDesc")}</p>
+                <p className="text-xs text-zinc-500 mb-1">{platform === "vkontakte" ? (lang === "ru" ? "Используйте поиск выше для поиска сообществ VK по региону и нише." : "Use the search above to find VK communities by region and niche.") : t("targets.emptyDesc")}</p>
                 <p className="text-xs text-zinc-600">{t("targets.emptyHint")}</p>
               </td></tr>
             ) : (
@@ -498,16 +529,16 @@ export default function TargetsPage() {
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${target.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                         {target.is_active ? t("targets.active") : t("targets.inactive")}
                       </span>
-                      <button onClick={() => openJoinModal(target.id)}
+                      {platform === "telegram" && <button onClick={() => openJoinModal(target.id)}
                         className="px-2.5 py-1 text-[10px] rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition min-h-[36px]">
                         {t("targets.join")}
-                      </button>
+                      </button>}
                       <button onClick={async () => {
                         if (!auth?.token) return;
                         try {
                           const res = await checkMembership(auth.token, target.id);
                           load();
-                          toast(res.is_joined ? t("targets.joinedGroup").replace("{title}", target.title) : t("targets.notJoinedGroup").replace("{title}", target.title), "info");
+                          toast(platform === "vkontakte" ? (res.is_joined ? (lang === "ru" ? "Доступ к сообществу подтверждён" : "Community access confirmed") : (lang === "ru" ? "Доступ к сообществу не подтверждён" : "Community access not confirmed")) : (res.is_joined ? t("targets.joinedGroup").replace("{title}", target.title) : t("targets.notJoinedGroup").replace("{title}", target.title)), "info");
                         } catch (e: any) {
                           toast(e.message || t("targets.checkFailed"), "error");
                         }
@@ -517,7 +548,7 @@ export default function TargetsPage() {
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                             : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:text-zinc-300"
                         }`}>
-                        {target.is_joined ? t("targets.joined") : t("targets.check")}
+                        {platform === "vkontakte" ? (lang === "ru" ? "Проверить доступ" : "Check access") : target.is_joined ? t("targets.joined") : t("targets.check")}
                       </button>
                     </div>
                   </td>
@@ -643,7 +674,7 @@ export default function TargetsPage() {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleJoin} disabled={joining}
+                  <button onClick={handleJoin} disabled={joining || accounts.length === 0}
                     className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                     {joining ? t("targets.joining") : `${t("targets.join")}${selectedAccounts.size > 0 ? ` (${selectedAccounts.size})` : ` ${t("targets.joinAll")}`}`}
                   </button>

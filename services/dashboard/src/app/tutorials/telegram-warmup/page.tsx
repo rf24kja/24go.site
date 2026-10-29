@@ -1,50 +1,48 @@
 import type { Metadata } from "next";
 import TutorialTemplate from "../TutorialTemplate";
 
-export const metadata: Metadata = {
-  title: "How to Warm Up Telegram Accounts — Complete Guide (2026) | 24GO",
-  description: "Step-by-step guide to warming up Telegram accounts for mass outreach. Avoid bans and improve deliverability.",
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
+  title: "Managing Telegram Account Activity and Limits | 24GO",
+  description: "Understand activity limits, account restrictions and the risks of Telegram automation. No guaranteed delivery or account-safety outcomes.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/tutorials/telegram-warmup",
-    languages: {
-      en: "https://www.24go.site/tutorials/telegram-warmup?locale=en",
-      ru: "https://www.24go.site/tutorials/telegram-warmup?locale=ru",
-      "x-default": "https://www.24go.site/tutorials/telegram-warmup",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/tutorials/telegram-warmup", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {
-    title: "How to Warm Up Telegram Accounts",
-    description: "Prepare your Telegram accounts for automated outreach. Proper warmup prevents bans and dramatically improves message delivery rates.",
-    prerequisites: ["At least one Telegram account connected to 24GO", "24GO account (free trial available)", "Patience — warmup takes 7-14 days"],
+    title: "Managing Telegram Account Activity",
+    description: "Review account state and activity settings before enabling an automated workflow. Restrictions remain possible; warmup cannot guarantee account safety, delivery or a fixed time to readiness.",
+    prerequisites: ["A Telegram account you are authorized to connect", "Access to the Telegram section of 24GO", "A designated test group and permission for the intended actions"],
     steps: [
-      { title: "Connect your accounts", content: "Go to Accounts → Connect Account. Add all accounts you plan to use. Assign a dedicated proxy to each account (1 proxy = 1 account, permanently)." },
-      { title: "Enable the warmup worker", content: "Go to Settings → Warmup. Enable warmup for your accounts. 24GO automatically sends messages, joins groups, and performs normal user actions." },
-      { title: "Set warmup limits", content: "Start with Stage 1 limits (5 messages/day). The warmup automatically progresses through stages over 7-14 days: Stage 1 (5/day) → Stage 2 (15/day) → Stage 3 (30/day)." },
-      { title: "Monitor warmup progress", content: "Go to Accounts → view warmup status for each account. Watch for restrictions or warnings. If an account gets flagged, pause warmup and extend the current stage." },
-      { title: "Progress to outreach", content: "After Stage 3 completes (14+ days), accounts are ready for mass outreach. Increase limits gradually: start at 50% of max, increase by 20% per week." },
-      { title: "Maintain account health", content: "Keep warmup running in background even during active outreach. Mix normal user actions (joining groups, reacting to posts) with automated messages." },
+      { title: "Connect the intended account", content: "Open Telegram → Accounts and use the connection controls. Keep passwords and verification codes in the secure connection interface, not in support chat." },
+      { title: "Review the available settings", content: "Open Telegram → Settings and inspect the activity and warmup settings that your plan exposes. Saving a setting does not prove a worker is running or that an external action succeeded." },
+      { title: "Check the account state", content: "Review the saved account state and any restrictions shown in Telegram → Accounts. A stored connection is not proof that every provider operation is available." },
+      { title: "Use a bounded test", content: "Choose a test resource and explicitly permitted action. Check the actual result before expanding the workflow; do not send unsolicited messages or join unrelated groups to simulate activity." },
+      { title: "Respond to restrictions", content: "If Telegram reports a restriction or an operation fails, pause the affected workflow and follow the provider's instructions. A proxy, delay or warmup stage does not remove Telegram's rules." },
+      { title: "Keep the operating boundary explicit", content: "Automatic sending, monitoring and account activity are different capabilities. Enable only supported controls and verify the specific workflow rather than assuming that a warmup setting starts all of them." },
     ],
-    mistakes: ["Skipping warmup — new accounts that jump straight to mass messaging get banned within days", "Using shared proxies — one proxy per account, permanently. Changing proxies triggers bans.", "Going too fast — increase limits by max 20% per week, not more", "Ignoring restrictions — if Telegram limits your account, stop all activity for 24-48 hours", "Not enabling 2FA — accounts without 2FA are flagged more easily by Telegram", "Using the same message template for all accounts — rotate content across accounts"],
-    results: ["Accounts survive long-term without bans", "Higher message delivery rates (80%+ vs 20-30% for unwarmed accounts)", "Better response rates — warm accounts look legitimate to recipients", "Stable daily limits — warmed accounts maintain consistent throughput"],
+    mistakes: ["Treating a saved setting as proof of a running worker", "Assuming a fixed number of days makes an account safe", "Using artificial engagement or unsolicited messages as a test", "Ignoring provider restrictions or failed operations", "Sharing credentials or verification codes in chat", "Assuming the same limits apply to every account"],
+    results: ["An explicit list of connected accounts and permitted test actions", "A distinction between saved configuration and observed execution", "A repeatable way to inspect errors and stop affected workflows", "Restrictions remain possible; delivery and account safety are not guaranteed"],
   },
   ru: {
-    title: "Как прогреть аккаунты Telegram",
-    description: "Подготовьте аккаунты Telegram к автоматическому outreach. Правильный прогрев предотвращает баны и значительно повышает доставку сообщений.",
-    prerequisites: ["Хотя бы один аккаунт Telegram, подключённый к 24GO", "Аккаунт 24GO (бесплатный триал)", "Терпение — прогрев занимает 7-14 дней"],
+    title: "Управление активностью аккаунтов Telegram",
+    description: "Проверьте состояние аккаунта и настройки до включения автоматизации. Риск ограничений сохраняется; прогрев не гарантирует безопасность аккаунта, доставку или готовность за фиксированный срок.",
+    prerequisites: ["Аккаунт Telegram, который вы вправе подключать", "Доступ к разделу Telegram в 24GO", "Выделенная тестовая группа и разрешение на конкретные действия"],
     steps: [
-      { title: "Подключите аккаунты", content: "Перейдите в Аккаунты → Подключить. Добавьте все аккаунты. Назначьте выделенный прокси каждому (1 прокси = 1 аккаунт, навсегда)." },
-      { title: "Включите воркер прогрева", content: "Перейдите в Настройки → Прогрев. Включите прогрев для аккаунтов. 24GO автоматически отправляет сообщения, вступает в группы и выполняет обычные действия." },
-      { title: "Установите лимиты прогрева", content: "Начните с Stage 1 (5 сообщений/день). Прогрев проходит через этапы за 7-14 дней: Stage 1 (5/день) → Stage 2 (15/день) → Stage 3 (30/день)." },
-      { title: "Отслеживайте прогресс", content: "Перейдите в Аккаунты → статус прогрева. Следите за ограничениями. Если аккаунт попал под флаг, приостановите прогрев и продлите текущий этап." },
-      { title: "Переходите к outreach", content: "После завершения Stage 3 (14+ дней) аккаунты готовы. Увеличивайте лимиты постепенно: начните с 50% от максимума, +20% в неделю." },
-      { title: "Поддерживайте здоровье аккаунтов", content: "Держите прогрев в фоне даже во время активного outreach. Чередуйте обычные действия (вступление в группы, реакции) с автоматическими сообщениями." },
+      { title: "Подключите нужный аккаунт", content: "Откройте Telegram → Аккаунты и используйте доступные элементы подключения. Пароли и коды подтверждения вводятся только в защищённом интерфейсе, не в чате поддержки." },
+      { title: "Проверьте доступные настройки", content: "Откройте Telegram → Настройки и изучите параметры активности и прогрева, доступные вашему тарифу. Сохранение настройки не доказывает запуск обработчика или успешное внешнее действие." },
+      { title: "Проверьте состояние аккаунта", content: "Посмотрите сохранённое состояние и ограничения в Telegram → Аккаунты. Наличие подключения не означает доступность всех операций провайдера." },
+      { title: "Выполните ограниченный тест", content: "Выберите тестовый ресурс и явно разрешённое действие. Проверьте фактический результат до расширения сценария; не отправляйте нежелательные сообщения и не вступайте в произвольные группы ради имитации активности." },
+      { title: "Учитывайте ограничения", content: "Если Telegram сообщил об ограничении или операция завершилась ошибкой, приостановите соответствующий сценарий и следуйте указаниям платформы. Прокси, задержки и этапы прогрева не отменяют правила Telegram." },
+      { title: "Разделяйте возможности сервиса", content: "Отправка сообщений, мониторинг и активность аккаунта — разные возможности. Используйте только доступные элементы управления и проверяйте конкретный сценарий, а не предполагайте, что настройка прогрева запускает всё сразу." },
     ],
-    mistakes: ["Пропуск прогрева — новые аккаунты, перешедшие сразу к массовой рассылке, банятся за дни", "Использование общих прокси — 1 прокси на аккаунт, навсегда. Смена прокси вызывает бан.", "Слишком быстрое увеличение — максимум +20% в неделю", "Игнорирование ограничений — если Telegram ограничил аккаунт, остановите всё на 24-48 часов", "Отсутствие 2FA — аккаунты без 2FA проще всего флагит Telegram", "Один шаблон для всех аккаунтов — чередуйте контент между аккаунтами"],
-    results: ["Аккаунты живут долго без банов", "Высокая доставка сообщений (80%+ против 20-30% без прогрева)", "Лучшие rates ответов — прогретые аккаунты выглядят легитимно", "Стабильные дневные лимиты — прогретые аккаунты поддерживают стабильную пропускную способность"],
+    mistakes: ["Считать сохранённую настройку доказательством работающего обработчика", "Считать аккаунт безопасным через фиксированное число дней", "Проверять сервис искусственной активностью или нежелательными сообщениями", "Игнорировать ограничения платформы и ошибки операций", "Передавать пароли и коды подтверждения в чат", "Считать лимиты одинаковыми для всех аккаунтов"],
+    results: ["Явный перечень подключённых аккаунтов и разрешённых тестовых действий", "Различие между сохранённой конфигурацией и фактическим выполнением", "Повторяемая проверка ошибок и остановка затронутых сценариев", "Риск ограничений сохраняется; доставка и безопасность аккаунта не гарантируются"],
   },
 };
 

@@ -99,7 +99,7 @@ async def search_groups(
     from app.tenant_settings import get_section
     from app.config import settings as app_settings
     db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")
-    tgstat_cfg = await get_section(db_url, str(current_user.tenant_id), "tgstat")
+    tgstat_cfg = await get_section(db_url, str(current_user.tenant_id), "tgstat", service="telegram")
     tgstat_token = tgstat_cfg.get("api_token", "")
 
     raw = await search_tgstat(

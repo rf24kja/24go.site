@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.security import get_current_user
 from app.models import BlogPost, User
+from app.services.article_length import require_body_lengths
 
 router = APIRouter(prefix="/api/v1/blog", tags=["blog"])
 
@@ -105,6 +106,11 @@ async def admin_create_post(
     if current_user.role != "owner":
         raise HTTPException(403, "Blog management is restricted to platform owner")
     slug = body.slug or _make_slug(body.title_en or body.title_ru)
+    if body.published:
+        try:
+            require_body_lengths(body.model_dump())
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
     existing = await db.execute(
         select(BlogPost).where(BlogPost.tenant_id == current_user.tenant_id, BlogPost.slug == slug)
     )
@@ -139,7 +145,14 @@ async def admin_update_post(
     if not post:
         raise HTTPException(404, "Post not found")
 
-    for key, value in body.model_dump(exclude_unset=True).items():
+    changes = body.model_dump(exclude_unset=True)
+    if changes.get("published", post.published):
+        try:
+            require_body_lengths({key: changes.get(key, getattr(post, key))
+                                  for key in ("content_ru", "content_en")})
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+    for key, value in changes.items():
         setattr(post, key, value)
     post.updated_at = datetime.now(timezone.utc)
     await db.commit()

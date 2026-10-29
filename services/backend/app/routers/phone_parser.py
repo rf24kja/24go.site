@@ -263,13 +263,15 @@ async def _store_parse_result(db, tenant_id, data: dict) -> dict:
 async def wa_parse_async(
     body: WaParseRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Start background parse job. Returns immediately with job_id.
 
     ponytail: a 5-group parse holds HTTP ~3 min (anti-ban sleeps) — the
     request returns in ms, progress is polled via /wa/parse-status/{job_id}.
     """
-    account_id = body.account_id
+    account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
+    account_id = account.id
     links = (body.group_links or [])[:5]
     ids = (body.group_ids or [])[:5]
     if not links and not ids:
@@ -321,6 +323,8 @@ async def _run_parse_job(job_id: str, tenant_id: str, account_id: str,
         await save({"status": "running"})
         async with async_session() as db:
             for i, (kind, target) in enumerate(targets):
+                # Ownership may have changed since enqueue or the previous group.
+                await _get_wa_account(db, UUID(account_id), UUID(tenant_id))
                 payload: dict = {"accountId": account_id, "leave": leave,
                                  "groupLinks": [], "groupIds": []}
                 if kind == "link":
@@ -427,17 +431,29 @@ async def wa_my_groups(    account_id: UUID,
 @router.get("/contacts")
 async def list_contacts(
     search: str | None = None,
+    platform: str | None = Query(default=None, pattern="^(telegram|vkontakte|whatsapp|viber)$"),
+    page: int | None = Query(default=None, ge=0),
     has_tg: bool | None = None,
     tags: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """List contacts with filters."""
     q = select(Contact).where(Contact.tenant_id == current_user.tenant_id)
+    if page is not None:
+        offset = page * limit
+    if platform == "telegram":
+        q = q.where(Contact.has_tg == True)
+    elif platform == "viber":
+        q = q.where(Contact.has_viber == True)
+    elif platform == "whatsapp":
+        q = q.where(Contact.wa_jid.isnot(None), Contact.wa_jid != "")
+    elif platform == "vkontakte":
+        q = q.where(Contact.tags.contains(["has_vk"]))
     if search:
         q = q.where(Contact.phone.ilike(f"%{search}%") | Contact.name.ilike(f"%{search}%"))
     if has_tg is not None:
@@ -462,7 +478,8 @@ async def list_contacts(
     result = await db.execute(
         q.order_by(Contact.created_at.desc()).limit(limit).offset(offset)
     )
-    return {"items": result.scalars().all(), "total": total, "limit": limit, "offset": offset}
+    from app.services.contact_contract import contact_payload
+    return {"items": [contact_payload(c) for c in result.scalars().all()], "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/contacts/stats")
@@ -479,14 +496,22 @@ async def contact_stats(
     with_viber = (await db.execute(
         base.where(Contact.has_viber == True)
     )).scalar() or 0
-    return {"total": total, "with_tg": with_tg, "with_viber": with_viber}
+    with_wa = (await db.execute(
+        base.where(Contact.wa_jid.isnot(None), Contact.wa_jid != "")
+    )).scalar() or 0
+    with_vk = (await db.execute(
+        base.where(Contact.tags.contains(["has_vk"]))
+    )).scalar() or 0
+    return {"total": total, "with_tg": with_tg, "with_viber": with_viber,
+            "telegram": with_tg, "viber": with_viber, "whatsapp": with_wa, "vkontakte": with_vk}
 
 
 @router.get("/contacts/export")
 async def export_contacts_get(
     phone: str | None = None,
-    platform: str | None = None,
+    platform: str | None = Query(default=None, pattern="^(telegram|vkontakte|whatsapp|viber)$"),
     tags: str | None = None,
+    search: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -496,6 +521,12 @@ async def export_contacts_get(
     q = select(Contact).where(Contact.tenant_id == current_user.tenant_id)
     if phone:
         q = q.where(Contact.phone.ilike(f"%{phone}%"))
+    if search:
+        q = q.where(Contact.phone.ilike(f"%{search}%") | Contact.name.ilike(f"%{search}%"))
+    if platform == "whatsapp":
+        q = q.where(Contact.wa_jid.isnot(None), Contact.wa_jid != "")
+    elif platform == "vkontakte":
+        q = q.where(Contact.tags.contains(["has_vk"]))
     if tags:
         for tag in [t.strip() for t in tags.split(",")]:
             q = q.where(Contact.tags.contains([tag]))

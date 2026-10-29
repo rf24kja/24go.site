@@ -26,7 +26,7 @@ def _get_redis():
 
 class ListenerStatus(BaseModel):
     account_id: str
-    status: str  # "started" | "stopped" | "already_running"
+    status: str  # "queued" | "stopped" | "already_running"
 
 
 @router.post("/{account_id}/start", response_model=ListenerStatus)
@@ -37,8 +37,12 @@ async def start_listener(
 ):
     """Start a listener for a specific account (Telegram or VK)."""
     # Verify account belongs to this tenant
+    try:
+        aid = _uuid.UUID(account_id)
+    except ValueError:
+        raise HTTPException(404, "Account not found")
     q = select(AccountPool).where(
-        AccountPool.id == _uuid.UUID(account_id),
+        AccountPool.id == aid,
         AccountPool.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -46,6 +50,7 @@ async def start_listener(
     if not account:
         raise HTTPException(404, "Account not found")
 
+    account_id = str(aid)
     platform = account.platform.value if hasattr(account.platform, 'value') else str(account.platform)
 
     # Check if already running via Redis
@@ -58,10 +63,16 @@ async def start_listener(
         # Dispatch to appropriate listener worker
         from app.celery_app import celery
         if platform == "vkontakte":
-            from app.tasks.vk_listener import start_vk_listener
-            vk_gid = int(account.account_identifier) if account.account_identifier else 0
-            task = start_vk_listener.apply_async(
-                args=[str(current_user.tenant_id), account_id, vk_gid],
+            try:
+                vk_gid = int(account.account_identifier)
+            except (ValueError, TypeError):
+                raise HTTPException(422, "VK community ID must be positive")
+            if vk_gid <= 0:
+                raise HTTPException(422, "VK community ID must be positive")
+            task = celery.send_task(
+                "app.tasks.vk_listener.start_vk_listener",
+                kwargs={"tenant_id": str(current_user.tenant_id), "account_id": account_id, "group_id": vk_gid},
+                queue="listener",
             )
         elif platform == "max":
             task = celery.send_task(
@@ -76,19 +87,35 @@ async def start_listener(
                 queue="listener",
             )
         await r.set(f"listener_task:{account_id}", task.id, ex=86400)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, "Listener operation failed; retry later")
     finally:
         await r.aclose()
 
-    log.info(f"{platform} listener started for account {account_id} (task={task.id})")
-    return ListenerStatus(account_id=account_id, status="started")
+    log.info(f"{platform} listener queued for account {account_id} (task={task.id})")
+    return ListenerStatus(account_id=account_id, status="queued")
 
 
 @router.post("/{account_id}/stop")
 async def stop_listener(
     account_id: str,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Stop a running listener. Revokes the specific Celery task."""
+    """Stop a running listener owned by this tenant."""
+    try:
+        aid = _uuid.UUID(account_id)
+    except ValueError:
+        raise HTTPException(404, "Account not found")
+    result = await db.execute(select(AccountPool).where(
+        AccountPool.id == aid,
+        AccountPool.tenant_id == current_user.tenant_id,
+    ))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(404, "Account not found")
+    account_id = str(aid)
     r = _get_redis()
     try:
         task_id = await r.get(f"listener_task:{account_id}")
@@ -110,33 +137,23 @@ async def stop_listener(
 @router.get("/status")
 async def listener_status(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get status of all active Celery workers on the listener queue."""
-    from app.celery_app import celery
-
-    inspect = celery.control.inspect(destination=["worker-listener"], timeout=2)
-    active = inspect.active() or {}
-    stats = inspect.stats() or {}
-
+    """Get active listeners owned by the current tenant, without host metadata."""
     workers = []
-    for name, info in stats.items():
-        pool = info.get("pool", {})
-        workers.append({
-            "worker": name,
-            "pool_size": pool.get("implementation"),
-            "active_tasks": len(active.get(name, [])),
-            "pid": info.get("pid"),
-        })
 
-    # Get active listeners from Redis
+    result = await db.execute(select(AccountPool.id).where(
+        AccountPool.tenant_id == current_user.tenant_id,
+    ))
+    account_ids = result.scalars().all()
     r = _get_redis()
     try:
-        keys = await r.keys("listener_task:*")
         active_workers = []
-        for key in keys:
-            aid = key.split(":", 1)[1]
-            tid = await r.get(key)
-            active_workers.append({"account_id": aid, "task_id": tid, "status": "active"})
+        for account_id in account_ids:
+            aid = str(account_id)
+            tid = await r.get(f"listener_task:{aid}")
+            if tid:
+                active_workers.append({"account_id": aid, "task_id": tid, "status": "active"})
     finally:
         await r.aclose()
 

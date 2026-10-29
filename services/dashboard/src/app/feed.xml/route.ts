@@ -5,7 +5,7 @@ const BASE = "https://www.24go.site";
 
 export async function GET() {
   try {
-    const res = await fetch(`${API}/api/v1/blog?limit=100`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API}/api/v1/blog?limit=100`, { cache: "no-store" });
     const data = await res.json();
     const posts = data.items || [];
 
@@ -37,7 +37,7 @@ ${items}
     return new NextResponse(xml, {
       headers: {
         "Content-Type": "application/rss+xml; charset=utf-8",
-        "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        "Cache-Control": "no-store",
       },
     });
   } catch {

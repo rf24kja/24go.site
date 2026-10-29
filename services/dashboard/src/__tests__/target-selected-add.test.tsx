@@ -1,0 +1,38 @@
+import { render, screen, waitFor, fireEvent, cleanup, within, act } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+const state = vi.hoisted(() => ({ toast: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ auth: { token: "synthetic" } }) }));
+vi.mock("@/lib/platform", () => ({ usePlatform: () => ({ platform: "telegram" }) }));
+vi.mock("@/lib/i18n", () => ({ useI18n: () => ({ t: (k: string) => k, lang: "en" }) }));
+vi.mock("@/components/Toast", () => ({ useToast: () => ({ toast: state.toast }) }));
+import TargetsPage from "@/app/(dashboard)/targets/page";
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+it("creates only the selected username, guards missing/busy/duplicate results and leaves failures retryable", async () => {
+ const calls: {url: string; body: any}[] = [];
+ let finish: (r: Response) => void = () => {};
+ vi.spyOn(window, "confirm").mockReturnValue(true);
+ vi.stubGlobal("fetch", vi.fn(async (url, opts) => {
+  const u = String(url); calls.push({url: u, body: opts?.body ? JSON.parse(opts.body) : null});
+  if (u.endsWith("/api/v1/targets/") && opts?.method === "POST") return new Promise<Response>(resolve => { finish = resolve; });
+  const data = u.includes("group-search") ? {results: [{title: "Selected", username: "selected_channel", subscribers: 345, country: "th"}, {title: "Missing", username: null}], total: 2} : {items: []};
+  return new Response(JSON.stringify(data), {status: 200});
+ }));
+ render(<TargetsPage />); fireEvent.click(screen.getByText("TgStat"));
+ fireEvent.change(screen.getByPlaceholderText("недвижимость Москва"), {target: {value: "travel"}});
+ fireEvent.click(screen.getByText("targets.find"));
+ const row = (await screen.findByText("Selected")).closest("tr")!;
+ const missing = screen.getByText("Missing").closest("tr")!;
+ expect((within(missing).getByText("targets.addToList") as HTMLButtonElement).disabled).toBe(true);
+ const add = within(row).getByText("targets.addToList");
+ fireEvent.click(add); fireEvent.click(add);
+ await waitFor(() => expect(calls.filter(c => c.url.endsWith("/api/v1/targets/") && c.body)).toHaveLength(1));
+ expect(calls.find(c => c.url.endsWith("/api/v1/targets/") && c.body)?.body).toEqual({platform: "telegram", target_id_code: "selected_channel", title: "Selected", geo_tag: "th", niche: "travel", access: "open_wall"});
+ expect(calls.some(c => c.url.includes("groups/discover"))).toBe(false);
+ await act(async () => finish(new Response(JSON.stringify({detail: "duplicate"}), {status: 409})));
+ expect(within(row).queryByText("targets.added")).toBeNull();
+ fireEvent.click(within(row).getByText("targets.addToList"));
+ await waitFor(() => expect(calls.filter(c => c.url.endsWith("/api/v1/targets/") && c.body)).toHaveLength(2));
+ await act(async () => finish(new Response(JSON.stringify({id: "created"}), {status: 201})));
+ await within(row).findByText("targets.added");
+ expect(within(row).queryByText("targets.addToList")).toBeNull();
+});

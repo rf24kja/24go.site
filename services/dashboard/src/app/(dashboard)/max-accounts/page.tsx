@@ -5,11 +5,17 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getMaxAccounts, connectMax, deleteMaxAccount, getMaxStatus } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { MaxWebhook } from "@/components/MaxWebhook";
 import { Skeleton } from "@/components/Skeleton";
 
-type Account = { id: string; bot_name: string; status: string; created_at: string };
+type Account = { id: string; bot_name: string; status: string; created_at: string; webhook_configured?: boolean };
 
 export default function MaxAccountsPage() {
+  const { auth } = useAuth();
+  return <MaxAccountsContent key={auth?.token || "signed-out"} />;
+}
+
+function MaxAccountsContent() {
   const { auth } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
@@ -22,7 +28,9 @@ export default function MaxAccountsPage() {
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState("");
   // ponytail: shown once after connect — server never returns it again
-  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [webhookSecret, setWebhookSecret] = useState<{accountId: string; secret: string} | null>(null);
+
+  useEffect(() => { setWebhookSecret(null); setBotToken(""); setShowConnect(false); }, [auth?.token]);
 
   const load = () => {
     if (!auth?.token) return;
@@ -43,7 +51,7 @@ export default function MaxAccountsPage() {
       const res: any = await connectMax(auth.token, botToken.trim());
       setShowConnect(false);
       setBotToken("");
-      if (res?.webhook_secret) setWebhookSecret(res.webhook_secret);
+      if (res?.webhook_secret) setWebhookSecret({accountId: res.id, secret: res.webhook_secret});
       load();
       toast(t("maxAccounts.status.connected"), "success");
     } catch (e: any) {
@@ -110,24 +118,6 @@ export default function MaxAccountsPage() {
         </button>
       </div>
 
-      {webhookSecret && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-amber-300">{t("maxAccounts.webhookSecretTitle")}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">{t("maxAccounts.webhookSecretHint")}</p>
-            <code className="block mt-2 text-xs font-mono text-zinc-200 break-all select-all">{webhookSecret}</code>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => { navigator.clipboard?.writeText(webhookSecret); toast(t("maxAccounts.copied"), "success"); }}
-              className="px-3 py-1.5 text-xs bg-amber-500/20 text-amber-300 rounded-lg hover:bg-amber-500/30 transition">
-              {t("maxAccounts.copy")}
-            </button>
-            <button onClick={() => setWebhookSecret(null)}
-              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition">✕</button>
-          </div>
-        </div>
-      )}
-
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
         <table className="w-full text-sm min-w-[480px]">
           <thead>
@@ -170,7 +160,9 @@ export default function MaxAccountsPage() {
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{acct.bot_name}</td>
+                  <td className="px-4 py-3 text-zinc-100 font-mono text-xs">{acct.bot_name}
+                    {auth?.token && <MaxWebhook key={`${auth.token}:${acct.id}`} token={auth.token} accountId={acct.id} configured={acct.webhook_configured} secret={webhookSecret?.accountId === acct.id ? webhookSecret.secret : undefined} clearSecret={() => setWebhookSecret(null)} />}
+                  </td>
                   <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">
                     {acct.created_at ? new Date(acct.created_at).toLocaleDateString() : "—"}
                   </td>

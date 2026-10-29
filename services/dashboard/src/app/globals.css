@@ -1,8 +1,45 @@
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --primary: 262.1 83.3% 57.8%;
+  --primary-foreground: 210 40% 98%;
+  --border: 224 71% 93%;
+  --input: 224 71% 93%;
+  --ring: 262.1 83.3% 57.8%;
+  --radius: 0.5rem;
+  --color-accent: 147.5 78% 40%; /* indigo-500 */
+}
+
+.dark {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 93%;
+  --primary: 262.1 83.3% 57.8%;
+  --primary-foreground: 210 40% 98%;
+  --border: 224 71% 93%;
+  --input: 224 71% 93%;
+  --ring: 262.1 83.3% 57.8%;
+  --color-accent: 147.5 78% 40%;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html, body { overflow-x: hidden; }
+
+/* Text remains readable without JS; only opacity/transform are animated. */
+/* Public landing muted text must retain AA contrast on zinc-800/900 panels. */
+.public-landing .text-zinc-500,
+.public-landing .text-zinc-600 { color: rgb(161 161 170); }
+
+@keyframes text-reveal {
+  from { opacity: 0; transform: var(--text-from, translateY(16px)); }
+  to { opacity: 1; transform: none; }
+}
+.text-reveal { display: inline-block; animation-name: text-reveal; animation-fill-mode: backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .text-reveal { animation: none; }
+}
 
 /* Subtle grid background pattern */
 .grid-bg {
@@ -32,9 +69,7 @@ html, body { overflow-x: hidden; }
   to { transform: rotate(360deg); }
 }
 
-.animate-slide-up {
-  animation: slide-up 0.2s ease-out;
-}
+.animate-slide-up { animation: slide-up 0.2s ease-out; }
 
 .animate-shimmer {
   background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 40%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 60%, transparent 100%);
@@ -42,43 +77,31 @@ html, body { overflow-x: hidden; }
   animation: shimmer 1.8s ease-in-out infinite;
 }
 
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
 
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-slide-in {
-  animation: fadeSlideIn 0.3s ease-out;
-}
+.animate-fade-slide-in { animation: fadeSlideIn 0.3s ease-out; }
 
 @keyframes pulse-ring {
   0% { transform: scale(0.8); opacity: 1; }
   100% { transform: scale(2); opacity: 0; }
 }
 
-.animate-pulse-ring {
-  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
+.animate-pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
 @keyframes countUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-count-up {
-  animation: countUp 0.5s ease-out;
-}
+.animate-count-up { animation: countUp 0.5s ease-out; }
 
-.btn-press {
-  transition: transform 0.1s ease;
-}
-.btn-press:active {
-  transform: scale(0.95);
-}
+.btn-press { transition: transform 0.1s ease; }
+.btn-press:active { transform: scale(0.95); }
 
 .stagger-children > * {
   opacity: 0;
@@ -102,12 +125,8 @@ html, body { overflow-x: hidden; }
   to { transform: translateX(100%); opacity: 0; }
 }
 
-.animate-toast-in {
-  animation: toastSlideIn 0.3s ease-out;
-}
-.animate-toast-out {
-  animation: toastSlideOut 0.3s ease-in forwards;
-}
+.animate-toast-in { animation: toastSlideIn 0.3s ease-out; }
+.animate-toast-out { animation: toastSlideOut 0.3s ease-in forwards; }
 
 /* ── Thin scrollbar ─────────────────────────────────────────────── */
 /* Works in Chrome, Edge, Safari, Opera */
@@ -145,13 +164,9 @@ html, body { overflow-x: hidden; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-.status-pulse {
-  animation: statusPulse 2s ease-in-out infinite;
-}
+.status-pulse { animation: statusPulse 2s ease-in-out infinite; }
 
-.progress-fill {
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
+.progress-fill { transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* ── Glassmorphism 3D Charts ─────────────────────────────────────── */
 @keyframes glassBarGrow {

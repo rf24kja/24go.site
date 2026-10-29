@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Terms of Service | 24GO",
   description: "Terms of Service for 24GO — automated lead generation platform for Telegram and VK.",
   robots: "index, follow",
-  alternates: { canonical: "https://www.24go.site/terms" },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/terms", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {

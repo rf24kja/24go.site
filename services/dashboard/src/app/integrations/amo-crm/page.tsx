@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import IntegrationTemplate from "../IntegrationTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Telegram → AmoCRM Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into AmoCRM. Sync contacts, deals, and conversation history with 24GO.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/integrations/amo-crm",
-    languages: {
-      en: "https://www.24go.site/integrations/amo-crm?locale=en",
-      ru: "https://www.24go.site/integrations/amo-crm?locale=ru",
-      "x-default": "https://www.24go.site/integrations/amo-crm",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/integrations/amo-crm", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {
@@ -32,7 +30,7 @@ const content = {
   },
   ru: {
     description: "Автоматическая синхронизация лидов из Telegram, бесед и сделок в AmoCRM. Без ручного ввода — лиды появляются в CRM сразу после ответа.",
-    features: ["Автосоздание контактов из сообщений Telegram", "Синхронизация статуса и оценки лида", "Двусторонняя синхронизация бесед", "Маппинг кастомных полей", "Доставка через вебхуки в реальном времени", "Массовый импорт历史数据"],
+    features: ["Автосоздание контактов из сообщений Telegram", "Синхронизация статуса и оценки лида", "Двусторонняя синхронизация бесед", "Маппинг кастомных полей", "Доставка через вебхуки в реальном времени", "Массовый импорт исторических данных"],
     steps: [
       { title: "Подключите AmoCRM", desc: "Введите поддомен и API-ключ AmoCRM. Доступна OAuth-авторизация." },
       { title: "Настройте маппинг полей", desc: "Сопоставьте данные Telegram с полями AmoCRM: имя, телефон, email, кастомные поля." },

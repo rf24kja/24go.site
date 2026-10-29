@@ -1,5 +1,6 @@
 "use client";
 
+import VkDiscoveryConnection from '@/components/VkDiscoveryConnection';
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTenantSettings, updateSettingsSection, resetSettingsSection, bulkImportVkAccounts } from "@/lib/api";
@@ -90,6 +91,7 @@ export default function VkSettingsPage() {
       </nav>
 
       <div className="flex-1 space-y-6 min-w-0">
+        <VkDiscoveryConnection />
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (

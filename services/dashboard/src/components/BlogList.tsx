@@ -77,7 +77,7 @@ export function BlogLocaleSwitcher({ locale, setLocale }: { locale: string; setL
 }
 
 /* ── Main blog content ──────────────────────────────────────────── */
-export default function BlogContent({ initialPosts, initialLocale }: { initialPosts: Post[]; initialLocale: string }) {
+export default function BlogContent({ initialPosts, initialLocale, archivePage }: { initialPosts: Post[]; initialLocale: string; archivePage?: number }) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [locale, setLocale] = useState<"en" | "ru">((initialLocale as "en" | "ru") || "en");
   const [loading, setLoading] = useState(false);
@@ -104,21 +104,26 @@ export default function BlogContent({ initialPosts, initialLocale }: { initialPo
     return r;
   }, [posts, activeCategory, searchQuery]);
 
-  const visible = filteredPosts.slice(0, showCount);
-  const hasMore = showCount < filteredPosts.length;
+  const filtering = activeCategory !== "all" || searchQuery.trim() !== "";
+  const start = archivePage && !filtering ? (archivePage - 1) * 12 : 0;
+  const visible = filteredPosts.slice(start, start + showCount);
+  const hasMore = (!archivePage || filtering) && showCount < filteredPosts.length;
 
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { all: posts.length };
-    for (const p of posts) { const cat = getPostCategory(p); c[cat] = (c[cat] || 0) + 1; }
+    for (const p of posts) {
+      const cat = getPostCategory(p);
+      if (cat !== "all") c[cat] = (c[cat] || 0) + 1;
+    }
     return c;
   }, [posts]);
 
-  const featured = posts[0];
+  const featured = posts[start];
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="flex items-center justify-end mb-6">
-        <BlogLocaleSwitcher locale={locale} setLocale={setLocale} />
+        {archivePage ? <div className="flex gap-2">{["en", "ru"].map(language => <Link key={language} href={`/blog?locale=${language}&page=${archivePage}`} className="px-3 py-1 rounded text-xs font-medium bg-zinc-800">{language.toUpperCase()}</Link>)}</div> : <BlogLocaleSwitcher locale={locale} setLocale={setLocale} />}
       </div>
         {/* Featured */}
         {!loading && featured && activeCategory === "all" && !searchQuery && (

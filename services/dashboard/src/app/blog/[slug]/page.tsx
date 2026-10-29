@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { getPublicBlogPost, getBlogSlugs, getPublicBlogPosts } from "@/lib/api";
+import { notFound } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { getPublicBlogPost, getBlogSlugs } from "@/lib/api";
+import { Suspense } from "react";
+import { RelatedArticles } from "@/components/RelatedArticles";
 import type { Metadata } from "next";
 import { ArrowLeft, Clock, Tag } from "lucide-react";
 
@@ -38,10 +42,15 @@ function md(text: string): string {
   // Normalize line endings
   let html = text.replace(/\r\n/g, "\n");
 
-  // Code blocks: ```lang\n...\n``` → <pre><code>...</code></pre>
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
-    const escaped = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return `<pre class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 my-4 overflow-x-auto text-sm"><code class="text-zinc-300">${escaped}</code></pre>`;
+  // Only complete fence lines delimit code; Python strings may contain backticks.
+  // Keep code opaque until all inline/prose transformations have finished.
+  const codeBlocks: string[] = [];
+  let codeToken = "CODE_BLOCK_";
+  while (html.includes(codeToken)) codeToken += "_";
+  html = html.replace(/^(`{3,})(\w*)[ \t]*\n([\s\S]*?)^\1`*[ \t]*(?=\n|$)/gm, (_m, _fence, _lang, code) => {
+    const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const index = codeBlocks.push(`<pre class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 my-4 overflow-x-auto text-sm"><code class="text-zinc-300">${escaped}</code></pre>`) - 1;
+    return `<pre>${codeToken}${index}</pre>`;
   });
 
   // Inline code: `code` → <code>code</code>
@@ -97,7 +106,7 @@ function md(text: string): string {
       return "<p class='text-zinc-400 leading-relaxed my-3'>" + trimmed.replace(/\n/g, "<br/>") + "</p>";
     }).join("\n");
 
-  return html;
+  return html.replace(new RegExp(`<pre>${codeToken}(\\d+)</pre>`, "g"), (_m, index) => codeBlocks[Number(index)]);
 }
 
 function readingTime(text: string): number {
@@ -128,8 +137,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         type: "article",
         publishedTime: post.created_at,
         tags: post.tags,
-        locale: locale === "ru" ? "ru_RU" : "en_US",
-        localeAlternate: [locale === "ru" ? "en_US" : "ru_RU"],
       },
       twitter: {
         card: "summary_large_image",
@@ -145,8 +152,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         },
       },
     };
-  } catch {
-    return { title: locale === "ru" ? "Статья блога — 24GO" : "Blog Post — 24GO" };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
   }
 }
 
@@ -159,32 +167,11 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
   let post: any;
   try {
     post = await getPublicBlogPost(params.slug, locale);
-  } catch {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-zinc-400 mb-4">{labels.noRelated}</p>
-          <Link href="/blog" className="text-emerald-400 hover:underline">{labels.back}</Link>
-        </div>
-      </div>
-    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
   }
 
-  // Fetch related posts — prefer shared tags, fill up with recent
-  let relatedPosts: any[] = [];
-  try {
-    const res = await getPublicBlogPosts(locale);
-    const all = Array.isArray(res) ? res : res.items || [];
-    const mine = new Set(post.tags || []);
-    const scored = all
-      .filter((p: any) => p.slug !== params.slug)
-      .map((p: any) => ({
-        p,
-        shared: (p.tags || []).filter((t: string) => mine.has(t)).length,
-      }))
-      .sort((a: any, b: any) => b.shared - a.shared);
-    relatedPosts = scored.slice(0, 3).map((s: any) => s.p);
-  } catch {}
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -203,7 +190,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
+          <Link href={`/?locale=${locale}`} className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="flex gap-0.5 bg-zinc-800 rounded-lg p-0.5">
               <a href={`/blog/${params.slug}?locale=en`}
@@ -211,7 +198,7 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
               <a href={`/blog/${params.slug}?locale=ru`}
                 className={`px-2 py-1 rounded text-xs font-medium transition ${locale === "ru" ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-300"}`}>RU</a>
             </div>
-            <Link href="/blog" className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 whitespace-nowrap">
+            <Link href={`/blog?locale=${locale}`} className="text-sm text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 whitespace-nowrap">
               <ArrowLeft className="w-4 h-4" />
               {labels.back}
             </Link>
@@ -222,9 +209,9 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       {/* Breadcrumbs */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
         <nav className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/" className="hover:text-zinc-300 transition">24GO</Link>
+          <Link href={`/?locale=${locale}`} className="hover:text-zinc-300 transition">24GO</Link>
           <span>/</span>
-          <Link href="/blog" className="hover:text-zinc-300 transition">{locale === "ru" ? "Блог" : "Blog"}</Link>
+          <Link href={`/blog?locale=${locale}`} className="hover:text-zinc-300 transition">{locale === "ru" ? "Блог" : "Blog"}</Link>
           <span>/</span>
           <span className="text-zinc-300 truncate max-w-[200px]">{post.title}</span>
         </nav>
@@ -266,28 +253,9 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
         </div>
 
         {/* Related articles */}
-        {relatedPosts.length > 0 && (
-          <div className="mt-16 pt-8 border-t border-zinc-800/50">
-            <h3 className="text-xl font-bold mb-6">{labels.related}</h3>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {relatedPosts.map((rp: any) => (
-                <Link
-                  key={rp.slug}
-                  href={`/blog/${rp.slug}?locale=${locale}`}
-                  className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition group"
-                >
-                  {rp.tags?.[0] && (
-                    <span className="text-xs text-emerald-400 font-medium">{tTag(rp.tags[0], locale)}</span>
-                  )}
-                  <h4 className="text-sm font-semibold text-zinc-200 group-hover:text-emerald-400 transition mt-1 line-clamp-2">{rp.title}</h4>
-                  <time className="text-xs text-zinc-600 mt-2 block">
-                    {new Date(rp.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", { month: "short", day: "numeric" })}
-                  </time>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <RelatedArticles slug={post.slug} tags={post.tags || []} locale={locale} translateTag={tTag} />
+        </Suspense>
       </article>
     </div>
   );

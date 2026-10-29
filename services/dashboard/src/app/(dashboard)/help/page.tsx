@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PlatformHelp } from "@/components/PlatformHelp";
+import { usePlatform } from "@/lib/platform";
 import { useI18n } from "@/lib/i18n";
 import {
   BookOpen,
@@ -1017,7 +1019,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.ComponentType<{ t: (k: string)
   team: TeamSection,
 };
 
-export default function HelpPage() {
+function TelegramHelpPage() {
   const { t } = useI18n();
   const [active, setActive] = useState<SectionId>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1133,3 +1135,5 @@ export default function HelpPage() {
     </div>
   );
 }
+
+export default function HelpPage() { const { platform } = usePlatform(); return platform === "telegram" ? <><PlatformHelp compact/><TelegramHelpPage/></> : <PlatformHelp/>; }

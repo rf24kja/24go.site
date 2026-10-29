@@ -4,40 +4,38 @@ import { Suspense } from "react";
 import { Bot, Users, Send, Brain, BarChart3, Shield, Globe, Zap } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Features — AI-Powered Lead Generation from Telegram & VK",
-  description: "Explore 24GO features: AI lead qualification, automated campaigns, multi-account management, anti-ban protection, analytics, and integrations.",
-  alternates: {
-    canonical: "https://www.24go.site/features",
-    languages: {
-      en: "https://www.24go.site/features?locale=en",
-      ru: "https://www.24go.site/features?locale=ru",
-      "x-default": "https://www.24go.site/features",
-    },
-  },
+  description: "Explore platform-specific group discovery, lead qualification, account management, activity controls and available analytics in 24GO.",
   robots: { index: true, follow: true },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/features", searchParams?.locale, pageMetadata);
+}
 
 const features = {
   en: [
     { icon: Users, title: "Target Group Discovery", desc: "Find and analyze Telegram groups where your prospects gather. Filter by member count, activity level, and topic relevance." },
     { icon: Brain, title: "AI Lead Qualification", desc: "Automatically score and classify leads as HOT/WARM/COLD using AI. Focus your time on the most promising prospects." },
-    { icon: Send, title: "Automated Campaigns", desc: "Create personalized outreach campaigns with AI-generated messages. Anti-ban protection with rate limiting and content variation." },
-    { icon: Bot, title: "Auto-Replies", desc: "Set up intelligent auto-responses that engage prospects 24/7. Keyword matching, AI-powered replies, and response rotation." },
-    { icon: BarChart3, title: "Analytics Dashboard", desc: "Track response rates, lead quality, campaign performance, and ROI. Glassmorphism charts for real-time monitoring." },
-    { icon: Shield, title: "Anti-Ban Protection", desc: "Built-in rate limiting, account warmup, proxy rotation, and content variation. Keep your accounts safe while scaling." },
-    { icon: Globe, title: "Multi-Platform", desc: "Support for both Telegram and VKontakte. Manage all your outreach from a single dashboard." },
+    { icon: Send, title: "Automated Campaigns", desc: "Configure campaigns where a supported sender is available. Capabilities differ by platform; saving a campaign does not confirm delivery, and rate limits do not remove platform restrictions." },
+    { icon: Bot, title: "Auto-Replies", desc: "Configure Telegram reply settings and verify the specific supported workflow. Do not assume that VK, WhatsApp, MAX or Facebook provide the same sender capabilities." },
+    { icon: BarChart3, title: "Analytics Dashboard", desc: "Inspect the metrics supplied by each platform section. Unavailable aggregates are labelled explicitly; a saved account state is not live provider health." },
+    { icon: Shield, title: "Activity Controls", desc: "Built-in rate limiting, account warmup, proxy rotation, and content variation. Platform restrictions remain possible." },
+    { icon: Globe, title: "Multi-Platform", desc: "Separate Telegram, VK, WhatsApp, MAX and Facebook sections with platform-specific connection steps, controls and limitations." },
     { icon: Zap, title: "Integrations", desc: "Connect with AmoCRM, HubSpot, Google Sheets, webhooks, and more. Automate your entire sales pipeline." },
   ],
   ru: [
     { icon: Users, title: "Поиск целевых групп", desc: "Находите и анализируйте Telegram-группы, где собираются ваши потенциальные клиенты. Фильтрация по количеству участников, активности и тематике." },
     { icon: Brain, title: "AI-квалификация лидов", desc: "Автоматически оценивайте и классифицируйте лиды как HOT/WARM/COLD с помощью ИИ. Сосредоточьтесь на самых перспективных." },
-    { icon: Send, title: "Автоматические кампании", desc: "Создавайте персонализированные кампании с сообщениями, сгенерированными ИИ. Защита от бана с ограничением скорости и вариацией контента." },
-    { icon: Bot, title: "Автоответы", desc: "Настройте умные автоответы, которые работают 24/7. Сопоставление ключевых слов, ответы на основе ИИ и ротация." },
-    { icon: BarChart3, title: "Дашборд аналитики", desc: "Отслеживайте rates ответов, качество лидов, эффективность кампаний и ROI. Графики для мониторинга в реальном времени." },
-    { icon: Shield, title: "Защита от бана", desc: "Встроенные ограничение скорости, прогрев аккаунтов, ротация прокси и вариация контента. Безопасное масштабирование." },
-    { icon: Globe, title: "Мультиплатформенность", desc: "Поддержка Telegram и ВКонтакте. Управляйте всеми кампаниями из одного дашборда." },
-    { icon: Zap, title: "Интеграции", desc: "Подключение к AmoCRM, HubSpot, Google Sheets, вебхукам и другим системам. Автоматизация всего воронки продаж." },
+    { icon: Send, title: "Автоматические кампании", desc: "Настраивайте кампании там, где есть поддерживаемый отправитель. Возможности различаются по платформам: сохранение кампании не подтверждает доставку, а лимиты не отменяют ограничения платформы." },
+    { icon: Bot, title: "Автоответы", desc: "Настраивайте параметры ответов Telegram и проверяйте конкретный поддерживаемый сценарий. Нельзя переносить эти возможности на VK, WhatsApp, MAX или Facebook без отдельной проверки отправителя." },
+    { icon: BarChart3, title: "Дашборд аналитики", desc: "Просматривайте показатели, которые предоставляет конкретный раздел. Недоступные агрегаты обозначены явно; сохранённое состояние аккаунта не подтверждает связь с платформой в реальном времени." },
+    { icon: Shield, title: "Контроль активности", desc: "Встроенные ограничение скорости, прогрев аккаунтов, ротация прокси и вариация контента. Риск ограничений сохраняется." },
+    { icon: Globe, title: "Мультиплатформенность", desc: "Отдельные разделы Telegram, VK, WhatsApp, MAX и Facebook со своими способами подключения, элементами управления и ограничениями." },
+    { icon: Zap, title: "Интеграции", desc: "Подключение к AmoCRM, HubSpot, Google Sheets, вебхукам и другим системам. Автоматизация всей воронки продаж." },
   ],
 };
 
@@ -83,7 +81,7 @@ export default async function FeaturesPage({ searchParams }: { searchParams: { l
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
+          <Link href={`/?locale=${locale}`} className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex items-center gap-3">
             <Suspense><LanguageSwitcher /></Suspense>
             <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">{c.cta}</Link>
@@ -130,7 +128,7 @@ export default async function FeaturesPage({ searchParams }: { searchParams: { l
         </div>
 
         <div className="mt-12 text-center">
-          <Link href="/" className="text-zinc-500 hover:text-zinc-300 text-sm transition">{c.back}</Link>
+          <Link href={`/?locale=${locale}`} className="text-zinc-500 hover:text-zinc-300 text-sm transition">{c.back}</Link>
         </div>
       </div>
     </div>

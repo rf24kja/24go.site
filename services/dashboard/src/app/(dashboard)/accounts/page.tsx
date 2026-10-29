@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
@@ -87,42 +87,69 @@ export default function AccountsPage() {
   // Proxy state
   const [proxies, setProxies] = useState<{ id: string; proxy_url: string; is_active: boolean }[]>([]);
 
-  const load = () => {
-    if (!auth?.token) return;
+  const [loadError, setLoadError] = useState(false);
+  const [listenerError, setListenerError] = useState(false);
+  const [proxyError, setProxyError] = useState(false);
+  const [assignmentError, setAssignmentError] = useState(false);
+  const [proxyBusy, setProxyBusy] = useState<string | null>(null);
+  const generation = useRef(0);
+  const scope = `${auth?.token ?? ""}:${platform}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+
+  const load = async () => {
+    const requestScope = scope;
+    if (currentScope.current !== requestScope) return;
+    const id = ++generation.current;
+    const valid = () => generation.current === id && currentScope.current === requestScope;
+    if (!auth?.token) { setLoading(false); return; }
     setLoading(true);
-    Promise.all([
-      getAccounts(auth.token, { platform }),
-      getListenerStatus(auth.token).catch(() => ({})),
-      getProxies(auth.token).catch(() => []),
-    ]).then(async ([accts, listeners_, proxyList]) => {
+    setLoadError(false);
+    setListenerError(false);
+    setProxyError(false);
+    setTgStatuses({});
+    const accountRead = getAccounts(auth.token, { platform }).then(async (accts) => {
+      if (!valid()) return;
       const items = accts.items || accts;
       setAccounts(items);
-      setListeners((listeners_ as any)?.active_workers ?? []);
-      setProxies(Array.isArray(proxyList) ? proxyList : []);
-
-      // Fetch connection status for all accounts
+      setLoading(false);
+      const statusItems = items.filter((acct: Account) => acct.platform === "telegram" || acct.platform === "vkontakte");
+      const results = await Promise.allSettled(statusItems.map((acct: Account) => getTelegramStatus(auth.token!, acct.id)));
+      if (!valid()) return;
       const statuses: Record<string, TgStatus> = {};
-      const statusItems = items.filter((acct: any) => acct.platform === "telegram" || acct.platform === "vkontakte");
-      const results = await Promise.allSettled(
-        statusItems.map((acct: any) => getTelegramStatus(auth.token!, acct.id))
-      );
-      statusItems.forEach((acct: any, i: number) => {
+      statusItems.forEach((acct: Account, i: number) => {
         const r = results[i];
-        statuses[acct.id] = r.status === "fulfilled" ? r.value : { has_session: false, connected: false, tg_status: "unknown" };
+        if (r.status === "fulfilled") statuses[acct.id] = r.value;
       });
       setTgStatuses(statuses);
-    }).finally(() => setLoading(false));
+    }).catch(() => { if (valid()) { setLoadError(true); setLoading(false); } });
+    const listenerRead = getListenerStatus(auth.token).then((value) => {
+      if (valid()) setListeners(value?.active_workers ?? []);
+    }).catch(() => { if (valid()) setListenerError(true); });
+    const proxyRead = getProxies(auth.token).then((value) => {
+      if (valid()) setProxies(Array.isArray(value) ? value : []);
+    }).catch(() => { if (valid()) setProxyError(true); });
+    await Promise.all([accountRead, listenerRead, proxyRead]);
   };
 
-  useEffect(() => { load(); }, [auth?.token, platform]);
+  useEffect(() => {
+    setAccounts([]); setTgStatuses({}); setListeners([]); setProxies([]);
+    setAssignmentError(false); setProxyBusy(null);
+    load();
+    return () => { generation.current++; };
+  }, [auth?.token, platform]);
 
-  // ── Proxy assignment ──
   const handleProxyAssign = async (accountId: string, proxyId: string | null) => {
+    if (!auth?.token || proxyBusy) return;
+    const requestScope = scope;
+    setProxyBusy(accountId); setAssignmentError(false);
     try {
-      await assignAccountProxy(auth.token!, accountId, proxyId);
-      load();
-    } catch (e: any) {
-      // silent — already in UI
+      await assignAccountProxy(auth.token, accountId, proxyId);
+      if (currentScope.current === requestScope) await load();
+    } catch {
+      if (currentScope.current === requestScope) setAssignmentError(true);
+    } finally {
+      if (currentScope.current === requestScope) setProxyBusy(null);
     }
   };
 
@@ -333,6 +360,13 @@ export default function AccountsPage() {
         </div>
       </div>
 
+      {loadError && <div role="alert">{t("accounts.loadFailed")} <button onClick={load}>{t("accounts.retry")}</button></div>}
+      {(listenerError || proxyError) && <div role="alert">
+        {listenerError && <p>{t("accounts.listenerFailed")}</p>}
+        {proxyError && <p>{t("accounts.proxiesFailed")}</p>}
+        <button onClick={load}>{t("accounts.retry")}</button>
+      </div>}
+      {assignmentError && <div role="alert">{t("accounts.proxyAssignFailed")}</div>}
       {/* How it works */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-300 mb-3">{t("accounts.howItWorks")}</h2>
@@ -388,7 +422,7 @@ export default function AccountsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: t("accounts.statTotal"), value: stats.total, color: "text-zinc-100" },
-          { label: t("accounts.statConnected"), value: stats.connected, color: "text-emerald-400" },
+          { label: t("accounts.statConnected"), value: accounts.some(a => !tgStatuses[a.id]) ? "—" : stats.connected, color: "text-emerald-400" },
           { label: t("accounts.statWarming"), value: stats.warming, color: "text-amber-400" },
           { label: t("accounts.statBanned"), value: stats.banned, color: "text-rose-400" },
         ].map((s) => (
@@ -432,7 +466,7 @@ export default function AccountsPage() {
                   ))}
                 </div>
               </td></tr>
-            ) : accounts.length === 0 ? (
+            ) : loadError && accounts.length === 0 ? null : accounts.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                 <p className="mb-2 text-zinc-300 font-medium">{t("accounts.empty")}</p>
                 <p className="text-xs text-zinc-500 mb-3">{t("accounts.emptyDesc")}</p>
@@ -456,7 +490,7 @@ export default function AccountsPage() {
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${tgConnected ? "bg-emerald-400 animate-pulse" : tgHasSession ? "bg-amber-400" : "bg-zinc-600"}`} />
                           <span className="text-xs text-zinc-400">
-                            {tgConnected ? t("accounts.tgOnline") : tgHasSession ? t("accounts.tgSession") : t("accounts.tgNoSession")}
+                            {!tg || tg.tg_status === "unknown" ? t("accounts.statusUnknown") : tgConnected ? t("accounts.tgOnline") : tgHasSession ? t("accounts.tgSession") : t("accounts.tgNoSession")}
                           </span>
                         </div>
                       </td>
@@ -509,7 +543,7 @@ export default function AccountsPage() {
                               {t("accounts.reconnect")}
                             </button>
                           </>
-                        ) : !tgHasSession ? (
+                        ) : !tg || tg.tg_status === "unknown" ? (<button onClick={load}>{t("accounts.retry")}</button>) : !tgHasSession ? (
                             <button onClick={() => handleConnectStart(acct.id)}
                               className="px-3 py-1.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition min-h-[36px]">
                             {t("accounts.connectTg")}
@@ -517,13 +551,13 @@ export default function AccountsPage() {
                         ) : (
                           <>
                             <button onClick={() => listenerActive ? handleStop(acct.id) : handleStart(acct.id)}
-                              disabled={actionBusy === acct.id || acct.status === "banned"}
+                              disabled={listenerError || actionBusy === acct.id || acct.status === "banned"}
                               className={`px-3 py-1.5 text-xs rounded transition border min-h-[36px] ${
                                 listenerActive
                                   ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
                                   : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
                               } disabled:opacity-40`}>
-                              {actionBusy === acct.id ? "..." : listenerActive ? t("accounts.stop") : t("accounts.listen")}
+                              {listenerError ? t("accounts.statusUnknown") : actionBusy === acct.id ? "..." : listenerActive ? t("accounts.stop") : t("accounts.listen")}
                             </button>
                             {!tgConnected && (
                               <button onClick={() => handleReconnect(acct.id)}
@@ -534,13 +568,13 @@ export default function AccountsPage() {
                               </button>
                             )}
                             <button onClick={() => handleDisconnect(acct.id)}
-                              disabled={actionBusy === acct.id || listenerActive}
+                              disabled={listenerError || actionBusy === acct.id || listenerActive}
                               className="px-3 py-1.5 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40 min-h-[36px]"
                               title={t("accounts.disconnect")}>
                               {t("accounts.disconnect")}
                             </button>
                             <button onClick={() => handleDelete(acct.id)}
-                              disabled={actionBusy === acct.id || listenerActive}
+                              disabled={listenerError || actionBusy === acct.id || listenerActive}
                               className="px-3 py-1.5 text-xs text-zinc-500 hover:text-rose-400 border border-zinc-700 rounded hover:border-rose-500/30 transition disabled:opacity-40 min-h-[36px]"
                               title={t("accounts.delete")}>
                               {t("accounts.delete")}
@@ -551,7 +585,7 @@ export default function AccountsPage() {
                       {/* Proxy assignment */}
                       {proxies.length > 0 && (
                         <div className="mt-1.5">
-                          <select value={acct.proxy_id || ""} onChange={e => handleProxyAssign(acct.id, e.target.value || null)}
+                          <select aria-label={t("accounts.proxy")} disabled={proxyError || proxyBusy !== null} value={acct.proxy_id || ""} onChange={e => handleProxyAssign(acct.id, e.target.value || null)}
                             className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-400 focus:outline-none focus:border-emerald-500 cursor-pointer">
                             <option value="">{t("accounts.noProxy")}</option>
                             {proxies.filter(p => p.is_active).map(p => (

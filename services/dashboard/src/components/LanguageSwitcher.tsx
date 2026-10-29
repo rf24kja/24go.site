@@ -2,20 +2,23 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export function LanguageSwitcher({ className = "" }: { className?: string }) {
+  const { setLang } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const current = searchParams.get("locale") || "en";
 
   const switchLang = useCallback(
-    (lang: string) => {
+    (lang: "en" | "ru") => {
+      setLang(lang);
       const params = new URLSearchParams(searchParams.toString());
       params.set("locale", lang);
       router.push(`${pathname}?${params.toString()}`);
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams, setLang]
   );
 
   return (

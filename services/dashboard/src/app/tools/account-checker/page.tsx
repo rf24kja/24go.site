@@ -10,14 +10,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://www.24go.site/tools/account-checker",
     languages: {
-      en: "https://www.24go.site/tools/account-checker?locale=en",
-      ru: "https://www.24go.site/tools/account-checker?locale=ru",
+      en: "https://www.24go.site/tools/account-checker",
       "x-default": "https://www.24go.site/tools/account-checker",
     },
   },
 };
 
-export default function AccountCheckerPage() {
+export default function AccountCheckerPage({ searchParams }: { searchParams?: { locale?: string } }) {
+  const locale = searchParams?.locale === "ru" ? "ru" : "en";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -37,7 +37,7 @@ export default function AccountCheckerPage() {
 
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <Link href={`/?locale=${locale}`} className="text-lg font-bold tracking-tight">
             24<span className="text-emerald-400">GO</span>
           </Link>
           <Link

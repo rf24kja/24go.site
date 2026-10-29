@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Spinner } from "@/components/Spinner";
 import { PlatformProvider } from "@/lib/platform";
+import { DashboardMessages } from "@/lib/dashboard-messages";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -22,13 +23,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!auth.token) return null;
 
   return (
-    <PlatformProvider>
+    <DashboardMessages><PlatformProvider>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 md:ml-60 p-4 pt-14 md:pt-8 md:p-8">
+        <main className="min-w-0 flex-1 md:ml-60 p-4 pt-14 md:pt-8 md:p-8">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
-    </PlatformProvider>
+    </PlatformProvider></DashboardMessages>
   );
 }

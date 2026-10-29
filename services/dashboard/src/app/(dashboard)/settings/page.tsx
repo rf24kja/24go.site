@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { PREFIXES, Platform } from "@/lib/platform-routes";
 import { useAuth } from "@/lib/auth";
 import {
   getTenantSettings, updateSettingsSection, resetSettingsSection,
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   const { auth } = useAuth();
   const { t } = useI18n();
   const { platform } = usePlatform();
-  const [activeSection, setActiveSection] = useState<Section>("ai_auto_reply");
+  const [activeSection, setActiveSection] = useState<Section>(platform === "telegram" || platform === "vkontakte" ? "ai_auto_reply" : "notifications");
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [defaults, setDefaults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,9 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
 
   const SECTIONS = getSections(t).filter((s) => {
-    if (platform === "vkontakte" && (s.key === "tgstat" || s.key === "webhooks")) return false;
+    if (platform !== "telegram" && (s.key === "tgstat" || s.key === "warmup" || s.key === "webhooks")) return false;
+    if (platform !== "telegram" && platform !== "vkontakte" && (s.key === "ai_auto_reply" || s.key === "posting")) return false;
+    if ((platform === "whatsapp" || platform === "max") && s.key === "groups") return false;
     return true;
   });
 
@@ -86,6 +90,12 @@ export default function SettingsPage() {
   };
 
   return (
+    <div className="space-y-6">
+      <nav aria-label={t("settings.title")} className="flex flex-wrap items-center gap-2">
+        <h1 className="font-semibold mr-3">{t("settings.title")} — {PREFIXES[platform]}</h1>
+        {(Object.keys(PREFIXES) as Platform[]).map(p => <Link key={p} href={`/${PREFIXES[p]}/settings`} aria-current={p === platform ? "page" : undefined} className={`px-3 py-2 rounded-lg text-sm border ${p === platform ? "bg-zinc-800 border-zinc-500 text-zinc-100" : "border-zinc-800 text-zinc-400"}`}>{PREFIXES[p]}</Link>)}
+        {platform === "vkontakte" && <Link href="/VK/integrations" className="px-3 py-2 rounded-lg border border-zinc-800 text-sm">VK API</Link>}
+      </nav>
     <div className={`flex flex-col md:flex-row gap-6 max-w-6xl animate-fade-slide-in`}>
       {/* Mobile section selector */}
       <div className="md:hidden w-full">
@@ -99,7 +109,7 @@ export default function SettingsPage() {
 
       {/* Sidebar nav */}
       <nav className="hidden md:block w-52 shrink-0 space-y-1">
-        <h1 className="text-lg font-bold mb-4">{t("settings.title")}</h1>
+        <h2 className="text-lg font-bold mb-4">{t("settings.title")}</h2>
         {SECTIONS.map((s) => (
           <button key={s.key} onClick={() => { setActiveSection(s.key); setSaved(false); setError(""); }}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 whitespace-nowrap transition ${
@@ -136,6 +146,7 @@ export default function SettingsPage() {
           </>
         )}
       </div>
+    </div>
     </div>
   );
 }

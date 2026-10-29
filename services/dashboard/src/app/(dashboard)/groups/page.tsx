@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { getGroups, addGroup, startGroupScanner, stopGroupScanner, removeGroup, getAccounts, discoverGroups, bulkImportGroups } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
+import { groupIdentifier, groupLines } from "@/lib/group-input";
 import { FieldHint } from "@/components/FieldHint";
 
 type Group = {
@@ -37,8 +38,11 @@ const STATUS_STYLES: Record<string, string> = {
 export default function GroupsPage() {
   const { auth } = useAuth();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { platform } = usePlatform();
+  const facebook = platform === "facebook";
+  const fbGuide = lang === "ru" ? "Facebook: подключите аккаунт в разделе подключения Facebook. Добавляйте только доступные этому аккаунту группы. Доступ и мониторинг зависят от разрешений Facebook; отправка сообщений здесь не поддерживается." : "Facebook: connect an account in Facebook Connect. Add only groups accessible to that account. Access and monitoring depend on Facebook permissions; sending messages is not supported here.";
+  const vkGuide = lang === "ru" ? "VK: подключите аккаунт VK, добавьте сообщество по его идентификатору и запустите мониторинг. Доступ зависит от прав аккаунта и сообщества; автоматическое вступление не поддерживается." : "VK: connect a VK account, add the community identifier and start monitoring. Access depends on account and community permissions; automated joining is not supported.";
   const [groups, setGroups] = useState<Group[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +59,10 @@ export default function GroupsPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
 
+  const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+  const bulkPlatform = useRef(platform);
+  useEffect(() => { bulkPlatform.current = platform; setBulkInput(""); setBulkPreview([]); setBulkErrors([]); setBulkResult(null); setAddIdentifier(""); setShowAdd(false); }, [platform]);
+
   // Account map for showing assigned account in table
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
 
@@ -66,28 +74,36 @@ export default function GroupsPage() {
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discovered, setDiscovered] = useState(false);
 
-  const load = () => {
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const generation = useRef(0);
+  const load = useCallback(async () => {
     if (!auth?.token) return;
+    const current = ++generation.current;
     setLoading(true);
-    Promise.all([
-      getGroups(auth.token, { platform }).catch(() => ({ items: [] })),
-      getAccounts(auth.token, { platform }).catch(() => ({ items: [] })),
-    ]).then(([g, a]) => {
+    try {
+      const [g, a] = await Promise.all([
+        getGroups(auth.token, { platform }),
+        getAccounts(auth.token, { platform }),
+      ]);
+      if (current !== generation.current) return;
       setGroups(g.items || []);
-      const items = a.items || [];
+      const items = (a.items || []).filter((acc: Account) => acc.platform === platform);
       setAllAccounts(items);
       setAccounts(items.filter((acc: Account) => acc.status === "active"));
-    }).catch(() => {}).finally(() => setLoading(false));
-  };
+      setLoadError(null);
+    } catch (error: any) {
+      if (current === generation.current) setLoadError(error.message || (lang === "ru" ? "Не удалось загрузить группы и аккаунты" : "Could not load groups and accounts"));
+    } finally {
+      if (current === generation.current) setLoading(false);
+    }
+  }, [auth?.token, platform, lang]);
 
-  useEffect(() => { load(); }, [auth?.token, platform]);
-
-  // Poll every 5s to keep scanner status fresh
   useEffect(() => {
-    if (!auth?.token) return;
+    setGroups([]); setAccounts([]); setAddAccountId("");
+    load();
     const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
-  }, [auth?.token]);
+    return () => { clearInterval(interval); generation.current++; };
+  }, [load]);
 
   const handleDiscover = async () => {
     if (!auth?.token || !discoverGeo.trim() || !discoverNiche.trim()) return;
@@ -125,11 +141,13 @@ export default function GroupsPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth?.token || !addIdentifier.trim() || !addAccountId) return;
+    const identifier = groupIdentifier(addIdentifier, platform);
+    if (!identifier) { toast(lang === "ru" ? `Неверный идентификатор (${platform})` : `Invalid identifier (${platform})`, "error"); return; }
     setAddSaving(true);
     try {
       await addGroup(auth.token, {
         platform,
-        group_identifier: addIdentifier.trim(),
+        group_identifier: identifier,
         account_id: addAccountId,
       });
       toast(t("groups.groupAdded"), "success");
@@ -185,23 +203,17 @@ export default function GroupsPage() {
     }
   };
 
-  const parseBulkInput = (text: string) => {
-    return text.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
-      const tgMatch = line.match(/(?:https?:\/\/t\.me\/|@)(\w+)/);
-      if (tgMatch) return { identifier: `@${tgMatch[1]}`, platform: "telegram" };
-      if (line.match(/^\d+$/)) return { identifier: `vk_${line}`, platform: "vkontakte" };
-      if (line.startsWith("vk_")) return { identifier: line, platform: "vkontakte" };
-      return { identifier: line, platform: "telegram" };
-    });
-  };
-
-  const handleBulkPreview = () => {
-    setBulkPreview(parseBulkInput(bulkInput));
+  const previewBulk = (text: string) => {
+    const parsed = groupLines(text, platform, lang);
+    bulkPlatform.current = platform;
+    setBulkPreview(parsed.groups);
+    setBulkErrors(parsed.errors);
     setBulkResult(null);
   };
+  const handleBulkPreview = () => previewBulk(bulkInput);
 
   const handleBulkImport = async () => {
-    if (!auth?.token || bulkPreview.length === 0) return;
+    if (!auth?.token || bulkPreview.length === 0 || bulkPlatform.current !== platform) return;
     setBulkBusy(true);
     try {
       const res = await bulkImportGroups(auth.token, bulkPreview.map((g) => ({ group_identifier: g.identifier, platform: g.platform })));
@@ -219,6 +231,7 @@ export default function GroupsPage() {
 
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
+      {loadError && <div role="alert" className="text-rose-400">{lang === "ru" ? "Не удалось загрузить группы и аккаунты" : "Could not load groups and accounts"}: {loadError}<button onClick={load} className="ml-3 underline">{lang === "ru" ? "Повторить" : "Retry"}</button></div>}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("groups.title")}</h1>
         <div className="flex gap-2">
@@ -236,6 +249,7 @@ export default function GroupsPage() {
       {/* How it works */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-300 mb-2">{t("groups.howItWorks")}</h2>
+        {platform !== "telegram" ? <p className="text-sm text-zinc-400">{facebook ? fbGuide : vkGuide}</p> : <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-zinc-400">
           <div className="flex items-start gap-2">
             <span className="text-emerald-400 font-bold text-sm">1</span>
@@ -254,10 +268,11 @@ export default function GroupsPage() {
             <div><strong className="text-zinc-300">{t("groups.step4Title")}</strong> — {t("groups.step4Desc")}</div>
           </div>
         </div>
+        </>}
       </div>
 
       {/* Account/Group Ratio Info */}
-      {!loading && (
+      {!loading && !facebook && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <div className="flex flex-wrap items-center gap-6 text-sm">
             <span className="text-zinc-400">{t("groups.accountRatio")}: <span className="text-zinc-200 font-medium">{accounts.length}</span></span>
@@ -277,8 +292,8 @@ export default function GroupsPage() {
         </div>
       )}
 
-      {/* Auto-Discovery */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+      {/* Auto-Discovery is implemented only for Telegram and VK. */}
+      {!facebook && <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-zinc-300">{t("groups.autoDiscover")}</h2>
           <button onClick={() => setShowDiscover(!showDiscover)}
@@ -307,7 +322,7 @@ export default function GroupsPage() {
               <div className="w-full md:w-32">
                 <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")}</label>
                 <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
-                  {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+                  {facebook ? "Facebook" : platform === "vkontakte" ? "VKontakte" : "Telegram"}
                 </div>
               </div>
               <div className="w-full md:w-48">
@@ -360,7 +375,7 @@ export default function GroupsPage() {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Add Group Form */}
       {showAdd && (
@@ -368,17 +383,17 @@ export default function GroupsPage() {
           <h2 className="text-sm font-medium text-zinc-400">{t("groups.addFormTitle")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")} <FieldHint hint={t("groups.hint.platform")} /></label>
+              <label className="text-xs text-zinc-500 mb-1 block">{t("groups.platformLabel")} <FieldHint hint={facebook ? fbGuide : t("groups.hint.platform")} /></label>
               <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
-                {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+                {facebook ? "Facebook" : platform === "vkontakte" ? "VKontakte" : "Telegram"}
               </div>
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">
-                {platform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")} <FieldHint hint={t("groups.hint.groupLink")} />
+                {facebook ? (lang === "ru" ? "Группа Facebook" : "Facebook group") : platform === "telegram" ? t("groups.groupLabelTg") : t("groups.groupLabelVk")} <FieldHint hint={facebook ? fbGuide : t("groups.hint.groupLink")} />
               </label>
               <input type="text" required value={addIdentifier}
-                placeholder={platform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}
+                placeholder={facebook ? "https://www.facebook.com/groups/123456789" : platform === "telegram" ? t("groups.identifierPlaceholderTg") : t("groups.identifierPlaceholderVk")}
                 onChange={(e) => setAddIdentifier(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono" />
             </div>
@@ -394,7 +409,7 @@ export default function GroupsPage() {
             </div>
           </div>
           <p className="text-[10px] text-zinc-600">
-            {platform === "telegram"
+            {facebook ? fbGuide : platform === "telegram"
               ? t("groups.hintTg")
               : t("groups.hintVk")}
           </p>
@@ -414,11 +429,11 @@ export default function GroupsPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowBulkImport(false); setBulkInput(""); setBulkPreview([]); setBulkResult(null); }}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-zinc-100">{t("groups.bulkImportTitle")}</h2>
-            <p className="text-xs text-zinc-500">{t("groups.bulkImportHint")}</p>
+            <p className="text-xs text-zinc-500">{facebook ? (lang === "ru" ? "По одной ссылке на группу Facebook в строке." : "One Facebook group URL per line.") : t("groups.bulkImportHint")}</p>
             <textarea
               rows={8}
               value={bulkInput}
-              onChange={(e) => setBulkInput(e.target.value)}
+              onChange={(e) => { setBulkInput(e.target.value); setBulkPreview([]); setBulkErrors([]); setBulkResult(null); }}
               placeholder={"@group1\n@group2\nhttps://t.me/group3\n12345678"}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 font-mono resize-none"
             />
@@ -434,7 +449,7 @@ export default function GroupsPage() {
                   reader.onload = (ev) => {
                     const text = ev.target?.result as string;
                     setBulkInput(text);
-                    setBulkPreview(parseBulkInput(text));
+                    setBulkPreview([]); setBulkErrors([]); setBulkResult(null);
                   };
                   reader.readAsText(file);
                 }}
@@ -444,13 +459,14 @@ export default function GroupsPage() {
                 <p className="text-zinc-600 mt-1">{t("groups.uploadTxtHint")}</p>
               </div>
             </div>
+            {bulkErrors.length > 0 && <div role="alert" className="text-rose-400 text-xs">{bulkErrors.map(error => <p key={error}>{error}</p>)}</div>}
             {bulkPreview.length > 0 && !bulkResult && (
               <div className="space-y-2">
                 <p className="text-xs text-zinc-400">{t("groups.bulkImportPreview")}: {bulkPreview.length}</p>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {bulkPreview.map((g, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-zinc-300 bg-zinc-800 rounded px-2 py-1">
-                      <span className="text-zinc-500">{g.platform === "telegram" ? "TG" : "VK"}</span>
+                      <span className="text-zinc-500">{g.platform === "telegram" ? "TG" : g.platform === "facebook" ? "FB" : "VK"}</span>
                       <span className="font-mono">{g.identifier}</span>
                     </div>
                   ))}
@@ -516,11 +532,11 @@ export default function GroupsPage() {
                   ))}
                 </div>
               </td></tr>
-            ) : groups.length === 0 ? (
+            ) : loadError ? (<tr><td colSpan={7} className="p-4 text-rose-400">{(lang === "ru" ? "Не удалось загрузить группы и аккаунты" : "Could not load groups and accounts")}</td></tr>) : groups.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                 <p className="text-zinc-300 font-medium mb-2">{t("groups.empty")}</p>
-                <p className="text-xs text-zinc-500 mb-1">{t("groups.emptyDesc")}</p>
-                <p className="text-xs text-zinc-600">{t("groups.emptyHint")}</p>
+                <p className="text-xs text-zinc-500 mb-1">{facebook ? fbGuide : platform === "vkontakte" ? vkGuide : t("groups.emptyDesc")}</p>
+                <p className="text-xs text-zinc-600">{platform === "telegram" ? t("groups.emptyHint") : ""}</p>
               </td></tr>
             ) : (
               groups.map((g) => (

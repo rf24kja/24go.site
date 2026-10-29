@@ -1,0 +1,22 @@
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {it,expect,vi,afterEach} from 'vitest';
+vi.mock('@/lib/auth',()=>({useAuth:()=>({auth:{token:'fixture'}})}));
+const state=vi.hoisted(()=>({lang:'en'}));
+vi.mock('@/lib/i18n',()=>({useI18n:()=>({lang:state.lang,t:(s:string)=>s})}));
+import Page from '@/app/(dashboard)/vk-settings/page';
+afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+it('connects discovery token only in POST body, clears secret and disconnects',async()=>{
+ const calls:any[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url,opts)=>{calls.push({url:String(url),...opts});return new Response(JSON.stringify(String(url).includes('vk-discovery')?{connected:opts?.method==='POST',user_id:42}:{settings:{}}),{status:200});}));
+ render(<Page/>);
+ const input=await screen.findByLabelText('VK user access token');
+ fireEvent.change(input,{target:{value:'fixture-vk-secret'}});
+ fireEvent.click(screen.getByRole('button',{name:'Connect search'}));
+ await screen.findByText('Search connected: 42');
+ expect((input as HTMLInputElement).value).toBe('');
+ const req=calls.find(c=>c.method==='POST'&&c.url.includes('vk-discovery'));
+ expect(JSON.parse(req.body)).toEqual({access_token:'fixture-vk-secret'});
+ expect(calls.every(c=>!c.url.includes('fixture-vk-secret'))).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Disconnect search'}));
+ await waitFor(()=>expect(calls.some(c=>c.method==='DELETE')).toBe(true));
+});

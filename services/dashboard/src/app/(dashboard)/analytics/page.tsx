@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "@/components/PlatformLink";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -77,12 +78,12 @@ export default function AnalyticsPage() {
       <h3 className="text-xl font-bold mb-2">{t("analytics.getStarted")}</h3>
       <p className="text-gray-400 mb-6">{t("analytics.getStartedDesc")}</p>
       <div className="flex gap-4 justify-center">
-        <a href="/accounts" className="bg-emerald-600 px-6 py-3 rounded-lg">
+        <Link href="/accounts" className="bg-emerald-600 px-6 py-3 rounded-lg">
           {t("analytics.connectAccount")}
-        </a>
-        <a href="/targets" className="bg-blue-600 px-6 py-3 rounded-lg">
+        </Link>
+        <Link href="/targets" className="bg-blue-600 px-6 py-3 rounded-lg">
           {t("analytics.addTarget")}
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -144,9 +145,9 @@ export default function AnalyticsPage() {
           <p className="text-zinc-200 font-medium mb-1">{t("analytics.emptyTitle")}</p>
           <p className="text-sm text-zinc-500 mb-4">{t("analytics.emptyDesc")}</p>
           <div className="flex flex-wrap gap-2">
-            <a href="/targets" className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-500 btn-press">{t("analytics.emptyStep1")}</a>
-            <a href="/accounts" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep2")}</a>
-            <a href="/onboarding" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep3")}</a>
+            <Link href="/targets" className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-500 btn-press">{t("analytics.emptyStep1")}</Link>
+            <Link href="/accounts" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep2")}</Link>
+            <Link href="/onboarding" className="px-3 py-2 bg-zinc-800 text-zinc-200 rounded-lg text-sm hover:bg-zinc-700 btn-press">{t("analytics.emptyStep3")}</Link>
           </div>
         </div>
       )}

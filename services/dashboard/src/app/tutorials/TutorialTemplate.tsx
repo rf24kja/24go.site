@@ -37,7 +37,7 @@ export default function TutorialTemplate({ title, description, prerequisites, st
 
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
+          <Link href={`/?locale=${locale}`} className="text-lg font-bold tracking-tight">24<span className="text-emerald-400">GO</span></Link>
           <div className="flex items-center gap-3">
             <Suspense><LanguageSwitcher /></Suspense>
             <Link href="/login" className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition">{locale === "ru" ? "Попробовать бесплатно" : "Start Free Trial"}</Link>
@@ -96,7 +96,7 @@ export default function TutorialTemplate({ title, description, prerequisites, st
 
         <section className="text-center pt-8 border-t border-zinc-800">
           <Link href="/login" className="inline-block px-8 py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition mb-4">{l.cta}</Link>
-          <p><Link href="/tools" className="text-zinc-500 hover:text-zinc-300 text-sm transition">{l.back}</Link></p>
+          <p><Link href={`/tools?locale=${locale}`} className="text-zinc-500 hover:text-zinc-300 text-sm transition">{l.back}</Link></p>
         </section>
       </main>
     </div>

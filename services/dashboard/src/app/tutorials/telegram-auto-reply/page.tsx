@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import TutorialTemplate from "../TutorialTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "How to Set Up Telegram Auto-Reply Bot — Complete Guide (2026) | 24GO",
   description: "Step-by-step guide to setting up automatic replies in Telegram. Respond to leads instantly with AI-powered or template replies.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/tutorials/telegram-auto-reply",
-    languages: {
-      en: "https://www.24go.site/tutorials/telegram-auto-reply?locale=en",
-      ru: "https://www.24go.site/tutorials/telegram-auto-reply?locale=ru",
-      "x-default": "https://www.24go.site/tutorials/telegram-auto-reply",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/tutorials/telegram-auto-reply", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {
@@ -36,7 +34,7 @@ const content = {
     description: "Отвечайте каждому лиду мгновенно — даже во сне. Это руководство покажет, как настроить автоответы на основе ИИ или шаблонов.",
     prerequisites: ["Аккаунт Telegram (рекомендуется 6+ месяцев)", "Аккаунт 24GO (есть бесплатный триал)", "Хотя бы одна Telegram-группа, где собирается ваша целевая аудитория"],
     steps: [
-      { title: "Подключите Telegram к 24GO", content: "Перейдите в Аккаунты → Подключить аккаунт. Введите номер телефона, подтвердите кодом из Telegram. 24GO использует шифрованное хранение сессий — ваши данные nunca не раскрываются." },
+      { title: "Подключите Telegram к 24GO", content: "Перейдите в Аккаунты → Подключить аккаунт. Введите номер телефона, подтвердите кодом из Telegram. 24GO использует шифрованное хранение сессий — ваши данные никогда не раскрываются." },
       { title: "Включите листенер ЛС", content: "Перейдите в Листенеры → Запустить. Листенер отслеживает входящие сообщения. Когда кто-то пишет вам, 24GO сохраняет сообщение и данные лида." },
       { title: "Настройте правила автоответов", content: "Перейдите в Настройки → AI автоответы. Включите автоответы и выберите режим: AI (уникальные ответы через LLM) или Шаблон (ваши готовые ответы)." },
       { title: "Установите пороги намерения", content: "Настройте, какие лиды получают автоответы. AI лучше работает для HOT лидов (высокое намерение покупки). Шаблоны — для WARM. COLD лиды не получают ответ." },

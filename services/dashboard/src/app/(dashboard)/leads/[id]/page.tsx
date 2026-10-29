@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/PlatformLink";
 import { useAuth } from "@/lib/auth";
 import { getLead, updateLeadStatus } from "@/lib/api";
 import { useToast } from "@/components/Toast";

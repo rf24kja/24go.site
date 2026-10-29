@@ -173,13 +173,27 @@ async def start_mailing(
     if mailing.status not in (MailingStatus.draft, MailingStatus.paused):
         raise HTTPException(400, f"Cannot start mailing in {mailing.status} status")
 
+    platform = mailing.platform.value if hasattr(mailing.platform, "value") else str(mailing.platform)
+    if platform != "telegram":
+        raise HTTPException(422, "Mailing sender supports telegram only")
+
     from datetime import datetime, timezone
+    previous_status, previous_started_at = mailing.status, mailing.started_at
     mailing.status = MailingStatus.running
     mailing.started_at = datetime.now(timezone.utc)
     await db.commit()
 
-    from app.tasks.mailer import process_mailing
-    process_mailing.delay(str(mailing.id), str(current_user.tenant_id))
+    from app.celery_app import celery
+    try:
+        celery.send_task(
+            "app.tasks.mailer.process_mailing",
+            kwargs={"mailing_id": str(mailing.id), "tenant_id": str(current_user.tenant_id)},
+            queue="poster",
+        )
+    except Exception:
+        mailing.status, mailing.started_at = previous_status, previous_started_at
+        await db.commit()
+        raise HTTPException(503, "Mailing enqueue failed; retry later")
 
     return {"status": "started", "mailing_id": str(mailing.id)}
 

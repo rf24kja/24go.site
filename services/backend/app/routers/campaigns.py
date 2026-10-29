@@ -182,23 +182,23 @@ async def run_campaign_now(
     if not campaign:
         raise HTTPException(404, "Campaign not found")
 
-    # Find a matching target
-    target = await db.execute(
-        select(_models.Target).where(
-            _models.Target.tenant_id == current_user.tenant_id,
-            _models.Target.is_active == True,
-        ).order_by(_func.random()).limit(1)
+    platform = campaign.platform
+    if platform not in ("telegram", "vkontakte"):
+        raise HTTPException(400, "Campaign posting is supported only for Telegram and VK")
+
+    target_query = select(_models.Target).where(
+        _models.Target.tenant_id == current_user.tenant_id,
+        _models.Target.platform == platform,
+        _models.Target.is_active == True,
     )
+    if campaign.target_geos:
+        target_query = target_query.where(_models.Target.geo_tag.in_(campaign.target_geos))
+    if campaign.target_niches:
+        target_query = target_query.where(_models.Target.niche.in_(campaign.target_niches))
+    target = await db.execute(target_query.order_by(_func.random()).limit(1))
     t = target.scalar_one_or_none()
     if not t:
-        raise HTTPException(400, "No active targets found. Add targets first.")
-
-    platform = t.platform if hasattr(t, 'platform') else "telegram"
-
-    # ponytail: explicit reject — MAX campaigns need a recipient mapping that
-    # doesn't exist yet; falling through would build a bogus t.me URL.
-    if platform == "max":
-        raise HTTPException(400, "Campaigns for MAX are not supported yet (no recipient mapping)")
+        raise HTTPException(400, "No active matching targets found. Add targets first.")
 
     # Find an available account (matching platform)
     acc = await db.execute(
@@ -206,6 +206,7 @@ async def run_campaign_now(
             _models.AccountPool.tenant_id == current_user.tenant_id,
             _models.AccountPool.platform == platform,
             _models.AccountPool.status == "active",
+            _models.AccountPool.actions_today < _models.AccountPool.daily_action_limit,
         ).order_by(_func.random()).limit(1)
     )
     a = acc.scalar_one_or_none()
@@ -215,18 +216,15 @@ async def run_campaign_now(
     # Dispatch to poster worker
     from app.celery_app import celery
     if platform == "vkontakte":
-        utm_url = f"https://vk.com/public{t.target_id_code}?utm_source=leadgen&utm_medium=post&utm_campaign={campaign.id}"
         celery.send_task(
             "app.tasks.vk_poster.post_to_vk",
-            args=[
-                str(current_user.tenant_id),
-                str(campaign.id),
-                str(t.id),
-                str(a.id),
-                campaign.base_text,
-                utm_url,
-            ],
             kwargs={
+                "tenant_id": str(current_user.tenant_id),
+                "account_id": str(a.id),
+                "group_id": int(t.target_id_code.removeprefix("vk_")),
+                "text": campaign.base_text,
+                "campaign_id": str(campaign.id),
+                "target_id": str(t.id),
                 "ab_enabled": campaign.ab_enabled or False,
                 "ab_variants": campaign.ab_variants or [],
             },

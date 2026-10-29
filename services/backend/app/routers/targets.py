@@ -142,7 +142,8 @@ async def check_membership(
             import asyncpg
             from app.crypto import decrypt as dec
 
-            group_id = int(target.target_id_code) if target.target_id_code.isdigit() else 0
+            code = target.target_id_code.removeprefix("vk_")
+            group_id = int(code) if code.isdigit() else 0
             if not group_id:
                 raise HTTPException(400, "Invalid VK group ID in target")
 
@@ -162,7 +163,9 @@ async def check_membership(
                 try:
                     session = vk_api.VkApi(token=token, api_version="5.199")
                     vk = session.get_api()
-                    groups = vk.groups.getById(group_id=group_id)
+                    groups = await asyncio.to_thread(vk.groups.getById, group_ids=str(group_id))
+                    if isinstance(groups, dict):
+                        groups = groups.get("groups", [])
                     if groups:
                         target.is_joined = True
                         await db.commit()
@@ -170,15 +173,15 @@ async def check_membership(
                 except Exception:
                     continue
 
-            # No account could access the group
-            target.is_joined = False
-            await db.commit()
-            return {"is_joined": False, "reason": "no_vk_account_has_access"}
+            raise HTTPException(502, "VK group access could not be verified")
         except HTTPException:
             raise
         except Exception as e:
             log.error(f"VK membership check failed: {e}")
             raise HTTPException(500, f"Check failed: {e}")
+
+    if target.platform != "telegram":
+        raise HTTPException(422, "Membership checks support telegram or vkontakte only")
 
     # Telegram: check via Telethon
     acct_result = await db.execute(
@@ -195,6 +198,8 @@ async def check_membership(
     async def _check():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
+        from telethon.tl.functions.channels import GetParticipantRequest
+        from telethon.errors import UserNotParticipantError
         import os
         import asyncpg
         from app.crypto import decrypt as dec
@@ -203,8 +208,9 @@ async def check_membership(
         api_id = int(os.getenv("TG_API_ID", "0"))
         api_hash = os.getenv("TG_API_HASH", "")
         if not api_id or not api_hash:
-            return False
+            raise HTTPException(503, "Telegram API credentials not configured")
 
+        checked = False
         for account in accounts:
             conn = await asyncpg.connect(cfg.DATABASE_URL.replace("+asyncpg", ""))
             try:
@@ -224,22 +230,25 @@ async def check_membership(
                 entity = await client.get_entity(target.target_id_code)
                 me = await client.get_me()
                 try:
-                    await client.get_participant(entity, me.id)
-                    await client.disconnect()
+                    await client(GetParticipantRequest(entity, me.id))
                     return True  # Found a member
-                except Exception:
-                    pass
+                except UserNotParticipantError:
+                    checked = True
             finally:
                 await client.disconnect()
+        if not checked:
+            raise HTTPException(503, "No usable Telegram session for membership check")
         return False
 
     try:
         is_member = await asyncio.wait_for(_check(), timeout=30)
     except asyncio.TimeoutError:
         raise HTTPException(504, "Timeout checking membership")
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Membership check failed: {e}")
-        raise HTTPException(500, f"Check failed: {e}")
+        raise HTTPException(502, "Telegram membership check unavailable")
 
     target.is_joined = is_member
     await db.commit()
@@ -271,14 +280,21 @@ async def join_target(
 
     # VK: group tokens can't join groups — need manual action
     if target.platform == "vkontakte":
-        group_id = int(target.target_id_code) if target.target_id_code.isdigit() else 0
+        code = target.target_id_code.removeprefix("vk_")
+        if not code.isdigit() or int(code) <= 0:
+            raise HTTPException(422, "Invalid VK group ID")
         return {
             "join_results": [{
                 "status": "manual_action_required",
-                "message": f"VK groups require manual join. Open https://vk.com/public{group_id} and add your community to monitored groups via VK settings.",
+                "message": f"Open https://vk.com/club{code} to join manually. Community tokens cannot join groups.",
             }],
             "any_joined": False,
         }
+
+    if target.platform != "telegram":
+        raise HTTPException(422, "Joining is supported only for Telegram; VK requires manual action")
+    if body.account_ids == []:
+        raise HTTPException(422, "account_ids must be omitted or nonempty")
 
     if body.account_ids:
         acct_result = await db.execute(
@@ -304,47 +320,68 @@ async def join_target(
     async def _join():
         from telethon import TelegramClient
         from telethon.sessions import StringSession
+        from telethon.tl.functions.channels import JoinChannelRequest
+        from telethon.tl.functions.messages import ImportChatInviteRequest
+        from telethon.errors import UserAlreadyParticipantError, InviteRequestSentError, FloodWaitError
+        from urllib.parse import urlparse
         import os
         import asyncpg
         from app.crypto import decrypt as dec
-        from app.config import settings as cfg
 
         api_id = int(os.getenv("TG_API_ID", "0"))
         api_hash = os.getenv("TG_API_HASH", "")
         if not api_id or not api_hash:
-            return [], "TG_API_ID/TG_API_HASH not configured"
+            return [], "Telegram API credentials not configured"
+
+        code = target.target_id_code.strip()
+        invite = None
+        if code.startswith(("https://t.me/", "http://t.me/", "t.me/")):
+            path = urlparse(code if "://" in code else "https://" + code).path.strip("/")
+            if path.startswith("+"):
+                invite = path[1:]
+            elif path.startswith("joinchat/"):
+                invite = path.split("/", 1)[1]
+            else:
+                code = path
+        elif code.startswith("+"):
+            invite = code[1:]
 
         results = []
         for account in accounts:
-            conn = await asyncpg.connect(cfg.DATABASE_URL.replace("+asyncpg", ""))
+            client = None
             try:
-                row = await conn.fetchrow(
-                    "SELECT session_data FROM account_sessions WHERE account_id = $1",
-                    account.id,
-                )
-                if not row:
-                    results.append({"account_id": str(account.id), "status": "no_session"})
-                    continue
-                session_str = dec(row["session_data"])
-            finally:
-                await conn.close()
-
-            client = TelegramClient(StringSession(session_str), api_id, api_hash)
-            await client.connect()
-            try:
-                entity = await client.get_entity(target.target_id_code)
+                conn = await asyncpg.connect(settings.DATABASE_URL.replace("+asyncpg", ""))
                 try:
-                    await client.get_participant(entity, (await client.get_me()).id)
-                    results.append({"account_id": str(account.id), "status": "already_member"})
-                    continue
-                except Exception:
-                    pass
-                await client.join_chat(entity)
-                results.append({"account_id": str(account.id), "status": "joined"})
+                    row = await conn.fetchrow(
+                        "SELECT session_data FROM account_sessions WHERE account_id = $1", account.id)
+                    if not row:
+                        results.append({"account_id": str(account.id), "status": "no_session"})
+                        continue
+                    session_str = dec(row["session_data"])
+                finally:
+                    await conn.close()
+                client = TelegramClient(StringSession(session_str), api_id, api_hash)
+                await client.connect()
+                if invite is not None:
+                    await client(ImportChatInviteRequest(invite))
+                else:
+                    await client(JoinChannelRequest(await client.get_entity(code)))
+                result = {"account_id": str(account.id), "status": "joined"}
+            except UserAlreadyParticipantError:
+                result = {"account_id": str(account.id), "status": "already_member"}
+            except InviteRequestSentError:
+                result = {"account_id": str(account.id), "status": "pending_approval"}
+            except FloodWaitError as exc:
+                result = {"account_id": str(account.id), "status": "rate_limited", "retry_after": exc.seconds}
             except Exception:
-                results.append({"account_id": str(account.id), "status": "error", "error": "Scrape failed"})
+                result = {"account_id": str(account.id), "status": "error", "error": "telegram_join_failed"}
             finally:
-                await client.disconnect()
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        log.warning("Telegram join disconnect failed")
+            results.append(result)
         return results, None
 
     try:
@@ -353,24 +390,24 @@ async def join_target(
         raise HTTPException(504, "Timeout joining groups")
     except Exception as e:
         log.error(f"Join failed: {e}")
-        raise HTTPException(500, f"Join failed: {e}")
+        raise HTTPException(502, "Telegram join unavailable")
 
     if error:
-        raise HTTPException(500, error)
+        raise HTTPException(503, error)
 
-    any_joined = any(r["status"] == "joined" for r in join_results)
+    any_joined = any(r["status"] in ("joined", "already_member") for r in join_results)
     if any_joined:
         target.is_joined = True
         await db.commit()
 
     await log_event(
-        settings.DATABASE_URL, current_user.tenant_id,
+        settings.DATABASE_URL.replace("+asyncpg", ""), current_user.tenant_id,
         "joined", "target", target_id,
         None, {"results": join_results}, current_user.id,
         request.client.host if request else None,
     )
 
-    return {"target_id": str(target_id), "results": join_results}
+    return {"target_id": str(target_id), "results": join_results, "any_joined": any_joined}
 
 
 # ── Recent Posts ───────────────────────────────────────────────────────

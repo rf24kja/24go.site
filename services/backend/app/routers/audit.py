@@ -49,11 +49,8 @@ async def owner_audit_log(
 ):
     """Owner-only: cross-tenant audit log with full activity tracking."""
     if current_user.email != OWNER_EMAIL:
-        # Check role field too
-        role = getattr(current_user, "role", None)
-        if role != "owner":
-            from fastapi import HTTPException
-            raise HTTPException(403, "Owner access required")
+        from fastapi import HTTPException
+        raise HTTPException(403, "Owner access required")
 
     conditions = []
     params: dict = {"limit": limit}

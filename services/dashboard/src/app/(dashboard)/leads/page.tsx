@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
+import Link from "@/components/PlatformLink";
 import { useAuth } from "@/lib/auth";
 import { getLeads, qualifyLead, updateLeadStatus, exportLeadsCsv, importLeadsCsv, getLead } from "@/lib/api";
 import { useWebSocket } from "@/lib/useWebSocket";
@@ -278,7 +278,7 @@ export default function LeadsPage() {
               if (!file || !auth?.token) return;
               try {
                 const text = await file.text();
-                const result = await importLeadsCsv(auth.token, text);
+                const result = await importLeadsCsv(auth.token, text, undefined, platform);
                 const msg = t("leads.importResult").replace("{imported}", String(result.imported)).replace("{skipped}", String(result.skipped)) + (result.errors?.length ? ` — ${result.errors.slice(0,3).join("; ")}` : "");
                 toast(msg, result.errors?.length ? "info" : "success");
                 getLeads(auth.token, { intent_score: filter === "ALL" ? undefined : filter, platform }).then((res) => setLeads(res.items || res));

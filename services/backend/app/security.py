@@ -34,7 +34,23 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
+def authorize_operational_request(user: User, request: Request) -> User:
+    """Enforce viewer read-only access before operational side effects."""
+    endpoint = request.scope.get("endpoint")
+    module = getattr(endpoint, "__module__", "")
+    read_post = (module, getattr(endpoint, "__name__", "")) in {
+        ("app.routers.campaigns", "cron_preview"),
+        ("app.routers.phone_parser", "export_contacts"),
+    }
+    if (user.role == "viewer" and request.method not in {"GET", "HEAD", "OPTIONS"}
+            and module not in {"app.routers.auth", "app.routers.billing", "app.routers.balance"}
+            and not read_post):
+        raise HTTPException(status_code=403, detail="Viewer role has read-only access")
+    return user
+
+
 async def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -55,7 +71,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exc
-    return user
+    return authorize_operational_request(user, request)
 
 
 async def get_current_user_or_api_key(
@@ -82,7 +98,7 @@ async def get_current_user_or_api_key(
                 result = await db.execute(select(User).where(User.id == user_id))
                 user = result.scalar_one_or_none()
                 if user is not None:
-                    return user
+                    return authorize_operational_request(user, request)
         except JWTError:
             pass
         raise unauthorized
@@ -107,6 +123,7 @@ async def get_current_user_or_api_key(
                 user = result.scalar_one_or_none()
                 if user is None:
                     break
+                authorize_operational_request(user, request)
                 await db.execute(
                     update(ApiKey).where(ApiKey.id == k.id)
                     .values(last_used_at=datetime.now(timezone.utc))

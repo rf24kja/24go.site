@@ -12,7 +12,14 @@
 - Stripe and YooKassa billing integration
 
 ## Blog
-24GO publishes articles about lead generation, SEO, Telegram automation, and AI-powered sales. See https://www.24go.site/blog for the full list.
+24GO publishes articles about lead generation, SEO, Telegram automation, and AI-powered sales.
+
+- [Blog in English](https://www.24go.site/blog?locale=en): current articles and practical guides.
+- [Блог на русском](https://www.24go.site/blog?locale=ru): статьи и практические руководства.
+- [Platform overview](https://www.24go.site/?locale=en#platforms): connection requirements and limitations for Telegram, VK, WhatsApp, MAX and Facebook.
+- [How it works](https://www.24go.site/?locale=en#how): the public workflow guide.
+- [Privacy policy](https://www.24go.site/privacy): privacy and data handling.
+- [Terms of service](https://www.24go.site/terms): service terms.
 
 ## Contact
 Website: https://www.24go.site

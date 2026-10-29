@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import IntegrationTemplate from "../IntegrationTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Telegram Webhook Integration — Send Leads to Any System | 24GO",
   description: "Connect Telegram leads to any system via webhooks. Send data to Zapier, Make, n8n, or your custom API.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/integrations/webhook",
-    languages: {
-      en: "https://www.24go.site/integrations/webhook?locale=en",
-      ru: "https://www.24go.site/integrations/webhook?locale=ru",
-      "x-default": "https://www.24go.site/integrations/webhook",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/integrations/webhook", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {

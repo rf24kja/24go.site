@@ -1,9 +1,9 @@
 "use client";
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import en from "./en.json";
-import ru from "./ru.json";
+import en from "./public-en.json";
+import ru from "./public-ru.json";
 
-type Lang = "en" | "ru";
+export type Lang = "en" | "ru";
 type Translations = Record<string, string>;
 
 const langs: Record<Lang, Translations> = { en, ru };
@@ -49,8 +49,8 @@ function detectLocale(): Lang {
 
 const Ctx = createContext<I18nCtx>({ lang: "en", setLang: () => {}, t: (k) => k });
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(detectLocale);
+export function I18nProvider({ children, initialLang }: { children: ReactNode; initialLang?: Lang }) {
+  const [lang, setLangState] = useState<Lang>(() => initialLang ?? detectLocale());
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
@@ -76,6 +76,18 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return val;
   }, [lang]);
 
+  return <Ctx.Provider value={{ lang, setLang, t }}>{children}</Ctx.Provider>;
+}
+
+// A route-owned message scope shares the root language state and AuthProvider.
+// Both locales arrive in the route chunk, so switching never waits on a fetch.
+export function MessageScope({ children, messages }: { children: ReactNode; messages: Record<Lang, Translations> }) {
+  const { lang, setLang } = useContext(Ctx);
+  const t = useCallback((key: string, fallback?: string | TemplateParams): string => {
+    const value = messages[lang][key] || messages.en[key] || (typeof fallback === "string" ? fallback : undefined) || key;
+    if (typeof fallback !== "object" || fallback === null) return value;
+    return Object.entries(fallback).reduce((text, [name, replacement]) => text.split(`{${name}}`).join(String(replacement)), value);
+  }, [lang, messages]);
   return <Ctx.Provider value={{ lang, setLang, t }}>{children}</Ctx.Provider>;
 }
 

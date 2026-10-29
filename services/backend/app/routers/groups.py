@@ -1,10 +1,12 @@
 """Group Monitoring API: add, list, start/stop monitoring public groups."""
 import logging
+import re
+from urllib.parse import urlsplit
 import uuid as _uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,6 +89,31 @@ async def _resolve_proxy_for_account(account_id) -> tuple | None:
         return None
 
 
+def _validate_group_identifier(platform: str, identifier: str) -> str:
+    """Validate the representation consumed by each installed scanner, without repair."""
+    if not identifier or identifier != identifier.strip() or any(ord(c) < 32 for c in identifier):
+        raise HTTPException(400, "Invalid group identifier")
+    if platform == "telegram":
+        valid = re.fullmatch(r"@[A-Za-z][A-Za-z0-9_]{3,31}", identifier)
+    elif platform == "vkontakte":
+        valid = re.fullmatch(r"vk_[1-9][0-9]*", identifier)
+    elif platform == "facebook":
+        try:
+            url = urlsplit(identifier)
+            valid = (url.scheme == "https" and url.netloc in {
+                "facebook.com", "www.facebook.com", "m.facebook.com", "mbasic.facebook.com"
+            } and not url.query and not url.fragment and
+                re.fullmatch(r"/groups/[A-Za-z0-9][A-Za-z0-9._-]*/?", url.path) and
+                url.path.split("/")[2] not in {".", ".."})
+        except ValueError:
+            valid = False
+    else:
+        raise HTTPException(400, "Unsupported monitoring platform")
+    if not valid:
+        raise HTTPException(400, f"Invalid {platform} group identifier")
+    return identifier
+
+
 class GroupCreateRequest(BaseModel):
     platform: str  # 'telegram' | 'vkontakte'
     group_identifier: str  # '@username' or 'vk_id:12345'
@@ -141,6 +168,7 @@ async def add_group(
     current_user: User = Depends(get_current_user),
 ):
     """Add a public group for monitoring."""
+    _validate_group_identifier(body.platform, body.group_identifier)
     # Check target limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
@@ -157,16 +185,23 @@ async def add_group(
 
     # Auto-assign least-loaded account if none provided
     if not body.account_id:
-        auto_id = await _get_least_loaded_account(db, str(current_user.tenant_id))
+        auto_id = await _get_least_loaded_account(db, str(current_user.tenant_id), body.platform)
         if not auto_id:
             raise HTTPException(400, "No active accounts available")
         body.account_id = auto_id
 
-    # Verify account exists and belongs to this tenant
+    try:
+        account_uuid = _uuid.UUID(body.account_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid account ID")
+
+    # Explicit and automatic accounts share the same admission constraints.
     acct_result = await db.execute(
         select(AccountPool).where(
-            AccountPool.id == _uuid.UUID(body.account_id),
+            AccountPool.id == account_uuid,
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == body.platform,
+            AccountPool.status.in_(["active", "warming_up"]),
         )
     )
     account = acct_result.scalar_one_or_none()
@@ -283,7 +318,7 @@ class BulkImportRequest(BaseModel):
     groups: list[BulkGroupItem]
 
 
-async def _get_least_loaded_account(db: AsyncSession, tenant_id: str) -> str | None:
+async def _get_least_loaded_account(db: AsyncSession, tenant_id: str, platform: str) -> str | None:
     """Find the active account with fewest monitored groups."""
     subq = (
         select(
@@ -302,6 +337,7 @@ async def _get_least_loaded_account(db: AsyncSession, tenant_id: str) -> str | N
         .outerjoin(subq, AccountPool.id == subq.c.account_id)
         .where(
             AccountPool.tenant_id == tenant_id,
+            AccountPool.platform == platform,
             AccountPool.status.in_(["active", "warming_up"]),
         )
         .order_by("cnt")
@@ -339,11 +375,18 @@ async def bulk_import_groups(
             errors.append(f"Target limit reached ({limits['max_targets']})")
             break
 
+        try:
+            _validate_group_identifier(item.platform, item.group_identifier)
+        except HTTPException as exc:
+            errors.append(str(exc.detail))
+            continue
+
         # Skip duplicates
         existing = await db.execute(
             select(MonitoredGroup).where(
                 MonitoredGroup.tenant_id == current_user.tenant_id,
                 MonitoredGroup.group_identifier == item.group_identifier,
+                MonitoredGroup.platform == item.platform,
                 MonitoredGroup.is_active == True,
             )
         )
@@ -351,10 +394,10 @@ async def bulk_import_groups(
             skipped += 1
             continue
 
-        account_id = await _get_least_loaded_account(db, str(current_user.tenant_id))
+        account_id = await _get_least_loaded_account(db, str(current_user.tenant_id), item.platform)
         if not account_id:
-            errors.append("No active accounts available")
-            break
+            errors.append(f"No active {item.platform} accounts available")
+            continue
 
         group = MonitoredGroup(
             tenant_id=current_user.tenant_id,
@@ -387,6 +430,24 @@ async def start_group_scanner(
     if not group:
         raise HTTPException(404, "Group not found")
 
+    _validate_group_identifier(group.platform, group.group_identifier)
+
+    if group.platform == "facebook":
+        if not group.is_active:
+            raise HTTPException(400, "Group is inactive")
+        account = (await db.execute(select(AccountPool).where(
+            AccountPool.id == group.account_id,
+            AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == "facebook",
+            AccountPool.status.in_(["active", "warming_up"]),
+        ))).scalar_one_or_none()
+        if not account:
+            raise HTTPException(400, "Active Facebook account required")
+        # Existing Beat scanner consumes this opt-in; no per-group task is queued.
+        group.status = "scanning"
+        await db.commit()
+        return {"status": "scheduled", "group_id": str(group.id)}
+
     if _scanner_running(str(group_id)):
         return {"status": "already_running", "group_id": str(group_id)}
 
@@ -402,7 +463,7 @@ async def start_group_scanner(
                 group.group_identifier,
                 str(group_id),
             ],
-            queue="listener",
+            queue="scanner",
         )
     elif group.platform == "vkontakte":
         # Extract group_id from identifier
@@ -415,7 +476,7 @@ async def start_group_scanner(
                 vk_gid,
                 str(group_id),
             ],
-            queue="listener",
+            queue="scanner",
         )
     else:
         raise HTTPException(400, f"Unsupported platform: {group.platform}")
@@ -425,8 +486,8 @@ async def start_group_scanner(
     group.last_scan_at = datetime.now(timezone.utc)
     await db.commit()
 
-    log.info(f"Group scanner started: {group.group_identifier} (task={task.id})")
-    return {"status": "started", "group_id": str(group_id), "task_id": task.id}
+    log.info(f"Group scanner queued: {group.group_identifier} (task={task.id})")
+    return {"status": "queued", "group_id": str(group_id), "task_id": task.id}
 
 
 @router.post("/{group_id}/stop")
@@ -445,6 +506,12 @@ async def stop_group_scanner(
     group = result.scalar_one_or_none()
     if not group:
         raise HTTPException(404, "Group not found")
+
+    if group.platform == "facebook":
+        # Disables future Beat selection; an in-flight scrape may finish.
+        group.status = "idle"
+        await db.commit()
+        return {"status": "stopped", "group_id": str(group.id)}
 
     task_id = None
     r = _get_redis()
@@ -512,6 +579,7 @@ class DiscoverRequest(BaseModel):
     niche: str    # e.g. "real_estate", "tourism"
     platform: str = "telegram"
     account_id: str | None = None  # optional: use this account to search
+    limit: int = Field(default=20, ge=1, le=20)
 
 
 @router.post("/discover")
@@ -525,6 +593,8 @@ async def discover_groups(
     Returns recommended groups with metadata.
     Filters by tenant settings (min_members_count, prefer_open_comments).
     """
+    if body.platform not in ("telegram", "vkontakte"):
+        raise HTTPException(422, "Discovery supports telegram or vkontakte only")
     # Check target limit
     plan = await get_subscription_plan(str(current_user.tenant_id))
     _limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["trial"])
@@ -532,7 +602,7 @@ async def discover_groups(
     from app.tenant_settings import get_section
     from app.config import settings as app_settings
     db_url = app_settings.DATABASE_URL.replace("+asyncpg", "")
-    groups_cfg = await get_section(db_url, str(current_user.tenant_id), "groups")
+    groups_cfg = await get_section(db_url, str(current_user.tenant_id), "groups", service=body.platform)
 
     min_members = groups_cfg.get("min_members_count", 100)
     prefer_open = groups_cfg.get("prefer_open_comments", True)
@@ -543,7 +613,7 @@ async def discover_groups(
         results = await _discover_telegram_groups(body.geo_tag, body.niche, body.account_id, tenant_id=current_user.tenant_id)
     elif body.platform == "vkontakte":
         results = await _discover_vk_groups(body.geo_tag, body.niche,
-                                            tenant_id=str(current_user.tenant_id))
+                                            tenant_id=str(current_user.tenant_id), account_id=body.account_id)
 
     # Apply tenant filters
     filtered = []
@@ -558,6 +628,7 @@ async def discover_groups(
         filtered.append(r)
     log.info(f"Filter results: {len(results)} → {len(filtered)} (min_members={min_members}, prefer_open={prefer_open})")
 
+    filtered = filtered[:body.limit]
     # Persist discovered results as targets so the frontend can list them
     from app.config import settings as _s
     import asyncpg as _asyncpg
@@ -600,7 +671,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
     api_id = int(os.getenv("TG_API_ID", "0"))
     api_hash = os.getenv("TG_API_HASH", "")
     if not api_id or not api_hash:
-        return []
+        raise HTTPException(503, "Telegram search configuration unavailable")
 
     # Build search queries from GEO + niche keywords
     queries = [
@@ -625,8 +696,9 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             conn = await asyncpg.connect(conn_url)
             try:
                 row = await conn.fetchrow(
-                    "SELECT s.session_data FROM account_sessions s WHERE s.account_id = $1",
-                    __import__('uuid').UUID(account_id),
+                    """SELECT s.session_data FROM account_sessions s JOIN account_pool a ON a.id = s.account_id
+                       WHERE a.id = $1 AND a.tenant_id = $2 AND a.platform = 'telegram' AND a.status = 'active'""",
+                    __import__('uuid').UUID(account_id), tenant_id,
                 )
                 if row:
                     session_str = dec(row["session_data"])
@@ -636,6 +708,8 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
             finally:
                 await conn.close()
 
+        if not client and account_id:
+            raise HTTPException(400, "Selected active Telegram account unavailable")
         if not client and tenant_id:
             # Fallback: pick any active account for this tenant
             import asyncpg
@@ -646,7 +720,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                 row = await conn.fetchrow(
                     """SELECT a.id, s.session_data FROM account_pool a
                        JOIN account_sessions s ON s.account_id = a.id
-                        WHERE a.tenant_id = $1 AND a.status IN ('active', 'warming_up')
+                        WHERE a.tenant_id = $1 AND a.platform = 'telegram' AND a.status = 'active'
                        ORDER BY a.created_at LIMIT 1""",
                     tenant_id,
                 )
@@ -660,11 +734,12 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
 
         if not client:
             log.warning("No active Telegram session found for discovery")
-            return []
+            raise HTTPException(400, "Active Telegram search account required")
 
         try:
             from telethon.tl.functions.contacts import SearchRequest as ContactsSearchRequest
 
+            successful_queries = 0
             for query in queries:
                 try:
                     log.info(f"Searching Telegram for query: {query!r}")
@@ -672,6 +747,7 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
 
                     # contacts.search returns users, chats, and channels globally
                     result = await client(ContactsSearchRequest(q=query, limit=50))
+                    successful_queries += 1
                     chats = getattr(result, 'chats', []) or []
 
                     for entity in chats:
@@ -720,6 +796,8 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
                 except Exception as e:
                     log.warning(f"Search query '{query}' failed: {e}")
                     continue
+            if not successful_queries:
+                raise HTTPException(502, "Telegram discovery unavailable")
         finally:
             await client.disconnect()
 
@@ -727,9 +805,10 @@ async def _discover_telegram_groups(geo_tag: str, niche: str, account_id: str | 
         results.sort(key=lambda x: x["relevance"], reverse=True)
         return results[:20]
 
-    except Exception as e:
-        log.error(f"Telegram group discovery failed: {e}")
-        return []
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "Telegram discovery unavailable")
 
 
 async def _resolve_vk_service_token(tenant_id: str) -> str:
@@ -748,38 +827,27 @@ async def _resolve_vk_service_token(tenant_id: str) -> str:
         return ""
 
 
-async def _discover_vk_groups(geo_tag: str, niche: str, tenant_id: str | None = None) -> list:
-    """Search VK for communities matching GEO + niche."""
-    import os
-    import vk_api
-
-    service_token = await _resolve_vk_service_token(tenant_id) if tenant_id else ""
-    if not service_token:
-        service_token = os.getenv("VK_SERVICE_TOKEN", "")
-    if not service_token:
+async def _discover_vk_groups(geo_tag: str, niche: str, tenant_id: str | None = None, account_id: str | None = None) -> list:
+    # account_id is a legacy sender selector; discovery never reads campaign sessions.
+    from app.vk_discovery import credential, _vk_call
+    if not tenant_id:
+        raise HTTPException(400, "Tenant required")
+    token = await credential(tenant_id, secret=True)
+    response = await _vk_call('groups.search', token, q=f"{geo_tag} {niche}".replace('_', ' '), count=20)
+    if 'error' in response:
+        raise HTTPException(409, detail={'code': 'vk_reconnect_required'})
+    items = response.get('response', {}).get('items')
+    if not isinstance(items, list):
+        raise HTTPException(502, detail={'code': 'vk_invalid_response'})
+    if not items:
         return []
-
-    try:
-        session = vk_api.VkApi(token=service_token, api_version="5.199")
-        vk = session.get_api()
-
-        query = f"{geo_tag} {niche}".replace("_", " ")
-        response = vk.groups.search(q=query, count=20, type="group")
-
-        results = []
-        for item in response.get("items", []):
-            members = item.get("members_count", 0)
-            if members < 50:  # Skip tiny groups
-                continue
-            results.append({
-                "platform": "vkontakte",
-                "group_identifier": f"vk_{item['id']}",
-                "title": item.get("name", ""),
-                "members_count": members,
-                "relevance": 5,
-            })
-
-        return results[:20]
-    except Exception as e:
-        log.error(f"VK group discovery failed: {e}")
-        return []
+    details = await _vk_call('groups.getById', token, group_ids=','.join(str(i['id']) for i in items), fields='members_count')
+    if 'error' in details:
+        raise HTTPException(502, detail={'code': 'vk_details_unavailable'})
+    envelope = details.get('response', {})
+    groups = envelope.get('groups', []) if isinstance(envelope, dict) else envelope
+    counts = {i['id']: i for i in groups}
+    return [{'platform': 'vkontakte', 'group_identifier': str(i['id']),
+             'title': i.get('name', ''), 'members_count': counts.get(i['id'], {}).get('members_count', 0),
+             'access': 'closed' if i.get('is_closed', 0) else 'public', 'relevance': 5}
+            for i in items][:20]

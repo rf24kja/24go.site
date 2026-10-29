@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import IntegrationTemplate from "../IntegrationTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Telegram → HubSpot Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into HubSpot CRM. Sync contacts, deals, and activity with 24GO.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/integrations/hubspot",
-    languages: {
-      en: "https://www.24go.site/integrations/hubspot?locale=en",
-      ru: "https://www.24go.site/integrations/hubspot?locale=ru",
-      "x-default": "https://www.24go.site/integrations/hubspot",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/integrations/hubspot", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {

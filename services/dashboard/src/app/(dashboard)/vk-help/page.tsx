@@ -1,5 +1,6 @@
 "use client";
 
+import { PlatformHelp } from "@/components/PlatformHelp";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -121,7 +122,7 @@ const NAV: { id: SectionId; icon: React.ElementType; labelKey: string }[] = [
   { id: "settings", icon: Cog, labelKey: "vkHelp.nav.settings" },
 ];
 
-export default function VkHelpPage() {
+function VkHelpPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t } = useI18n();
 
@@ -211,3 +212,5 @@ export default function VkHelpPage() {
     </div>
   );
 }
+
+export default function CurrentVKHelp() { return <><PlatformHelp compact/><VkHelpPage/></>; }

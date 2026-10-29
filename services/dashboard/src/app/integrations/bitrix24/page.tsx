@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import IntegrationTemplate from "../IntegrationTemplate";
 
-export const metadata: Metadata = {
+import { localizedPageMetadata } from "@/lib/public-metadata";
+
+const pageMetadata: Metadata = {
   title: "Telegram → Bitrix24 Integration — Auto-Import Leads | 24GO",
   description: "Automatically import Telegram leads into Bitrix24 CRM. Sync contacts, deals, and tasks with 24GO.",
   robots: "index, follow",
-  alternates: {
-    canonical: "https://www.24go.site/integrations/bitrix24",
-    languages: {
-      en: "https://www.24go.site/integrations/bitrix24?locale=en",
-      ru: "https://www.24go.site/integrations/bitrix24?locale=ru",
-      "x-default": "https://www.24go.site/integrations/bitrix24",
-    },
-  },
 };
+
+export function generateMetadata({ searchParams }: { searchParams?: { locale?: string } }): Metadata {
+  return localizedPageMetadata("/integrations/bitrix24", searchParams?.locale, pageMetadata);
+}
 
 const content = {
   en: {
@@ -32,7 +30,7 @@ const content = {
   },
   ru: {
     description: "Автоматическая синхронизация лидов из Telegram в Bitrix24 CRM. Создание контактов, сделок и задач без ручного ввода.",
-    features: ["Автосоздание контактов Bitrix24 из Telegram", "Создание сделок с назначением ответственного", "Автосоздание задач для follow-up", "Маппинг кастомных полей", "Двусторонняя синхронизация статусов", "Массовый импорт历史数据"],
+    features: ["Автосоздание контактов Bitrix24 из Telegram", "Создание сделок с назначением ответственного", "Автосоздание задач для follow-up", "Маппинг кастомных полей", "Двусторонняя синхронизация статусов", "Массовый импорт исторических данных"],
     steps: [
       { title: "Подключите Bitrix24", desc: "Введите URL вебхука Bitrix24 или используйте OAuth-авторизацию." },
       { title: "Настройте маппинг полей", desc: "Настройте соответствие данных Telegram полям контактов и сделок Bitrix24." },

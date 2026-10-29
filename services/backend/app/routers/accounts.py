@@ -1097,42 +1097,29 @@ async def reconnect_account(
     finally:
         await conn.close()
 
-    # Resume status
+    if platform not in ("vkontakte", "telegram"):
+        raise HTTPException(422, "Reconnect supports telegram and vkontakte only")
+    from app.celery_app import celery
+    kwargs = {"tenant_id": str(current_user.tenant_id), "account_id": str(account_id)}
+    task_name = "app.tasks.listener.start_lead_listener"
+    if platform == "vkontakte":
+        try:
+            group_id = int(account.account_identifier)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "VK community ID must be positive")
+        if group_id <= 0:
+            raise HTTPException(422, "VK community ID must be positive")
+        kwargs["group_id"] = group_id
+        task_name = "app.tasks.vk_listener.start_vk_listener"
+    try:
+        task = celery.send_task(task_name, kwargs=kwargs, queue="listener")
+    except Exception:
+        raise HTTPException(503, "Listener enqueue failed; account unchanged")
     if account.status in ("paused", "banned"):
         account.status = "active"
         await db.commit()
-
-    # Start appropriate listener
-    from app.celery_app import celery
-    celery.control.revoke(f"listener-{account_id}", terminate=True)
-
-    if platform == "vkontakte":
-        # VK: dispatch vk_listener with group_id from account_identifier
-        from app.tasks.vk_listener import start_vk_listener
-        vk_gid = int(account.account_identifier) if account.account_identifier else 0
-        task = start_vk_listener.apply_async(
-            args=[str(current_user.tenant_id), str(account_id), vk_gid],
-        )
-        # Set VK status
-        import redis as _redis
-        import json as _json
-        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
-        r.set(f"vk_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
-    else:
-        # Telegram: dispatch listener via Celery
-        task = celery.send_task(
-            "app.tasks.listener.start_lead_listener",
-            args=[str(current_user.tenant_id), str(account_id)],
-            queue="listener",
-        )
-        # Set TG status
-        import redis as _redis
-        import json as _json
-        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
-        r.set(f"tg_status:{account_id}", _json.dumps({"status": "online", "updated_at": time.time()}), ex=300)
-
-    log.info(f"Account {account_id} reconnected ({platform}, task={task.id})")
-    return {"status": "reconnected", "account_id": str(account_id), "platform": platform, "task_id": task.id}
+    return {"status": "queued", "account_id": str(account_id), "platform": platform,
+            "listener_status": "queued", "task_id": task.id}
 
 
 # ── VKontakte Connection ───────────────────────────────────────────────
@@ -1165,6 +1152,9 @@ async def connect_vk(
         raise HTTPException(404, "Account not found")
     if account.platform != "vkontakte":
         raise HTTPException(400, "Account platform must be 'vkontakte'")
+
+    if body.group_id <= 0:
+        raise HTTPException(422, "VK community ID must be positive")
 
     # Validate token against VK API before storing
     import vk_api
@@ -1209,15 +1199,20 @@ async def connect_vk(
     finally:
         await conn.close()
 
+    account.account_identifier = str(body.group_id)
     account.status = "active"
     await db.commit()
 
-    # Auto-dispatch VK listener
+    # Credentials are persisted independently of broker availability.
+    listener_status, task_id = "enqueue_failed", None
     try:
-        from app.tasks.vk_listener import start_vk_listener
-        start_vk_listener.apply_async(
-            args=[str(current_user.tenant_id), str(account_id), body.group_id],
+        from app.celery_app import celery
+        task = celery.send_task(
+            "app.tasks.vk_listener.start_vk_listener",
+            kwargs={"tenant_id": str(current_user.tenant_id), "account_id": str(account_id), "group_id": body.group_id},
+            queue="listener",
         )
+        listener_status, task_id = "queued", task.id
     except Exception as e:
         log.warning(f"Failed to auto-dispatch VK listener: {e}")
 
@@ -1234,7 +1229,8 @@ async def connect_vk(
     finally:
         await conn.close()
     return {"status": "connected", "account_id": str(account_id), "platform": "vkontakte",
-            "group_name": g["name"], "members_count": g.get("members_count", 0)}
+            "group_name": g["name"], "members_count": g.get("members_count", 0),
+            "credentials_persisted": True, "listener_status": listener_status, "task_id": task_id}
 
 
 # ── Proxy assignment ─────────────────────────────────────────────────
@@ -1280,3 +1276,30 @@ async def assign_proxy(
 
     await db.commit()
     return {"status": "updated", "proxy_id": body.proxy_id}
+
+
+# Discovery credentials do not create/activate AccountPool campaign senders.
+from app.vk_discovery import DiscoveryConnect
+
+@router.post("/vk-discovery/credential")
+async def connect_vk_discovery_request(request: Request, current_user: User = Depends(get_current_user)):
+    # FastAPI's default validation errors echo rejected inputs, including secrets.
+    try:
+        body = DiscoveryConnect.model_validate(await request.json())
+    except (ValueError, TypeError):
+        raise HTTPException(422, detail={"code": "vk_token_only"}) from None
+    return await connect_vk_discovery(body, current_user)
+
+async def connect_vk_discovery(body: DiscoveryConnect, current_user: User):
+    from app.vk_discovery import connect
+    return await connect(current_user.tenant_id, body)
+
+@router.get("/vk-discovery/credential")
+async def vk_discovery_status(current_user: User = Depends(get_current_user)):
+    from app.vk_discovery import credential
+    return await credential(current_user.tenant_id)
+
+@router.delete("/vk-discovery/credential")
+async def disconnect_vk_discovery(current_user: User = Depends(get_current_user)):
+    from app.vk_discovery import credential
+    return await credential(current_user.tenant_id, remove=True)

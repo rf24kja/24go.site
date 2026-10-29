@@ -98,6 +98,7 @@ export async function api<T = any>(path: string, opts: FetchOptions = {}): Promi
     // Try to extract a clean error message from the response
     throw new ApiError(res.status, extractErrorMessage(body));
   }
+  if (res.status === 204 || res.status === 205) return undefined as T;
   return res.json();
 }
 
@@ -323,6 +324,19 @@ export async function getTargets(token: string, params?: { platform?: string; li
   return api<{ items: any[]; total: number; limit: number; offset: number }>(`/api/v1/targets/${qs ? `?${qs}` : ""}`, { token });
 }
 
+export interface TargetCreate {
+  platform: "telegram" | "vkontakte";
+  target_id_code: string;
+  title: string;
+  geo_tag: string;
+  niche: string;
+  access: "open_wall" | "open_comments" | "suggested_news" | "admin_dm_only";
+}
+
+export async function createTarget(token: string, data: TargetCreate) {
+  return api<any>("/api/v1/targets/", { method: "POST", body: JSON.stringify(data), token });
+}
+
 export async function scrapeTargetComments(token: string, targetId: string, postId: string) {
   return api<any>(`/api/v1/targets/${targetId}/scrape-comments`, {
     method: "POST", body: JSON.stringify({ post_id: postId }), token,
@@ -405,8 +419,33 @@ export async function createCheckout(token: string, plan: string, provider: stri
 
 // ── Tasks ─────────────────────────────────────────────────────────────
 
-export async function dispatchParser(token: string, data: any) {
-  return api<any>("/api/v1/tasks/parser/discover", { method: "POST", body: JSON.stringify(data), token });
+export interface BatchDiscoveryRequest {
+  platforms: ('telegram' | 'vkontakte')[];
+  target_geos: string[];
+  niches: string[];
+  max_results_per_niche: number;
+}
+export interface BatchDiscoveryQuery {
+  platform: 'telegram' | 'vkontakte';
+  geo_tag: string;
+  niche: string;
+  status: 'completed' | 'failed';
+  results?: { title?: string; target_id_code?: string; [key: string]: unknown }[];
+  total?: number;
+  error?: string;
+  http_status?: number;
+  persistence_may_be_partial?: boolean;
+}
+export interface BatchDiscoveryResponse {
+  status: 'completed' | 'partial' | 'failed';
+  execution: 'synchronous';
+  atomic: false;
+  queries: BatchDiscoveryQuery[];
+  completed_queries: number;
+  total_queries: number;
+}
+export async function dispatchParser(token: string, data: BatchDiscoveryRequest) {
+  return api<BatchDiscoveryResponse>("/api/v1/tasks/parser/discover", { method: "POST", body: JSON.stringify(data), token });
 }
 
 export async function dispatchPoster(token: string, data: any) {
@@ -456,7 +495,8 @@ export async function bulkUpdateLeadStatus(token: string, leadIds: string[], sta
 }
 
 export async function exportLeadsCsv(token: string, params?: { intent_score?: string; status?: string; platform?: string }) {
-  const qs = new URLSearchParams(params).toString();
+  const { status, ...filters } = params || {};
+  const qs = toQuery({ ...filters, status_filter: status });
   const res = await fetch(`${API_URL}/api/v1/leads/export${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -668,15 +708,15 @@ export async function deleteBlogPost(token: string, postId: string) {
 export async function getPublicBlogPosts(locale = "en") {
   // ponytail: explicit limit — backend defaults to 50, and the blog index
   // must link every post (orphaned posts index poorly)
-  return api<any>(`/api/v1/blog?locale=${locale}&limit=200`);
+  return api<any>(`/api/v1/blog?locale=${locale}&limit=200`, { cache: "no-store" });
 }
 
 export async function getPublicBlogPost(slug: string, locale = "en") {
-  return api<any>(`/api/v1/blog/${slug}?locale=${locale}`);
+  return api<any>(`/api/v1/blog/${slug}?locale=${locale}`, { cache: "no-store" });
 }
 
 export async function getBlogSlugs() {
-  const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=200");
+  const data = await api<{ items: { slug: string }[]; total: number }>("/api/v1/blog?limit=200", { cache: "no-store" });
   return data.items || [];
 }
 
@@ -855,8 +895,8 @@ export type Contact = {
 };
 
 export async function getContacts(token: string, params?: {
-  search?: string; platform?: string; country?: string;
-  tags?: string; quality?: string; page?: number; limit?: number;
+  search?: string; platform?: string;
+  tags?: string; page?: number; limit?: number;
 }) {
   const qs = toQuery(params as any);
   return api<{ items: Contact[]; total: number }>(`/api/v1/contacts${qs ? `?${qs}` : ""}`, { token });
@@ -888,8 +928,9 @@ export async function refreshPlatforms(token: string, contactIds: string[]) {
   });
 }
 
-export async function exportContactsCsv(token: string) {
-  const res = await fetch(`${API_URL}/api/v1/contacts/export`, {
+export async function exportContactsCsv(token: string, filters?: { search?: string; platform?: string; tags?: string }) {
+  const qs = toQuery(filters);
+  const res = await fetch(`${API_URL}/api/v1/contacts/export${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
@@ -927,3 +968,15 @@ export async function fbMarketplaceResults(token: string, query: string, limit =
     `/api/v1/fb/marketplace/results?query=${encodeURIComponent(query)}&limit=${limit}`, { token });
 }
 
+
+
+export async function subscribeMax(token: string, accountId: string, secret: string) {
+  const base = new URL(API_URL);
+  if (base.protocol !== "https:" || base.hostname !== "api.24go.site" || base.username || base.password) {
+    throw new Error("MAX webhook requires the verified public API origin");
+  }
+  const url = new URL(`/api/v1/max/webhooks/${encodeURIComponent(accountId)}`, base.origin).href;
+  return api<{ subscribed: boolean }>(`/api/v1/max/subscribe/${encodeURIComponent(accountId)}`, {
+    method: "POST", body: JSON.stringify({ url, secret }), token,
+  });
+}

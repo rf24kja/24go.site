@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
+import { usePlatform } from "@/lib/platform";
+import { useOverview, overviewCopy, OverviewNotice } from "@/lib/overview-state";
+import Link from "@/components/PlatformLink";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getVkOverview } from "@/lib/api";
@@ -36,22 +38,25 @@ function timeAgo(dateStr: string | null, t: (k: string, v?: any) => string): str
 
 export default function VkOverviewPage() {
   const { auth } = useAuth();
-  const { t } = useI18n();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { t, lang } = useI18n();
+  const { platform } = usePlatform();
+  const copy = overviewCopy(lang);
   const [days, setDays] = useState(30);
-
-  useEffect(() => {
-    if (!auth?.token) return;
-    setLoading(true);
-    getVkOverview(auth.token, days)
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [auth?.token, days]);
+  const {data, loading, failed, retry} = useOverview<any>(`${auth?.token}:vkontakte:${platform}:${days}`, !!auth?.token && platform === 'vkontakte', async () => {
+    const result = await getVkOverview(auth!.token!, days);
+    if (!result || typeof result !== 'object') throw new Error('overview unavailable');
+    const numeric = (v:any) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+    const summary = result.summary && typeof result.summary === 'object' ? result.summary : {};
+    const fields = ['total_leads','hot_leads','active_accounts','total_accounts','conversion_rate'];
+    const clean = Object.fromEntries(fields.map(k=>[k,numeric(summary[k]) ? summary[k] : null]));
+    const sections = ['account_health','recent_leads','communities'];
+    const available = fields.filter(k=>clean[k] !== null).length + sections.filter(k=>Array.isArray(result[k])).length;
+    if (!available) throw new Error('overview unavailable');
+    return {...result, summary:clean, partial:available < fields.length + sections.length};
+  });
 
   if (loading) return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in" role="status" aria-label={copy.loading}>
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-8 w-20" />
@@ -69,7 +74,7 @@ export default function VkOverviewPage() {
     </div>
   );
 
-  if (!data) return <div className="text-zinc-500 text-sm p-8">{t("vkOverview.noData")}</div>;
+  if (!data) return <OverviewNotice text={copy.error} retry={retry} label={copy.retry} />;
 
   const { summary, account_health, recent_leads, communities } = data;
 
@@ -89,12 +94,14 @@ export default function VkOverviewPage() {
         </div>
       </div>
 
+      <p className="text-sm text-zinc-400">{copy.vkScope}</p>
+      {(failed || data.partial) && <OverviewNotice text={failed ? copy.error : copy.partial} retry={retry} label={copy.retry} />}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: t("vkOverview.totalLeads"), value: summary.total_leads, color: "text-zinc-100" },
-          { label: t("vkOverview.hotLeads"), value: summary.hot_leads, color: "text-rose-400" },
-          { label: t("vkOverview.activeAccounts"), value: `${summary.active_accounts}/${summary.total_accounts}`, color: "text-emerald-400" },
-          { label: t("vkOverview.conversion"), value: `${summary.conversion_rate}%`, color: "text-sky-400" },
+          { label: t("vkOverview.totalLeads"), value: summary.total_leads ?? copy.unavailable, color: "text-zinc-100" },
+          { label: t("vkOverview.hotLeads"), value: summary.hot_leads ?? copy.unavailable, color: "text-rose-400" },
+          { label: t("vkOverview.activeAccounts"), value: summary.active_accounts !== null && summary.total_accounts !== null ? `${summary.active_accounts}/${summary.total_accounts}` : copy.unavailable, color: "text-emerald-400" },
+          { label: t("vkOverview.conversion"), value: summary.conversion_rate !== null ? `${summary.conversion_rate}%` : copy.unavailable, color: "text-sky-400" },
         ].map((card, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 card-hover">
             <p className="text-xs text-zinc-500 mb-1">{card.label}</p>
@@ -108,7 +115,7 @@ export default function VkOverviewPage() {
           <h2 className="text-base font-semibold text-zinc-100">{t("vkOverview.accountHealth")}</h2>
           <Link href="/accounts" className="text-xs text-zinc-500 hover:text-zinc-300 transition">{t("vkOverview.manageAccounts")} →</Link>
         </div>
-        {account_health.length === 0 ? (
+        {!Array.isArray(account_health) ? <p>{copy.unavailable}</p> : account_health.length === 0 ? (
           <p className="text-sm text-zinc-500">{t("vkOverview.noAccounts")}</p>
         ) : (
           <div className="space-y-3">
@@ -165,7 +172,7 @@ export default function VkOverviewPage() {
           <h2 className="text-base font-semibold text-zinc-100">{t("vkOverview.recentLeads")}</h2>
           <Link href="/leads" className="text-xs text-zinc-500 hover:text-zinc-300 transition">{t("vkOverview.viewAll")} →</Link>
         </div>
-        {recent_leads.length === 0 ? (
+        {!Array.isArray(recent_leads) ? <p>{copy.unavailable}</p> : recent_leads.length === 0 ? (
           <p className="text-sm text-zinc-500">{t("vkOverview.noLeads")}</p>
         ) : (
           <div className="overflow-x-auto">
@@ -197,7 +204,8 @@ export default function VkOverviewPage() {
         )}
       </div>
 
-      {communities.length > 0 && (
+      {!Array.isArray(communities) && <p>{t("vkOverview.communityPerformance")}: {copy.unavailable}</p>}
+      {Array.isArray(communities) && communities.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <h2 className="text-base font-semibold text-zinc-100 mb-4">{t("vkOverview.communityPerformance")}</h2>
           <div className="overflow-x-auto">

@@ -15,7 +15,7 @@ import asyncpg
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.config import settings
 from app.crypto import encrypt, decrypt
@@ -114,26 +114,22 @@ async def _store_account(db, current_user, account, token: str):
     db.add(account)
     await db.flush()
     encrypted = encrypt(token)
-    conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
-    conn = await asyncpg.connect(conn_url)
-    try:
-        existing = await conn.fetchrow(
-            "SELECT id FROM account_sessions WHERE account_id = $1",
-            _uuid.UUID(str(account.id)),
+    # Use the account transaction: another connection cannot see the flushed row.
+    existing = (await db.execute(
+        text("SELECT id FROM account_sessions WHERE account_id = :a"),
+        {"a": _uuid.UUID(str(account.id))},
+    )).first()
+    if existing:
+        await db.execute(
+            text("UPDATE account_sessions SET session_data = :s, updated_at = NOW() WHERE account_id = :a"),
+            {"s": encrypted, "a": _uuid.UUID(str(account.id))},
         )
-        if existing:
-            await conn.execute(
-                "UPDATE account_sessions SET session_data = $1, updated_at = NOW() WHERE account_id = $2",
-                encrypted, _uuid.UUID(str(account.id)),
-            )
-        else:
-            await conn.execute(
-                """INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
-                   VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())""",
-                _uuid.UUID(str(account.id)), encrypted,
-            )
-    finally:
-        await conn.close()
+    else:
+        await db.execute(
+            text("""INSERT INTO account_sessions (id, account_id, session_data, created_at, updated_at)
+                   VALUES (gen_random_uuid(), :a, :s, NOW(), NOW())"""),
+            {"a": _uuid.UUID(str(account.id)), "s": encrypted},
+        )
     await db.commit()
     return {"id": str(account.id), "bot_name": account.account_identifier, "status": account.status}
 
@@ -152,7 +148,8 @@ async def max_list_accounts(
     )
     return {"items": [
         {"id": str(a.id), "bot_name": a.account_identifier, "status": a.status,
-         "created_at": a.created_at}
+         "created_at": a.created_at,
+         "webhook_configured": bool((a.device_fingerprint or {}).get("webhook_url") and (a.device_fingerprint or {}).get("webhook_secret_sha"))}
         for a in result.scalars().all()
     ]}
 
@@ -308,7 +305,13 @@ async def max_subscribe(
             log.warning(f"max subscribe unreachable: {e}")
             raise HTTPException(502, "MAX API unreachable")
     if resp.status_code != 200:
-        log.warning(f"max subscribe failed: {resp.status_code} {resp.text[:200]}")
+        log.warning("max subscribe failed: status %s", resp.status_code)
+        raise HTTPException(502, "MAX subscribe failed")
+    try:
+        acknowledged = resp.json()
+    except ValueError:
+        raise HTTPException(502, "MAX subscribe failed")
+    if not isinstance(acknowledged, dict) or acknowledged.get("success") is not True:
         raise HTTPException(502, "MAX subscribe failed")
     fp = dict(account.device_fingerprint or {})
     fp.pop("webhook_secret", None)  # ponytail: hash-only, never plaintext
@@ -363,11 +366,17 @@ async def max_webhook(
     if not user_id or user_id == "unknown":
         # ponytail: a lead without an identity can't be replied to — skip, don't store junk
         return {"ignored": "no_user"}
-    raw_text = msg.get("text")
+    # Official MAX Message has body.text/body.mid and recipient.chat_type.
+    body = msg.get("body")
+    body = body if isinstance(body, dict) else {}
+    raw_text = body.get("text")
     text = (raw_text if isinstance(raw_text, str) else "")[:2000]
-    chat = msg.get("chat")
-    chat_id = str(chat.get("chat_id") or "") if isinstance(chat, dict) else ""
-    message_id = msg.get("message_id") or msg.get("id")
+    if not text.strip():
+        return {"ignored": "no_text"}
+    recipient = msg.get("recipient")
+    recipient = recipient if isinstance(recipient, dict) else {}
+    chat_id = str(recipient.get("chat_id") or "") if recipient.get("chat_type") != "dialog" else ""
+    message_id = body.get("mid")
     message_id = str(message_id)[:255] if message_id else None
 
     # ponytail: idempotency — MAX retries deliveries; same message must not clone leads
@@ -385,9 +394,9 @@ async def max_webhook(
     # ponytail: classify through the shared heuristic (no LLM spend without tenant keys),
     # so MAX leads can trigger HOT/WARM flows like every other platform.
     try:
-        from app.llm_classifier import classify_message
-        intent_raw = (await classify_message(text)).get("intent_score", "COLD")
-        intent = LeadIntentLevel(intent_raw) if intent_raw in ("HOT", "WARM", "COLD") else LeadIntentLevel.COLD
+        from app.lead_pipeline import classify_incoming_message
+        intent_raw = (await classify_incoming_message(str(account.tenant_id), "max", text)).get("intent_score", "COLD")
+        intent = LeadIntentLevel(intent_raw) if intent_raw in ("HOT", "WARM", "COLD", "SPAM") else LeadIntentLevel.COLD
     except Exception:
         intent = LeadIntentLevel.COLD
 
