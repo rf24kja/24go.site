@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="hero-title hero-desc">
+<title id="hero-title">24GO.SITE — conversations into actionable leads</title>
+<desc id="hero-desc">A multilingual workspace for social discovery, monitoring, lead operations and reviewed editorial publishing. Python, TypeScript, PostgreSQL, Redis and Docker.</desc>
+<defs><pattern id="hero-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#182329" stroke-width="1"/></pattern><radialGradient id="hero-glow"><stop stop-color="#123c32"/><stop offset="1" stop-color="#09090b"/></radialGradient></defs>
+<rect width="1200" height="320" rx="20" fill="#09090b"/><rect width="1200" height="320" rx="20" fill="url(#hero-glow)"/><rect width="1200" height="320" rx="20" fill="url(#hero-grid)"/>
+<g font-family="Arial,DejaVu Sans,sans-serif"><text x="56" y="91" font-size="54" font-weight="750" fill="#f5f5f5">24<tspan fill="#34d399">GO</tspan><tspan font-size="29" font-weight="400" fill="#b8c9c4">.SITE</tspan></text>
+<text x="57" y="151" font-size="32" font-weight="600" fill="#f5f5f5">From conversations to actionable leads.</text>
+<text x="57" y="192" font-size="21" fill="#b8c9c4">Discover. Monitor. Qualify. Work across channels.</text>
+<g font-size="16" fill="#d8e7e3"><rect x="56" y="239" width="164" height="35" rx="17" fill="#12342c" stroke="#2b6354"/><text x="78" y="262">Python + FastAPI</text><rect x="234" y="239" width="193" height="35" rx="17" fill="#122b31" stroke="#315861"/><text x="253" y="262">TypeScript + Next.js</text><rect x="441" y="239" width="230" height="35" rx="17" fill="#222137" stroke="#514c70"/><text x="460" y="262">PostgreSQL · Redis · Docker</text></g>
+<rect x="1020" y="48" width="122" height="34" rx="17" fill="#15211e" stroke="#31574c"/><text x="1042" y="71" fill="#b8e5d7" font-size="16">EN / RU</text>
+<g fill="none" stroke="#34d399" stroke-width="2" opacity="0.55"><rect x="880" y="143" width="234" height="122" rx="15"/><path d="M910 178H1058M910 207H1022M910 236H980"/><circle cx="1080" cy="236" r="8" fill="#34d399"/></g></g>
+</svg>

@@ -20,4 +20,7 @@
 5. Устойчивые autonomous articles/CMS/syndication, backup/restore, alerts и rollback.
 6. Финальная RU/EN/narrow regression,72часа стабильности, noP0/P1 в согласованном объёме.
 
+## Документация репозитория
+Добавлены [English README](README.md) и [русский README](README.ru.md), реальные публичные RU/EN скриншоты, локализованные SVG-обложки и схемы архитектуры/редакционного процесса. Возможности, внешняя приёмка и неустановленный WA-кандидат разделены явно; исторический DEPLOY.md помечен как устаревший. Это документационный пакет, не изменение production и не закрытие W1–W12. Бюджет и критерии полного релиза не пересчитаны по факту оформления README.
+
 Installed v29 и automationv31–v33 сохранены. WA-v34 отдельно в proposals, не установлен. Pending billing, live-provider и quota gates не закрываются этим документом. Полный audit является release-readiness обзором с явными непроверенными сценариями, не новым сплошным authenticated E2E/pentest.
