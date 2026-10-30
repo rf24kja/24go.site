@@ -111,6 +111,8 @@ For isolated host-automation contracts, see [automation/README.md](automation/RE
 
 ## Roadmap and contribution
 
+Latest installed API slice: [v37 — tenant/platform-bound lead references](docs/INSTALLED_RELEASE_V37.md), with isolated PostgreSQL regression contracts. This is not whole-product readiness.
+
 The [completion plan](docs/RELEASE_COMPLETION_PLAN.md) defines bounded work packages, dependencies and exit criteria. The [audit](docs/RELEASE_READINESS_AUDIT.md) separates installed behavior from unverified scenarios. Prepared changes under `proposals/` must not be mistaken for active runtime code.
 
 Contributions should include a reproducible issue, a scoped patch and evidence for the affected contract. Never commit tokens, `.env`, cookies, sessions, customer records or private provider responses. Never send unsolicited messages, charge users or modify real accounts merely to produce a green test.

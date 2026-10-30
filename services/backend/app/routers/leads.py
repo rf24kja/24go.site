@@ -4,6 +4,7 @@ The /qualify endpoint lets any client submit a message for LLM classification
 without needing a live Telegram listener — useful for testing and manual ops.
 """
 from datetime import date
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -11,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Lead, Target, User
+from app.models import AccountPool, Lead, Target, User
 from app.security import get_current_user, get_current_user_or_api_key
 from app.schemas import LeadResponse
 from app.config import settings
@@ -80,7 +81,7 @@ async def list_leads(
 
 class QualifyRequest(BaseModel):
     """Submit a message for LLM qualification without a live listener."""
-    platform: str = Field(default="telegram")
+    platform: str = Field(default="telegram", pattern="^(telegram|vkontakte|whatsapp|facebook|max|forum)$")
     target_id: str | None = None
     account_id: str | None = None
     user_handle: str = Field(..., min_length=1, max_length=255)
@@ -100,6 +101,7 @@ class QualifyResponse(BaseModel):
 @router.post("/qualify", response_model=QualifyResponse)
 async def qualify_lead(
     body: QualifyRequest,
+    db: AsyncSession = Depends(get_db),
     # ponytail: bot calls this with X-API-Key
     current_user: User = Depends(get_current_user_or_api_key),
 ):
@@ -109,6 +111,20 @@ async def qualify_lead(
     Returns intent score (HOT/WARM/COLD/SPAM), confidence, and summary.
     Use for testing, manual lead entry, or non-Telegram platforms.
     """
+    for model, identity in ((Target, body.target_id), (AccountPool, body.account_id)):
+        if identity:
+            try:
+                reference_id = UUID(identity)
+            except ValueError:
+                raise HTTPException(422, "Invalid reference ID")
+            result = await db.execute(select(model.id).where(
+                model.id == reference_id,
+                model.tenant_id == current_user.tenant_id,
+                model.platform == body.platform,
+            ))
+            if result.scalar_one_or_none() is None:
+                raise HTTPException(404, "Reference not found")
+
     from app.lead_pipeline import process_incoming_message
 
     result = await process_incoming_message(
@@ -370,7 +386,11 @@ async def get_lead(
 
     target_name = None
     if lead.target_id:
-        target = await db.execute(select(Target).where(Target.id == lead.target_id))
+        target = await db.execute(select(Target).where(
+            Target.id == lead.target_id,
+            Target.tenant_id == current_user.tenant_id,
+            Target.platform == lead.platform,
+        ))
         t = target.scalar_one_or_none()
         if t:
             target_name = t.title

@@ -13,6 +13,8 @@
 Это оценка одного release owner при8focused hours/day, не гарантированная календарная дата. Квота модели, OAuth, maintenance/billing approvals и тестовые social resources пока не обеспечены полностью; время ожидания в бюджет не включено. После freeze объёма фиксируется уточнённый старт/forecast, новые необязательные функции уходят за релиз.
 
 ## Критический путь
+Прогресс W3: установлен [API delta v37](docs/INSTALLED_RELEASE_V37.md) — границы ссылок при квалификации и чтении связанных данных лида проверены на disposable PostgreSQL. W3 остаётся открытым для остальных object families/RBAC/RLS; это не закрытие полного пакета по одному router.
+
 1. Freeze всех обещанных сценариев; WA campaigns/mailings не подменять single sender.
 2. Права/tenant isolation на disposable PostgreSQL; CI/reproducible source.
 3. Установка готового WA-v34 после scoped consent, consumer/scoring parity, billing sandbox после защищённых разрешений.

@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**Прогресс после v35:** [API v37 установлен](INSTALLED_RELEASE_V37.md). Квалификация и связанные target-данные лида получили tenant/platform guards; реальные HTTP/auth/ORM-контракты прошли на disposable PostgreSQL16 и точном image. W3 закрыт только в этой ограниченной части; остальные семьи объектов, concurrent ownership/RLS и полная матрица остаются открытыми. Бюджет не пересчитан без полноценного учёта оставшихся gates.
+
 | ID | Пакет / приоритет | Бюджет,ч | Проверяемый выход | Зависимости |
 |---|---|---:|---|---|
 | W1 | Freeze объёма и всех submenu, P0 | 2–4 | Для61platform-page context: обещание→UI→API→consumer→storage→receipt; общий shared сценарий не дублировать. Утвердить WA campaigns/mailings, автоответы/прочие спорные promises. Финальный список исключений только по решению владельца | Доступная source/runtime evidence; без social writes |
