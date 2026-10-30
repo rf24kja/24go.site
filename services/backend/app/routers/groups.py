@@ -58,7 +58,7 @@ async def _resolve_proxy_for_account(account_id) -> tuple | None:
             import uuid as _u
             row = await conn.fetchrow(
                 """SELECT p.proxy_url FROM account_pool a
-                   JOIN proxies p ON a.proxy_id = p.id
+                   JOIN proxies p ON a.proxy_id = p.id AND p.tenant_id = a.tenant_id
                    WHERE a.id = $1 AND p.is_active = true""",
                 _u.UUID(str(account_id)),
             )

@@ -240,18 +240,25 @@ async def bulk_assign_proxies(body: BulkAssignRequest, db: AsyncSession = Depend
     if not accounts:
         raise HTTPException(400, "No accounts found")
 
-    # Optionally reset all assignments first
+    total_proxies = len(proxies)
+    active_proxy_ids = {proxy.id for proxy in proxies}
+    # Existing assignments change only after explicit reset consent.
     if body.reset_first:
         for acct in accounts:
             acct.proxy_id = None
+    else:
+        used = {acct.proxy_id for acct in accounts if acct.proxy_id is not None}
+        proxies = [proxy for proxy in proxies if proxy.id not in used]
+
+    candidates = [acct for acct in accounts if acct.proxy_id is None]
 
     # Shuffle both lists for random assignment
     random.shuffle(proxies)
-    random.shuffle(accounts)
+    random.shuffle(candidates)
 
     # Assign: min(proxies, accounts) pairs
     assigned = 0
-    for i, acct in enumerate(accounts):
+    for i, acct in enumerate(candidates):
         if i >= len(proxies):
             break
         acct.proxy_id = proxies[i].id
@@ -263,9 +270,9 @@ async def bulk_assign_proxies(body: BulkAssignRequest, db: AsyncSession = Depend
     return {
         "assigned": assigned,
         "total_accounts": len(accounts),
-        "total_proxies": len(proxies),
-        "unassigned_accounts": max(0, len(accounts) - len(proxies)),
-        "unused_proxies": max(0, len(proxies) - len(accounts)),
+        "total_proxies": total_proxies,
+        "unassigned_accounts": sum(acct.proxy_id is None for acct in accounts),
+        "unused_proxies": len(active_proxy_ids - {acct.proxy_id for acct in accounts}),
     }
 
 
@@ -287,9 +294,13 @@ async def assign_proxy_to_account(account_id: UUID, body: ProxyAssign, db: Async
         raise HTTPException(404, "Account not found")
 
     if body.proxy_id:
+        try:
+            proxy_id = UUID(body.proxy_id)
+        except ValueError:
+            raise HTTPException(422, "Invalid proxy ID")
         proxy_result = await db.execute(
             select(Proxy).where(
-                Proxy.id == UUID(body.proxy_id),
+                Proxy.id == proxy_id,
                 Proxy.tenant_id == user.tenant_id,
                 Proxy.is_active == True,
             )

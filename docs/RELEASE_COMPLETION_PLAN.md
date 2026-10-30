@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**Следующий установленный пакет:** [v38 — proxy safety](INSTALLED_RELEASE_V38.md). Сохранение существующих no-reset назначений, корректные counters/UUID422 и API proxy-reader tenant checks проверены на PostgreSQL и exact image. Полный W3, concurrent allocation и worker/provider acceptance этим не закрыты.
+
 **Прогресс после v35:** [API v37 установлен](INSTALLED_RELEASE_V37.md). Квалификация и связанные target-данные лида получили tenant/platform guards; реальные HTTP/auth/ORM-контракты прошли на disposable PostgreSQL16 и точном image. W3 закрыт только в этой ограниченной части; остальные семьи объектов, concurrent ownership/RLS и полная матрица остаются открытыми. Бюджет не пересчитан без полноценного учёта оставшихся gates.
 
 | ID | Пакет / приоритет | Бюджет,ч | Проверяемый выход | Зависимости |

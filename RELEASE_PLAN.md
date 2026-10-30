@@ -13,6 +13,8 @@
 Это оценка одного release owner при8focused hours/day, не гарантированная календарная дата. Квота модели, OAuth, maintenance/billing approvals и тестовые social resources пока не обеспечены полностью; время ожидания в бюджет не включено. После freeze объёма фиксируется уточнённый старт/forecast, новые необязательные функции уходят за релиз.
 
 ## Критический путь
+Установлен [v38 — proxy safety](docs/INSTALLED_RELEASE_V38.md): no-reset сохраняет привязки, неверные ID422, API proxy readers tenant-bound. Проверено на отдельном PostgreSQL и точном image; frontend/workers/WA не заменялись. Это следующий ограниченный W3/надёжность пакет, не завершение полного W3.
+
 Прогресс W3: установлен [API delta v37](docs/INSTALLED_RELEASE_V37.md) — границы ссылок при квалификации и чтении связанных данных лида проверены на disposable PostgreSQL. W3 остаётся открытым для остальных object families/RBAC/RLS; это не закрытие полного пакета по одному router.
 
 1. Freeze всех обещанных сценариев; WA campaigns/mailings не подменять single sender.

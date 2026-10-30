@@ -34,7 +34,7 @@ async def _resolve_proxy_for_account(account_id: UUID) -> tuple | None:
         try:
             row = await conn.fetchrow(
                 """SELECT p.proxy_url FROM account_pool a
-                   JOIN proxies p ON a.proxy_id = p.id
+                   JOIN proxies p ON a.proxy_id = p.id AND p.tenant_id = a.tenant_id
                    WHERE a.id = $1 AND p.is_active = true""",
                 account_id,
             )
@@ -1247,35 +1247,10 @@ async def assign_proxy(
     current_user: User = Depends(get_current_user),
 ):
     """Assign or unassign a proxy to/from an account."""
-    from app.models import Proxy
-
-    result = await db.execute(
-        select(AccountPool).where(
-            AccountPool.id == account_id,
-            AccountPool.tenant_id == current_user.tenant_id,
-        )
+    from app.routers.proxies import ProxyAssign, assign_proxy_to_account
+    return await assign_proxy_to_account(
+        account_id, ProxyAssign(proxy_id=body.proxy_id), db, current_user,
     )
-    account = result.scalar_one_or_none()
-    if not account:
-        raise HTTPException(404, "Account not found")
-
-    if body.proxy_id:
-        proxy_result = await db.execute(
-            select(Proxy).where(
-                Proxy.id == UUID(body.proxy_id),
-                Proxy.tenant_id == current_user.tenant_id,
-                Proxy.is_active == True,
-            )
-        )
-        proxy = proxy_result.scalar_one_or_none()
-        if not proxy:
-            raise HTTPException(404, "Proxy not found or inactive")
-        account.proxy_id = proxy.id
-    else:
-        account.proxy_id = None
-
-    await db.commit()
-    return {"status": "updated", "proxy_id": body.proxy_id}
 
 
 # Discovery credentials do not create/activate AccountPool campaign senders.
