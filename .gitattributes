@@ -1,2 +1,3 @@
 services/backend/app/** text=auto eol=lf
 services/dashboard/** text=auto eol=lf
+*.csv text eol=lf

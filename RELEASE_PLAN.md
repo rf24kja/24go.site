@@ -1,22 +1,23 @@
-# Finite release plan — 24go.site
+# 24go.site — план завершения полного сервиса
 
-Scope: TG, VK, FB, MAX, WA and autonomous bilingual editorial delivery on 24go.site. Do not substitute board closure, mock responses or unavailable messages for a usable workflow. Optional improvements do not expand this release boundary.
+Актуальный аудит:30октября2026. Разработка не объявлена завершённой по успешному HTTP200, числу меню или fixtures.
 
-| Order | Package | State | Acceptance / remaining gate |
-|---|---|---|---|
-| 1 | Application v29, earlier batch/layout | Installed | Existing source contracts accepted; platform-specific real provider acceptance remains separate |
-| 2 | Editorial v31, daily control v32, measured review v33 | Installed, partial real-cycle proof | Primary CSV delivery verified; later fresh daily pair was created but rejected, run ended429. Require a genuine accepted, browser-checked, CMS-delivered scheduled cycle. Do not force retries/fallback or create a second pair on a claimed day |
-| 3 | Telegraph size v32 | Installed; actual target/backlink verified | Normal hourly writer recovered. Preserve successful DEV/Blogger/Telegraph checkpoints. This does not repair Blogger authorization or prove full external-link coverage |
-| 4 | Durable WA unknown-send guard v34 | Packaged and isolated-image tested; NOT installed | Explicit maintenance consent, legacy unknown-send disposition, same session mount, sidecar-only replacement, exact runtime/sibling readback. No automatic reconnect or message acceptance test |
-| 5 | Billing contract v13 | Existing candidate; protected packaging pending | Resolve its exact pending approval, then packaged-image contract checks. Sandbox acceptance separate; no real charges |
-| 6 | PostgreSQL/RLS and remaining consumer parity | Incomplete | Negative tenant/object ownership on disposable PostgreSQL; identify actual consumer images before promoting only missing scoring modules. Stateful worker replacement separately gated |
-| 7 | TG/VK/FB/MAX/WA live acceptance | Resource-blocked | Owner-designated test resources and explicit allowed actions; do not substitute arbitrary groups/accounts or ask for secrets in chat |
-| 8 | Final operational release | Not complete | RU/EN, narrow/desktop, errors/retry, rollback, queue health and one observable result per promised workflow; reconcile the complete accepted source set to GitHub |
+- [Полный аудит готовности](docs/RELEASE_READINESS_AUDIT.md)
+- [Подробный план:12пакетов, зависимости и критерии выхода](docs/RELEASE_COMPLETION_PLAN.md)
+- [Матрица61platform-page context](docs/release/SUBMENU_MATRIX.csv)
+- [Машиночитаемая оценка](docs/release/ESTIMATE.json)
 
-## Stop conditions
-Provider quota, missing authorized resources and protected maintenance/financial approvals are explicit blockers, not reasons to falsify evidence or silently reduce scope. Continue independent implementation while a specific gate is blocked. Existing source/test/build receipts are reused until their inputs change.
+## Когда закончим
+Базовые пакеты82–164engineering hours. С учётом20–40часов scope-risk на advertised/unwired workflows и20%резерва —122.4–244.8часа, **16–31рабочий день**, ориентировочно **4–7рабочих недель** при обеспеченных ресурсах. В конце требуется минимум72часа стабильности и несколько настоящих плановых суточных доставок.
 
-## Release boundaries
-No production-wide restart; preserve the full six-file Compose chain. No unsolicited sends, campaigns, real payments or arbitrary account actions for testing. Do not activate portfolio-wide team intake under a site-only mandate. Blogger client authorization requires its own safe OAuth flow, never a copied token or insecure manual-code handoff.
+Это оценка одного release owner при8focused hours/day, не гарантированная календарная дата. Квота модели, OAuth, maintenance/billing approvals и тестовые social resources пока не обеспечены полностью; время ожидания в бюджет не включено. После freeze объёма фиксируется уточнённый старт/forecast, новые необязательные функции уходят за релиз.
 
-Engineering-complete, installed and live-accepted are different states. No full-readiness percentage or date is claimed while external gates remain unresolved.
+## Критический путь
+1. Freeze всех обещанных сценариев; WA campaigns/mailings не подменять single sender.
+2. Права/tenant isolation на disposable PostgreSQL; CI/reproducible source.
+3. Установка готового WA-v34 после scoped consent, consumer/scoring parity, billing sandbox после защищённых разрешений.
+4. TG/VK/FB/MAX/WA реальные сквозные проверки на выделенных ресурсах.
+5. Устойчивые autonomous articles/CMS/syndication, backup/restore, alerts и rollback.
+6. Финальная RU/EN/narrow regression,72часа стабильности, noP0/P1 в согласованном объёме.
+
+Installed v29 и automationv31–v33 сохранены. WA-v34 отдельно в proposals, не установлен. Pending billing, live-provider и quota gates не закрываются этим документом. Полный audit является release-readiness обзором с явными непроверенными сценариями, не новым сплошным authenticated E2E/pentest.

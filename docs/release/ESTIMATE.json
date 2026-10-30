@@ -1,0 +1,117 @@
+{
+  "basis": "Engineering planning budgets, not measured delivery commitments; one release owner,8focused hours/day; external waiting excluded",
+  "work_packages": [
+    {
+      "id": "W1",
+      "name": "Фиксация сценариев и объёма релиза",
+      "low_hours": 2,
+      "high_hours": 4
+    },
+    {
+      "id": "W2",
+      "name": "GitHub, воспроизводимость и CI",
+      "low_hours": 4,
+      "high_hours": 8
+    },
+    {
+      "id": "W3",
+      "name": "Права и изоляция на PostgreSQL",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W4",
+      "name": "Scoring и parity consumers",
+      "low_hours": 6,
+      "high_hours": 12
+    },
+    {
+      "id": "W5",
+      "name": "Billing contract и sandbox",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W6",
+      "name": "Выпуск WA durable-v34",
+      "low_hours": 2,
+      "high_hours": 4
+    },
+    {
+      "id": "W7",
+      "name": "Сквозные TG/VK workflows",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W8",
+      "name": "FB monitoring и Marketplace",
+      "low_hours": 12,
+      "high_hours": 24
+    },
+    {
+      "id": "W9",
+      "name": "MAX/WA сквозные workflows",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W10",
+      "name": "Автономные статьи и синдикация",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W11",
+      "name": "Эксплуатация, backup/restore и alerts",
+      "low_hours": 8,
+      "high_hours": 16
+    },
+    {
+      "id": "W12",
+      "name": "Финальная регрессия и release acceptance",
+      "low_hours": 8,
+      "high_hours": 16
+    }
+  ],
+  "base_hours": [
+    82,
+    164
+  ],
+  "base_days": [
+    11,
+    21
+  ],
+  "reserve_fraction": 0.2,
+  "with_reserve_hours": [
+    98.4,
+    196.8
+  ],
+  "with_reserve_workdays": [
+    13,
+    25
+  ],
+  "optional_wa_bulk_if_required_hours": [
+    20,
+    40
+  ],
+  "confidence": "conditional; rebaseline once afterW1, never expand scope silently",
+  "scope_risk_hours": [
+    20,
+    40
+  ],
+  "scope_risk_description": "Reserve for advertised WA campaigns/mailings and any confirmed unwired submenu found during W1; not permission to silently remove promises or add unsupported senders",
+  "full_budget_hours_before_reserve": [
+    102,
+    204
+  ],
+  "full_budget_hours_with_reserve": [
+    122.4,
+    244.8
+  ],
+  "full_budget_workdays_with_reserve": [
+    16,
+    31
+  ],
+  "stability_observation_hours": 72
+}
