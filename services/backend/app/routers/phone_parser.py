@@ -733,3 +733,43 @@ async def _get_contact(db: AsyncSession, contact_id: UUID, tenant_id: UUID) -> C
     if not contact:
         raise HTTPException(404, "Contact not found")
     return contact
+
+
+class WaTextRequest(BaseModel):
+    account_id: UUID
+    recipient: str = Field(pattern=r'^\+[1-9]\d{7,14}$', max_length=16)
+    text: str = Field(min_length=1, max_length=2000)
+    confirmed: bool
+
+
+@router.post('/wa/send-text')
+async def wa_send_text(body: WaTextRequest, db: AsyncSession = Depends(get_db),
+                       current_user: User = Depends(get_current_user)):
+    """One explicitly confirmed text; no campaign, queue, retries or delivery claim."""
+    if body.confirmed is not True or not body.text.strip():
+        raise HTTPException(422, 'confirmation_and_text_required')
+    account = await _get_wa_account(db, body.account_id, current_user.tenant_id)
+    status = getattr(account.status, 'value', account.status)
+    if status != 'connected' or not account.is_active:
+        raise HTTPException(409, 'account_not_connected')
+    unknown = {'status': 'unknown', 'code': 'ack_unknown_do_not_retry'}
+    try:
+        async with _sidecar_client(timeout=15) as client:
+            response = await client.post(f'{WASIDECAR_URL}/send-text', json={
+                'accountId': str(account.id), 'tenantId': str(current_user.tenant_id),
+                'recipient': body.recipient, 'text': body.text, 'confirmed': True,
+            })
+        if response.status_code != 200:
+            return unknown
+        data = response.json()
+        if not isinstance(data, dict):
+            return unknown
+        if data.get('status') == 'accepted' and isinstance(data.get('message_id'), str) and 0 < len(data['message_id']) <= 128:
+            return {'status': 'accepted', 'code': 'server_ack_not_delivery', 'message_id': data['message_id']}
+        if data.get('status') == 'failed' and data.get('code') in {
+            'invalid_input', 'account_binding', 'disconnected', 'send_locked', 'provider_rejected'
+        }:
+            return {'status': 'failed', 'code': data['code']}
+        return unknown
+    except (httpx.HTTPError, ValueError, TypeError):
+        return unknown

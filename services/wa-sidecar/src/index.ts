@@ -1,3 +1,4 @@
+import {createTextSender} from './sender.js'
 import express from 'express'
 import cors from 'cors'
 import crypto from 'crypto'
@@ -46,6 +47,10 @@ const logger = pino({ level: 'silent' })
 const qrCache = new NodeCache({ stdTTL: 20 })
 const pairingCache = new NodeCache({ stdTTL: 120 })
 const connections = new Map<string, WASocket>()
+const connected = new Set<string>()
+const sendText = createTextSender(connections, connected)
+app.post('/send-text', async (req, res) => res.json(await sendText(req.body)))
+export { app }
 // accountId -> groupJid -> {name, last_seen}
 const knownGroups = new Map<string, Map<string, { name: string; last_seen: number }>>()
 
@@ -147,11 +152,13 @@ async function connectAccount(accountId: string, phoneNumber?: string, method?: 
     }
 
     if (connection === 'open') {
+      connected.add(accountId)
       qrCache.del(accountId)
       reconnectAttempts.delete(accountId)
     }
 
     if (connection === 'close') {
+      connected.delete(accountId)
       connections.delete(accountId)
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
       if (statusCode === DisconnectReason.loggedOut) {
@@ -274,6 +281,7 @@ app.post('/disconnect/:accountId', (req, res) => {
   }
   const sock = connections.get(req.params.accountId)
   if (sock) {
+    connected.delete(req.params.accountId)
     sock.end(undefined)
     connections.delete(req.params.accountId)
   }
@@ -452,7 +460,7 @@ app.post('/check-whatsapp', async (req, res) => {
   try {
     // ponytail: sequential batches of 10, not Promise.all over thousands —
     // one flood of concurrent WA queries looks exactly like abuse.
-    const results: { phone: string; exists: boolean }[] = []
+    const results: { phone: string; exists: boolean | null; error?: string }[] = []
     for (let i = 0; i < numbers.length; i += 10) {
       const batch = numbers.slice(i, i + 10)
       const out = await Promise.all(
@@ -462,9 +470,12 @@ app.post('/check-whatsapp', async (req, res) => {
             const jid = normalized.substring(1) + '@s.whatsapp.net'
             const r = await withTimeout(sock.onWhatsApp(jid), 30000)
             const result = r?.[0]
-            return { phone, exists: result?.exists ?? false }
+            if (typeof result?.exists !== 'boolean') {
+              return { phone, exists: null, error: 'check_failed' }
+            }
+            return { phone, exists: result.exists }
           } catch {
-            return { phone, exists: false }
+            return { phone, exists: null, error: 'check_failed' }
           }
         })
       )

@@ -7,13 +7,14 @@ import { getWaAccounts, connectWhatsApp, disconnectWhatsApp, deleteWhatsApp, get
 import { validateE164, normalizePhone } from "@/lib/validate";
 import { useToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
+import { WaTextSender } from "@/components/WaTextSender";
 import { WaQRModal } from "@/components/WaQRModal";
 
 type Account = { id: string; phone_number: string; status: string; created_at: string };
 
 export default function WaAccountsPage() {
   const { auth } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +101,7 @@ export default function WaAccountsPage() {
         </button>
       </div>
 
+      {auth?.token && <WaTextSender key={auth.token} token={auth.token} accounts={accounts} readOnly={auth.user?.role === "viewer"} ru={lang === "ru"} />}
       {/* Accounts table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
         <table className="w-full text-sm min-w-[480px]">

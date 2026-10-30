@@ -6,5 +6,6 @@ __pycache__/
 .agent/
 *.session
 scripts/
+!automation/scripts/
 dist/
 *.tsbuildinfo
