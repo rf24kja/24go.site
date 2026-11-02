@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**Contacts reliability/W3 slice v44 installed:** [результат](INSTALLED_RELEASE_V44.md). Duplicate validated IDs counted once, per-request normalized-phone check reuse without response reorder. Real JWT/PostgreSQL/ORM and mocked providers,3exactimage contractsPASS; foreign/viewer/unauth no providercalls, unknown fields preserved. API-only promotion/no migration/no worker or WA change. Не равноfullW3/concurrent-revocation/live-provider acceptance.
+
 **W10 установлен selector v43:** [read-only исполняемый выбор](EDITORIAL_QUEUE_V43.md) сверяет настоящую acceptance/hash/freshness/length, выбирает oldest accepted UTC и возвращает отдельные blockers. Pipeline вызывает CLI, а не выбирает по каталогу.5fixtureконтрактов + проверка owning-profile очереди пройдены без model/CMS calls; QA/admission остаются обязательными. Это следующий ограниченный installed пакет, не3scheduleddeliveries.
 
 **W10 установлен bounded recovery v42:** [проверенный результат](EDITORIAL_RECOVERY_V42.md). Прерывание на invalid editor patch заменено feedback/new-response внутри прежних3итераций без weakening parser/quality; provider failures не повторяются. Genuine cascade на существующей статье acceptediteration2, real4-casebrowser QA/nativeadmission/CMS/publicAPI+browser+archive+sitemap verified. Доставка supervised, неscheduledsuccess;3последовательныхдневныхцикла остаются критерием. Recurring09:00Bangkok/fullpipeline enabled/SOLpinned; старый reject не должен заслонять другую acceptedpair. Владельцу для этого bounded ремонта новое действие не требуется.

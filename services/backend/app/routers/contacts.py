@@ -36,12 +36,16 @@ async def check_platforms(
 ):
     account_id = await _connected_wa_account(db, current_user.tenant_id)
     results = []
+    checks = {}
     for phone in body.phones:
         norm = normalize_phone(phone)
-        tg = await check_telegram(norm)
-        vk = await check_vkontakte(norm)
-        wa = await check_whatsapp(norm, account_id)
-        results.append({"phone": norm, "telegram": tg, "vkontakte": vk, "whatsapp": wa})
+        if norm not in checks:
+            checks[norm] = {
+                "telegram": await check_telegram(norm),
+                "vkontakte": await check_vkontakte(norm),
+                "whatsapp": await check_whatsapp(norm, account_id),
+            }
+        results.append({"phone": norm, **checks[norm]})
     return {"results": results}
 
 
@@ -57,7 +61,7 @@ async def refresh_platforms(
 ):
     account_id = await _connected_wa_account(db, current_user.tenant_id)
     updated = 0
-    for cid in body.contact_ids:
+    for cid in dict.fromkeys(body.contact_ids):
         result = await db.execute(
             select(Contact).where(Contact.id == cid, Contact.tenant_id == current_user.tenant_id)
         )
