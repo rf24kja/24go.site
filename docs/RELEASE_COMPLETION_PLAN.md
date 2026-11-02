@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**W10 установлен selector v43:** [read-only исполняемый выбор](EDITORIAL_QUEUE_V43.md) сверяет настоящую acceptance/hash/freshness/length, выбирает oldest accepted UTC и возвращает отдельные blockers. Pipeline вызывает CLI, а не выбирает по каталогу.5fixtureконтрактов + проверка owning-profile очереди пройдены без model/CMS calls; QA/admission остаются обязательными. Это следующий ограниченный installed пакет, не3scheduleddeliveries.
+
 **W10 установлен bounded recovery v42:** [проверенный результат](EDITORIAL_RECOVERY_V42.md). Прерывание на invalid editor patch заменено feedback/new-response внутри прежних3итераций без weakening parser/quality; provider failures не повторяются. Genuine cascade на существующей статье acceptediteration2, real4-casebrowser QA/nativeadmission/CMS/publicAPI+browser+archive+sitemap verified. Доставка supervised, неscheduledsuccess;3последовательныхдневныхцикла остаются критерием. Recurring09:00Bangkok/fullpipeline enabled/SOLpinned; старый reject не должен заслонять другую acceptedpair. Владельцу для этого bounded ремонта новое действие не требуется.
 
 **W2 продвинут после отдельного разрешения:** main fast-forward, remote refs/public main content проверены. Причины первого failed main CI исправлены [v41](GITHUB_RECONCILIATION_V41.md); code commit dfa3c0d прошёл5из5jobs, actual run41384717280 completed/success. Revision026 упаковывает существующий SQL контракт для fresh installs; на production не применялась. Следующий docs-only checkpoint не повторяет неизменённые app suites. Полный source/runtime reconciliation W2 пока не объявлен завершённым.

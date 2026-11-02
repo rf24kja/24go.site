@@ -6,12 +6,14 @@ on:
     paths:
       - 'automation/**'
       - 'verification/editorial-recovery/**'
+      - 'verification/editorial-queue/**'
       - '.github/workflows/editorial-automation.yml'
   pull_request:
     branches: [main]
     paths:
       - 'automation/**'
       - 'verification/editorial-recovery/**'
+      - 'verification/editorial-queue/**'
       - '.github/workflows/editorial-automation.yml'
 
 permissions:
@@ -28,3 +30,5 @@ jobs:
           python-version: '3.11'
       - name: Exact-patch recovery, bounded rejection and no provider retry
         run: python verification/editorial-recovery/test_patch_recovery.py
+      - name: Read-only queue selection through the real evidence gate
+        run: python verification/editorial-queue/test_queue.py
