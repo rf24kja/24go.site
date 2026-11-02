@@ -10,7 +10,7 @@ Observed 2026-11-02, Asia/Bangkok. This is a narrow host-automation release, not
 | Primary CMS publisher, every 5 minutes | Scheduled normally; no ready drafts. Separate read-only native CMS probe verified existing owner authority | A genuinely accepted, fresh, exact-version RU/EN pair with browser QA/admission |
 | Pending editorial pair | One pair remains `review`/`review`; not promoted or published | Independent acceptance, not an operator status override |
 | Syndicator, every hour | One existing article remains incomplete for Blogger. Its DEV and Telegraph checkpoints are retained | Blogger authorization; no manual external publishing was invoked |
-| Blogger maintenance, every 15 minutes | First normal scheduled execution of installed v40 returned the actual `400 invalid_grant` | Owner-mediated OAuth consent/settings repair; no password, refresh token or callback code in chat |
+| Blogger maintenance, every 15 minutes | First normal scheduled v40 execution identified `400 invalid_grant`; subsequent owner-mediated loopback consent completed with verified refresh grant and expected-blog access | Next scheduled maintenance/delivery result; no password, refresh token or callback code in chat |
 
 Public inventory was read completely: 106 unique article slugs. An empty publisher queue or a scheduler `ok` is not proof that today's article was generated or delivered. Public creation timestamps are not publication-time evidence.
 
@@ -28,12 +28,12 @@ Four regression cases failed on the original script; the existing success-return
 
 ## GitHub versus deployment
 
-The application remains on installed v39 API/frontend images. Production runs on the VPS, not GitHub Pages. After this report, the owner expressly authorized the release branch's fast-forward into main; remote references and main content were verified. The first actual main CI exposed two source/bootstrap issues addressed in [v41](GITHUB_RECONCILIATION_V41.md). This is not full repository/runtime reconciliation or a claim of green CI or a new VPS deployment. The legacy Vercel snapshot deployment job remains paused; no VPS deploy-on-push was enabled.
+The application remains on installed v39 API/frontend images. Production runs on the VPS, not GitHub Pages. The owner authorized main promotion; remote references and main content were verified. Two issues in the first main CI were corrected in [v41](GITHUB_RECONCILIATION_V41.md); corrected code commit dfa3c0d passed all five real jobs. This is not full repository/runtime reconciliation or a new VPS deployment. The legacy Vercel snapshot deployment job remains paused; no VPS deploy-on-push was enabled.
 
 ## Closure gates
 
 1. Restore capacity on the existing approved author/editor/verifier route; then observe the next ordinary scheduled cycle, without repeating the quota-failed canary.
-2. Restore Blogger through the approved interactive OAuth path. Preserve existing platform checkpoints and reconcile before any external write.
+2. Blogger authorization is restored through the approved interactive OAuth path. Preserve existing platform checkpoints and reconcile/verify the next ordinary scheduled external write separately; authorization is not article-delivery evidence.
 3. Verify three consecutive scheduled independently accepted RU/EN deliveries with exact public body/archive/sitemap readback, plus per-target syndication results.
 4. Complete source/runtime reconciliation and exact-commit CI before treating the release branch as a fully reproducible default-branch release. Merge requires its own authorized workflow.
 
