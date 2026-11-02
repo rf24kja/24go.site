@@ -1,9 +1,5 @@
-"""VK discovery uses the tenant's vk.service_token (env fallback).
-
-Without any token it returns [] instead of crashing — and with a saved
-service_token it attempts the live lookup (VK rejects the fake token,
-proving the tenant value was actually picked up, not the env).
-"""
+"""Missing purpose-scoped VK discovery credentials fail explicitly, offline."""
+from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient, ASGITransport
 
@@ -25,10 +21,12 @@ async def authed():
 
 
 @pytest.mark.asyncio
-async def test_discover_vk_without_token_returns_empty(authed):
+async def test_discover_vk_without_token_requires_connection(authed):
     c, headers = authed
-    r = await c.post("/api/v1/groups/discover", headers=headers, json={
-        "geo_tag": "Moscow", "niche": "it", "platform": "vkontakte",
-    })
-    assert r.status_code == 200, r.text[:200]
-    assert r.json()["results"] == []
+    with patch("app.vk_discovery._vk_call", new_callable=AsyncMock) as provider:
+        r = await c.post("/api/v1/groups/discover", headers=headers, json={
+            "geo_tag": "Moscow", "niche": "it", "platform": "vkontakte",
+        })
+    assert r.status_code == 409, r.text[:200]
+    assert r.json()["detail"] == {"code": "vk_discovery_not_connected"}
+    provider.assert_not_awaited()

@@ -13,6 +13,8 @@
 Это оценка одного release owner при8focused hours/day, не гарантированная календарная дата. Квота модели, OAuth, maintenance/billing approvals и тестовые social resources пока не обеспечены полностью; время ожидания в бюджет не включено. После freeze объёма фиксируется уточнённый старт/forecast, новые необязательные функции уходят за релиз.
 
 ## Критический путь
+GitHub main перенесён разрешённым fast-forward без force-push; первый реальный CI выявил unused import и пропущенную VK discovery schema в fresh Alembic installs. [v41 — исправление source/bootstrap и честные границы runtime](docs/GITHUB_RECONCILIATION_V41.md). Production DB/migrations не затрагивались; результат нового точного CI проверяется отдельно. Это частичное закрытие W2, не доказательство полной воспроизводимости или live-provider readiness.
+
 Проверены cron и редакционная цепочка 2ноября2026: [v40 — installed Blogger diagnostics и реальные блокеры](docs/EDITORIAL_AUTOMATION_V40.md). Генератор остановился по HTTP429 до создания сегодняшней пары; основная CMS доступна, ready-очередь пуста; Blogger возвращает фактический400 invalid_grant. Наличие расписаний не закрывает W10. Требуются модельная ёмкость на прежнем маршруте и защищённое OAuth-согласие, не повтор failed canary и не paid fallback.
 
 Установлен [v39 — sitemap/robots SEO и GEO](docs/INSTALLED_RELEASE_V39.md): реальные даты CMS, языковые XML-связи, приватные crawl-исключения и полная публичная приёмка инвентаря. Это техническая доступность, не гарантия индексации/цитирования и не закрытие автономных публикаций.

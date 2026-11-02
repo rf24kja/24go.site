@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**W2 продвинут после отдельного разрешения:** main fast-forward к принятой release-ветке, точные remote refs и public main content проверены. Первый реальный main CI: dashboard/worker/sidecar PASS, backend/lint FAIL; причины исправляются ограниченным [v41 source/bootstrap пакетом](GITHUB_RECONCILIATION_V41.md). Revision026 упаковывает существующий SQL контракт discovery credentials для fresh installs; на production не применялась. Нужен actual exact-commit CI readback, не общий Vercel success-status. Полный W2 пока не закрыт.
+
 **W10 проверен 2ноября2026, но не закрыт:** [v40](EDITORIAL_AUTOMATION_V40.md). Scheduled generation завершился HTTP429, новых пар0; native CMS probe verified, publisher ready-очередь пуста; одна старая пара остаётся review/review. Installed Blogger maintenance теперь показывает реальный400 invalid_grant вместо ошибочного универсального401. Требуются прежняя модельная ёмкость, OAuth-согласие и три настоящих scheduled deliveries. GitHub release-ветка не подменяет разрешённое main-слияние/CI и deployment на VPS.
 
 **SEO/GEO пакет установлен:** [v39](INSTALLED_RELEASE_V39.md), frontend+API, sitemap/robots и public readback. Закрыта данная техническая crawlability-доработка; W10 daily generation/review/CMS и внешний индекс/citations этим не объявлены принятыми.

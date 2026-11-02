@@ -28,7 +28,7 @@ Four regression cases failed on the original script; the existing success-return
 
 ## GitHub versus deployment
 
-The application remains on installed v39 API/frontend images. Production runs on the VPS, not GitHub Pages. Accepted application deltas and this automation export are published on `release/installed-v33`; this is not a claim of a `main` merge, full repository/runtime reconciliation, GitHub deployment, or green CI. The legacy Vercel snapshot deployment job remains paused; no deploy-on-push was enabled.
+The application remains on installed v39 API/frontend images. Production runs on the VPS, not GitHub Pages. After this report, the owner expressly authorized the release branch's fast-forward into main; remote references and main content were verified. The first actual main CI exposed two source/bootstrap issues addressed in [v41](GITHUB_RECONCILIATION_V41.md). This is not full repository/runtime reconciliation or a claim of green CI or a new VPS deployment. The legacy Vercel snapshot deployment job remains paused; no VPS deploy-on-push was enabled.
 
 ## Closure gates
 

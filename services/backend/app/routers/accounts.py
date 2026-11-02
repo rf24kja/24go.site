@@ -1,6 +1,5 @@
 """Account Pool CRUD + Telegram connection endpoints."""
 import logging
-import time
 import json as _json
 from urllib.parse import urlparse
 from uuid import UUID
