@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**SEO/GEO пакет установлен:** [v39](INSTALLED_RELEASE_V39.md), frontend+API, sitemap/robots и public readback. Закрыта данная техническая crawlability-доработка; W10 daily generation/review/CMS и внешний индекс/citations этим не объявлены принятыми.
+
 **Следующий установленный пакет:** [v38 — proxy safety](INSTALLED_RELEASE_V38.md). Сохранение существующих no-reset назначений, корректные counters/UUID422 и API proxy-reader tenant checks проверены на PostgreSQL и exact image. Полный W3, concurrent allocation и worker/provider acceptance этим не закрыты.
 
 **Прогресс после v35:** [API v37 установлен](INSTALLED_RELEASE_V37.md). Квалификация и связанные target-данные лида получили tenant/platform guards; реальные HTTP/auth/ORM-контракты прошли на disposable PostgreSQL16 и точном image. W3 закрыт только в этой ограниченной части; остальные семьи объектов, concurrent ownership/RLS и полная матрица остаются открытыми. Бюджет не пересчитан без полноценного учёта оставшихся gates.

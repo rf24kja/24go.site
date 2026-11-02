@@ -111,7 +111,7 @@ For isolated host-automation contracts, see [automation/README.md](automation/RE
 
 ## Roadmap and contribution
 
-Latest installed API slice: [v38 — proxy assignment safety](docs/INSTALLED_RELEASE_V38.md), retaining [v37 lead-reference boundaries](docs/INSTALLED_RELEASE_V37.md). Both have isolated PostgreSQL contracts; neither is whole-product readiness.
+Latest installed release: [v39 — sitemap/robots and search eligibility](docs/INSTALLED_RELEASE_V39.md), retaining [v38 proxy safety](docs/INSTALLED_RELEASE_V38.md) and [v37 lead-reference boundaries](docs/INSTALLED_RELEASE_V37.md). Technical crawlability is not guaranteed indexing, AI citation or whole-product readiness.
 
 The [completion plan](docs/RELEASE_COMPLETION_PLAN.md) defines bounded work packages, dependencies and exit criteria. The [audit](docs/RELEASE_READINESS_AUDIT.md) separates installed behavior from unverified scenarios. Prepared changes under `proposals/` must not be mistaken for active runtime code.
 

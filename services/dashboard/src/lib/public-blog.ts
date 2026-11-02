@@ -5,6 +5,7 @@ export interface PublicBlogPost {
   excerpt: string;
   tags: string[];
   created_at: string;
+  updated_at?: string | null;
   reading_time?: number;
 }
 
@@ -42,7 +43,8 @@ export async function getAllPublicBlogPosts(locale = "en"): Promise<PublicBlogPo
     }
     for (const post of data.items) {
       if (typeof post.slug !== "string" || !post.slug || seen.has(post.slug) ||
-          !Number.isFinite(Date.parse(post.created_at))) {
+          !Number.isFinite(Date.parse(post.created_at)) ||
+          (post.updated_at != null && !Number.isFinite(Date.parse(post.updated_at)))) {
         throw new Error("Invalid or duplicate public blog article");
       }
       seen.add(post.slug);

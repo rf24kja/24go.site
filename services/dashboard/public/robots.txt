@@ -1,25 +1,34 @@
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /leads/
-Disallow: /analytics/
-Disallow: /campaigns/
-Disallow: /settings/
-Disallow: /billing/
-Disallow: /accounts/
-Disallow: /groups/
-Disallow: /auto-replies/
-Disallow: /lead-rules/
-Disallow: /users/
-Disallow: /audit/
-Disallow: /webhooks/
-Disallow: /proxies/
-Disallow: /mailings/
-Disallow: /targets/
-Disallow: /blog-admin/
-Disallow: /health/
-Disallow: /monitoring/
-Disallow: /reset-password/
-Disallow: /forgot-password/
+# Public pages, locale queries, pagination and rendering assets remain crawlable.
+# Googlebot, Bingbot, OAI-SearchBot and PerplexityBot inherit this same policy.
+# Do not add a bot-specific Allow group that bypasses these private exclusions.
+# Training-crawler permissions are unchanged; robots.txt is not access control.
+Disallow: /api
+Disallow: /leads
+Disallow: /analytics
+Disallow: /campaigns
+Disallow: /settings
+Disallow: /billing
+Disallow: /accounts
+Disallow: /groups
+Disallow: /auto-replies
+Disallow: /lead-rules
+Disallow: /users
+Disallow: /audit
+Disallow: /webhooks
+Disallow: /proxies
+Disallow: /mailings
+Disallow: /targets
+Disallow: /blog-admin
+Disallow: /health
+Disallow: /monitoring
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /TG
+Disallow: /VK
+Disallow: /WA
+Disallow: /FB
+Disallow: /MAX
 
 Sitemap: https://www.24go.site/sitemap.xml

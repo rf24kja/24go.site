@@ -4,14 +4,20 @@ import { getAllPublicBlogPosts } from "@/lib/public-blog";
 const BASE = "https://www.24go.site";
 const LOCALES = ["en", "ru"] as const;
 
-// ponytail: ISR, not build-time — new articles enter the sitemap within an hour, no redeploy needed
-export const revalidate = 3600;
+// Resolve the complete current inventory; never cache a partial fallback as success.
+export const dynamic = "force-dynamic";
+
+function languages(path: string) {
+  const url = `${BASE}${path === "/" ? "" : path}`;
+  return { en: `${url}?locale=en`, ru: `${url}?locale=ru`, "x-default": `${url}?locale=en` };
+}
 
 async function getBlogPosts(): Promise<MetadataRoute.Sitemap> {
   const items = await getAllPublicBlogPosts();
   return items.flatMap((post) => LOCALES.map((locale) => ({
     url: `${BASE}/blog/${post.slug}?locale=${locale}`,
-    lastModified: new Date(post.created_at),
+    lastModified: new Date(post.updated_at || post.created_at),
+    alternates: { languages: languages(`/blog/${post.slug}`) },
     changeFrequency: "monthly" as const,
     priority: 0.8,
   })));
@@ -48,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const sep = path.includes("?") ? "&" : "?";
       staticPages.push({
         url: path === "/" ? `${BASE}?locale=${locale}` : `${BASE}${path}${sep}locale=${locale}`,
-        lastModified: new Date(),
+        alternates: { languages: languages(path) },
         changeFrequency: path === "/" ? "weekly" : "monthly",
         priority: path === "/" ? 1 : 0.8,
       });
