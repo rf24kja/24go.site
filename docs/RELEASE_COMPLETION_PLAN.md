@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**W10 проверен 2ноября2026, но не закрыт:** [v40](EDITORIAL_AUTOMATION_V40.md). Scheduled generation завершился HTTP429, новых пар0; native CMS probe verified, publisher ready-очередь пуста; одна старая пара остаётся review/review. Installed Blogger maintenance теперь показывает реальный400 invalid_grant вместо ошибочного универсального401. Требуются прежняя модельная ёмкость, OAuth-согласие и три настоящих scheduled deliveries. GitHub release-ветка не подменяет разрешённое main-слияние/CI и deployment на VPS.
+
 **SEO/GEO пакет установлен:** [v39](INSTALLED_RELEASE_V39.md), frontend+API, sitemap/robots и public readback. Закрыта данная техническая crawlability-доработка; W10 daily generation/review/CMS и внешний индекс/citations этим не объявлены принятыми.
 
 **Следующий установленный пакет:** [v38 — proxy safety](INSTALLED_RELEASE_V38.md). Сохранение существующих no-reset назначений, корректные counters/UUID422 и API proxy-reader tenant checks проверены на PostgreSQL и exact image. Полный W3, concurrent allocation и worker/provider acceptance этим не закрыты.

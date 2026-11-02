@@ -13,6 +13,8 @@ python automation/scripts/tests/test_statejnik_daily_control.py
 Review fixtures use synthetic transports; daily-control fixtures use temporary directories and real local subprocess locks. The two exported test path defaults are repository-relative rather than deployment-absolute. Production code bytes remain the installed snapshot. Use an isolated HERMES_HOME/TMPDIR when running fixtures; never point the installed backend's destructive test fixtures at live PostgreSQL/Redis.
 
 ## Deployment contract
+The installed v40 Blogger maintenance snapshot and its five network-isolated contracts are documented in [the editorial automation report](../docs/EDITORIAL_AUTOMATION_V40.md). Run `python verification/blogger-maintenance/test_blogger_maintenance.py` from the repository root; it does not load a live .env, refresh credentials or publish. Its presence does not repair OAuth or the model provider's quota.
+
 Install only reviewed modules under the owning profile's scripts/skills hierarchy. Preserve the configured author/editor/verifier routes, native CMS actor/origin restrictions, publication enablement, real visual QA and exact-version admission. `statejnik_daily_control.py` is local reservation control, not a generator or permission bypass. Native terminal approval still applies.
 
 Detailed daily operating instructions are exported as scripts/24go_site_daily_editorial.md and scripts/24go_site_daily_pipeline.md. Paths named there refer to the existing authorized deployment and must be reviewed for a different machine. No live settings, credentials, schedules, provider evidence, articles or session stores are included.
