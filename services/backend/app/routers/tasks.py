@@ -7,7 +7,11 @@ import asyncio
 from typing import Annotated, Literal
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator, field_validator
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_db
+from app.models import AccountPool
 from celery import Celery
 
 from app.config import settings
@@ -45,9 +49,19 @@ class PostRequest(BaseModel):
     target_id: str
     account_id: str
 
+    @field_validator("campaign_id", "target_id", "account_id")
+    @classmethod
+    def canonical_uuid(cls, value: str) -> str:
+        return str(_uuid.UUID(value))
+
 
 class WarmupRequest(BaseModel):
     account_id: str
+
+    @field_validator("account_id")
+    @classmethod
+    def canonical_uuid(cls, value: str) -> str:
+        return str(_uuid.UUID(value))
 
 
 @router.post("/parser/discover")
@@ -177,8 +191,15 @@ async def dispatch_poster(
 async def dispatch_warmup(
     body: WarmupRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Dispatch a warmup cycle for a specific account."""
+    """Dispatch a warmup cycle only for an account owned by this tenant."""
+    account = await db.execute(select(AccountPool.id).where(
+        AccountPool.id == _uuid.UUID(body.account_id),
+        AccountPool.tenant_id == current_user.tenant_id,
+    ))
+    if account.scalar_one_or_none() is None:
+        raise HTTPException(404, "Account not found")
     task = _celery.send_task(
         "app.tasks.warmup.run_warmup_cycle",
         args=[str(current_user.tenant_id), body.account_id],

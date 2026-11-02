@@ -703,6 +703,14 @@ async def assign_campaign(
     current_user: User = Depends(get_current_user),
 ):
     """Assign contacts to a campaign/mailing."""
+    from app.models import Campaign
+
+    campaign = (await db.execute(select(Campaign).where(
+        Campaign.id == body.campaign_id,
+        Campaign.tenant_id == current_user.tenant_id,
+    ))).scalar_one_or_none()
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
     updated = 0
     for cid in body.contact_ids:
         contact = await _get_contact(db, cid, current_user.tenant_id)
