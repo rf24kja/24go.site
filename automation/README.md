@@ -3,6 +3,8 @@
 Layout mirrors an operator's Hermes home: `scripts/` and `skills/statejnik/tools/`. The installed scripts retain explicit site origins and deployment paths; cloning this directory does not configure a scheduler, authorize publication, install Hermes, or supply credentials. Do not run publisher/syndicator/native-CMS scripts against a production home just to test this export.
 
 ## Offline contracts
+The installed [editorial recovery v42](../docs/EDITORIAL_RECOVERY_V42.md) adds `python verification/editorial-recovery/test_patch_recovery.py`: bounded invalid-plan feedback, unchanged strict acceptance and no provider-error retry. These three synthetic-provider contracts run in `.github/workflows/editorial-automation.yml` without credentials or publication. They do not claim article quality or live scheduled autonomy.
+
 From the repository root, with a Python environment containing the existing test dependencies:
 
 ```

@@ -122,6 +122,10 @@ def _cascade(draft, root, qa, transport, timeout):
     directory.mkdir(parents=True, mode=0o700)
     originals = {loc: p.read_bytes().decode('utf-8') for loc, p in
                  [('ru', draft), ('en', draft.with_name('draft.en.md'))]}
+    if editor_format == 'patches-v2':
+        from _editor_patches import protected_parts
+        for original in originals.values():
+            protected_parts(original)
     shared = dict(original_ru=originals['ru'], original_en=originals['en'],
                   brief=(draft.parent / 'brief.md').read_bytes().decode(),
                   claims=(draft.parent / 'claims.md').read_bytes().decode(),
@@ -142,13 +146,26 @@ def _cascade(draft, root, qa, transport, timeout):
                          'structural or substantive defects. If disputing a measured count, name the specific '
                          'ineligible section rather than inventing a smaller number.') if scoped else ''
         editor_system = EDITOR_PATCHES if editor_format == 'patches-v2' else EDITOR
-        system = editor_system + length_policy + ('\nPrevious verifier blockers to fix:\n' + json.dumps(blockers, ensure_ascii=False) if blockers else '')
+        system = editor_system + length_policy + ('\nPrevious review blockers to fix:\n' + json.dumps(blockers, ensure_ascii=False) if blockers else '')
         atomic_write(target / 'editor-system.txt', system)
         atomic_write(target / 'verifier-system.txt', VERIFIER + length_policy)
         editor, er = _call('editor', qa, editor_prompt, system, target, transport, timeout)
         if editor_format == 'patches-v2':
             from _editor_patches import apply_editor_edits
-            candidates = apply_editor_edits(originals, editor)
+            try:
+                candidates = apply_editor_edits(originals, editor)
+            except ValueError as exc:
+                # No candidate is adopted; a new independent response uses the same bounded budget.
+                error = str(exc)
+                atomic_write(target / 'editor-validation.json', canonical_json(dict(
+                    accepted=False, error=error, verifier_called=False)).decode())
+                blockers = [
+                    'Editor plan rejected: ' + error + '. Previous edits were not applied. '
+                    'Return a complete new bilingual plan against the unchanged original documents. '
+                    'Copy each old fragment verbatim and uniquely; do not guess source quotes or '
+                    'alter protected material. Preserve substantive corrections for independent verification.'
+                ]
+                continue
         else:
             candidates = {loc: editor['candidate_' + loc] for loc in ('ru', 'en')}
         if not all(isinstance(v, str) and v.strip() for v in candidates.values()):

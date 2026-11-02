@@ -23,6 +23,8 @@
 
 ## 3. Рабочие пакеты
 
+**W10 установлен bounded recovery v42:** [проверенный результат](EDITORIAL_RECOVERY_V42.md). Прерывание на invalid editor patch заменено feedback/new-response внутри прежних3итераций без weakening parser/quality; provider failures не повторяются. Genuine cascade на существующей статье acceptediteration2, real4-casebrowser QA/nativeadmission/CMS/publicAPI+browser+archive+sitemap verified. Доставка supervised, неscheduledsuccess;3последовательныхдневныхцикла остаются критерием. Recurring09:00Bangkok/fullpipeline enabled/SOLpinned; старый reject не должен заслонять другую acceptedpair. Владельцу для этого bounded ремонта новое действие не требуется.
+
 **W2 продвинут после отдельного разрешения:** main fast-forward, remote refs/public main content проверены. Причины первого failed main CI исправлены [v41](GITHUB_RECONCILIATION_V41.md); code commit dfa3c0d прошёл5из5jobs, actual run41384717280 completed/success. Revision026 упаковывает существующий SQL контракт для fresh installs; на production не применялась. Следующий docs-only checkpoint не повторяет неизменённые app suites. Полный source/runtime reconciliation W2 пока не объявлен завершённым.
 
 **W10 проверен 2ноября2026, но не закрыт:** [v40](EDITORIAL_AUTOMATION_V40.md). Последний scheduled generation завершился HTTP429, новых пар0; native CMS probe verified, publisher ready-очередь пуста; старая пара review/review. Installed maintenance выявил настоящий400 invalid_grant; затем владелец завершил loopback OAuth, grant/expected-blog/fresh result verified. Blogger auth закрыт, следующая scheduled доставка ещё не проверена. Нужны прежняя модельная ёмкость и три настоящих scheduled deliveries. Main/CI и рабочий VPS не подменяют автономность статей.
