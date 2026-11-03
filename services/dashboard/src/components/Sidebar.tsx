@@ -31,7 +31,14 @@ export function Sidebar() {
 
   if (!auth.token) return null;
 
-  const NAV_ITEMS = platform === "telegram" ? [
+  const NAV_ITEMS = platform === "youtube" ? [
+    { href: "/YT/accounts", label: lang === "ru" ? "Аккаунты" : "Accounts", icon: UserCircle },
+    { href: "/YT/channels", label: lang === "ru" ? "Каналы" : "Channels", icon: Radio },
+    { href: "/YT/templates", label: lang === "ru" ? "Шаблоны" : "Templates", icon: FileText },
+    { href: "/YT/queue", label: lang === "ru" ? "Очередь и история" : "Queue and history", icon: CheckCircle },
+    { href: "/YT/settings", label: lang === "ru" ? "Настройки OAuth" : "OAuth settings", icon: Cog },
+    { href: "/YT/help", label: lang === "ru" ? "Как использовать" : "How to use", icon: FileText },
+  ] : platform === "telegram" ? [
     { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
@@ -124,6 +131,7 @@ export function Sidebar() {
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+
           {NAV.map((item) => {
             const Icon = item.icon;
             return (
@@ -192,6 +200,10 @@ export function Sidebar() {
             >
               FB
             </button>
+            <button aria-label="YouTube" aria-pressed={platform === "youtube"}
+              onClick={() => setPlatform("youtube")}
+              className={`flex-1 text-[10px] py-1.5 rounded transition min-h-[28px] ${platform === "youtube" ? "bg-red-500/20 text-red-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            >YT</button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
             <p className="text-xs text-zinc-500 truncate">{auth.user?.email}</p>

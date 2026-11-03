@@ -1,5 +1,5 @@
-export type Platform = "telegram" | "vkontakte" | "whatsapp" | "max" | "facebook";
-export const PREFIXES: Record<Platform, string> = { telegram: "TG", vkontakte: "VK", whatsapp: "WA", facebook: "FB", max: "MAX" };
+export type Platform = "telegram" | "vkontakte" | "whatsapp" | "max" | "facebook" | "youtube";
+export const PREFIXES: Record<Platform, string> = { telegram: "TG", vkontakte: "VK", whatsapp: "WA", facebook: "FB", max: "MAX", youtube: "YT" };
 const PAGE_ALIASES: Partial<Record<Platform, Record<string, string>>> = {
   vkontakte: { "vk-overview": "analytics", "vk-help": "help", "vk-settings": "integrations" },
   whatsapp: { "wa-overview": "analytics", "wa-accounts": "accounts", "wa-groups": "groups" },
@@ -12,6 +12,7 @@ function sourcePage(platform: Platform, page: string): string {
 export function platformDestination(path: string): string {
   const platform = routePlatform(path);
   if (!platform) return path;
+  if (platform === "youtube") return "/YT";
   const [, , page, ...rest] = path.split("/");
   return "/" + [sourcePage(platform, page), ...rest].join("/");
 }
@@ -21,8 +22,10 @@ export const PLATFORM_PAGES: Record<Platform, readonly string[]> = {
   whatsapp: ["wa-overview", "help", "leads", "wa-accounts", "wa-groups", "contacts", "campaigns", "mailings", "settings"],
   facebook: ["groups", "help", "leads", "contacts", "fb-marketplace", "fb-connect", "settings"],
   max: ["max-accounts", "help", "leads", "settings"],
+  youtube: ["accounts", "channels", "templates", "queue", "settings", "help"],
 };
 export function routePlatform(path: string): Platform | null {
+  if (path === "/YT") return "youtube";
   const [, prefix, page, ...rest] = path.split("/");
   const platform = (Object.keys(PREFIXES) as Platform[]).find(p => PREFIXES[p] === prefix);
   const detail = page === "leads" && rest.length === 1 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rest[0]);

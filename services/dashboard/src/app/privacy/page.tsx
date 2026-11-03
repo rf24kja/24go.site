@@ -47,7 +47,7 @@ const content = {
       },
       {
         heading: "8. Cookies",
-        text: "We use essential cookies for authentication and session management. We do not use advertising or tracking cookies. You can manage cookie preferences through your browser settings.",
+        text: "We use essential cookies for authentication and session management. With your separate consent, Yandex.Metrica (counter 114036227) uses analytics cookies and Webvisor to analyse public-page visits, device information, clicks and interactions. Analytics is not enabled on sign-in, password recovery or private dashboard routes. Entered form values are excluded from recording. Data is sent to Yandex. Declining analytics does not limit site access. You can withdraw consent using the analytics preferences link below; this stops future collection but does not delete data already sent.",
       },
       {
         heading: "9. International Transfers",
@@ -101,7 +101,7 @@ const content = {
       },
       {
         heading: "8. Cookies",
-        text: "Мы используем essential cookies для аутентификации и управления сессиями. Мы не используем рекламные или отслеживающие cookies. Вы можете управлять настройками cookies через настройки браузера.",
+        text: "Мы используем необходимые cookie для входа и управления сессиями. С вашего отдельного согласия Яндекс Метрика (счётчик 114036227) использует аналитические cookie и Вебвизор для анализа посещений публичных страниц, сведений об устройстве, кликов и взаимодействий. Аналитика не включается на страницах входа, восстановления пароля и в личном кабинете. Вводимые значения полей исключены из записи. Данные передаются Яндексу. Отказ не ограничивает доступ к сайту. Отозвать согласие можно по ссылке настроек аналитики ниже; это прекращает последующий сбор, но не удаляет уже переданные данные.",
       },
       {
         heading: "9. Международные передачи",
@@ -133,6 +133,9 @@ export default async function PrivacyPage({ searchParams }: { searchParams: { lo
         <h1 className="text-4xl font-bold mb-2">{c.title}</h1>
         <p className="text-zinc-500 mb-10">{c.updated}</p>
         <div className="space-y-8">
+          <a href={`/privacy?locale=${locale}&analytics=reset`} className="text-emerald-400 underline">
+            {locale === 'ru' ? 'Настройки аналитики / отозвать согласие' : 'Analytics preferences / withdraw consent'}
+          </a>
           {c.sections.map((s, i) => (
             <section key={i}>
               <h2 className="text-xl font-semibold mb-3 text-emerald-400">{s.heading}</h2>

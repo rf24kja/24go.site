@@ -4,6 +4,12 @@ import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
 
 const guides = {
+ youtube: {
+  name: "YouTube",
+  en: ["Accounts requires administrator-configured Google OAuth and an enabled provider. External posting is separately gated.", "Save a template with {title}, add a UC channel ID in Channels and select its monitoring template. The first scan baselines existing videos.", "Review every draft in Queue, approve it and bind a connected account. Unknown outcomes are not automatically retried; live provider delivery is not verified."],
+  ru: ["В Аккаунтах подключение требует настройки Google OAuth администратором и включения провайдера. Внешняя публикация разрешается отдельно.", "Сохраните шаблон с {title}, добавьте UC ID в Каналах и выберите шаблон наблюдения. Первый опрос запоминает имеющиеся видео.", "Проверьте каждый черновик в Очереди, подтвердите его и назначьте подключённый аккаунт. Неизвестный результат не повторяется автоматически; живая доставка не проверена."],
+  links: [["/YT/accounts","Accounts / Аккаунты"],["/YT/channels","Channels / Каналы"],["/YT/templates","Templates / Шаблоны"],["/YT/queue","Queue / Очередь"]],
+ },
  telegram: {
   name: "Telegram",
   en: ["Connect your own authorized Telegram account in Accounts using the supported connection form; account access and group access are separate prerequisites.", "In Group search, ordinary discovery does not consent to paid TGStat requests. Confirm the paid option explicitly before using it. Add saves the selected result, not another keyword search.", "In Monitoring, join only an authorized group. Pending approval is not membership. Flood waits require waiting; missing sessions or unknown checks do not establish membership. Live joining has not been verified with a designated test group."],
@@ -40,7 +46,7 @@ export function PlatformHelp({ compact = false }: { compact?: boolean }) {
  return <section className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5 mb-6" aria-label={`${guide.name} ${ru?'Как пользоваться':'How to use'}`}>
  {compact?<h2 className="text-xl font-semibold">{guide.name} — {ru?'Актуальный порядок работы':'Current workflow'}</h2>:<h1 className="text-2xl font-semibold">{guide.name} — {ru?'Как пользоваться':'How to use'}</h1>}
  <ol className="space-y-4 list-decimal pl-5 text-sm text-zinc-300">{guide[ru?'ru':'en'].map(text=><li key={text}>{text}</li>)}</ol>
- <nav className="flex flex-wrap gap-3" aria-label={ru?'Разделы платформы':'Platform pages'}>{guide.links.map(([href,label])=><Link className="text-emerald-400 underline" href={href} key={href}>{label}</Link>)}<Link className="text-emerald-400 underline" href="/settings">{ru?'Настройки':'Settings'}</Link><Link className="text-emerald-400 underline" href="/billing">Billing</Link></nav>
+ <nav className="flex flex-wrap gap-3" aria-label={ru?'Разделы платформы':'Platform pages'}>{guide.links.map(([href,label])=><Link className="text-emerald-400 underline" href={href} key={href}>{label}</Link>)}{platform !== 'youtube' && <Link className="text-emerald-400 underline" href="/settings">{ru?'Настройки':'Settings'}</Link>}<Link className="text-emerald-400 underline" href="/billing">Billing</Link></nav>
  <p className="text-sm text-amber-300">{ru?'Безопасность: токены, cookies, коды и секреты вводите только в защищённом интерфейсе, не в чате. Не отправляйте сообщения и не подключайте чужие аккаунты для проверки. Доступ к разделам зависит от прав и плана; общие данные команды не становятся изолированными из-за префикса URL.':'Security: enter tokens, cookies, codes and secrets only in the secure UI, never in chat. Do not send messages or connect other people’s accounts for testing. Permissions and plan may restrict pages; a URL namespace does not isolate shared team data.'}</p>
  <p className="text-sm text-zinc-400">{ru?'Ошибка загрузки не означает отсутствие данных. Проверьте выбранную платформу, аккаунт и права, затем повторите запрос. Изменения правил worker и биллинга, ожидающие согласования, не считаются установленными.':'A load error does not mean there is no data. Check the selected platform, account and permissions, then retry. Worker rules and billing changes awaiting approval are not installed capabilities.'}</p>
  </section>;

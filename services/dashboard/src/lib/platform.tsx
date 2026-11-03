@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { usePathname, useRouter } from "next/navigation";
 import { Platform, routePlatform, legacyPlatform, platformHref, platformHome } from "./platform-routes";
 export type { Platform } from "./platform-routes";
-export const PLATFORMS: Platform[] = ["telegram", "vkontakte", "whatsapp", "max", "facebook"];
+export const PLATFORMS: Platform[] = ["telegram", "vkontakte", "whatsapp", "max", "facebook", "youtube"];
 export function isPlatform(p: string | null): p is Platform { return PLATFORMS.includes(p as Platform); }
 interface PlatformContextType { platform: Platform; setPlatform: (p: Platform) => void; }
 const PlatformContext = createContext<PlatformContextType>({ platform: "telegram", setPlatform: () => {} });

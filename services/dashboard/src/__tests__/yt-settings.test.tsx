@@ -1,0 +1,21 @@
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {afterEach,it,expect,vi} from 'vitest';
+const fixture=vi.hoisted(()=>({auth:{token:'synthetic',user:{role:'owner'}},api:vi.fn()}));
+vi.mock('@/lib/auth',()=>({useAuth:()=>({auth:fixture.auth})}));
+vi.mock('@/lib/api',()=>({api:fixture.api}));
+import YTSettings from '@/components/YTSettings';
+afterEach(()=>{cleanup();vi.clearAllMocks();fixture.auth.user.role='owner';localStorage.clear();});
+it.each([true,false])('writes only explicit OAuth scope without secret readback, ru=%s',async ru=>{
+ fixture.api.mockImplementation((p:string,o:any)=>Promise.resolve({status:o?.method?'configured':'missing',oauth_enabled:!!o?.method,monitoring_enabled:false,posting_enabled:false}));
+ render(<YTSettings ru={ru}/>);
+ await screen.findByText(ru?'Не настроено':'Missing');
+ fireEvent.change(screen.getByLabelText('Google client ID'),{target:{value:'fixture.apps.googleusercontent.com'}});
+ fireEvent.change(screen.getByLabelText('Google client secret'),{target:{value:'synthetic-secret-test'}});
+ fireEvent.click(screen.getByRole('checkbox'));
+ fireEvent.submit(screen.getByRole('button',{name:ru?'Сохранить настройки':'Save settings'}).closest('form')!);
+ await waitFor(()=>expect(fixture.api).toHaveBeenCalledTimes(2));
+ expect(JSON.parse(fixture.api.mock.calls[1][1].body)).toEqual({client_id:'fixture.apps.googleusercontent.com',client_secret:'synthetic-secret-test',redirect_uri:'https://www.24go.site/YT/callback',oauth_enabled:true});
+ await waitFor(()=>expect((screen.getByLabelText('Google client secret') as HTMLInputElement).value).toBe(''));
+ expect(localStorage.length).toBe(0);
+});
+it('denies tenant member without requesting client settings',()=>{fixture.auth.user.role='member';render(<YTSettings ru={false}/>);expect(fixture.api).not.toHaveBeenCalled();expect(screen.queryByLabelText('Google client secret')).toBeNull();});

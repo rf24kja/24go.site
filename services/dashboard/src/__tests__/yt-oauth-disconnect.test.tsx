@@ -1,0 +1,30 @@
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {afterEach,it,expect,vi} from 'vitest';
+const fixture=vi.hoisted(()=>({confirmed:false}));
+vi.mock('next/navigation',()=>({usePathname:()=>'/YT/accounts'}));
+vi.mock('@/lib/auth',()=>({useAuth:()=>({auth:{token:'synthetic',user:{role:'owner'}}})}));
+vi.mock('@/lib/i18n',()=>({useI18n:()=>({lang:'en'})}));
+vi.mock('@/lib/api',()=>({api:vi.fn(async(path:string,opts:{method?:string})=>{
+ if(opts.method==='DELETE')return {status:'disconnected',provider_revocation:'not_requested'};
+ if(path==='/yt/capabilities')return {external_enabled:false,posting_enabled:false,oauth_configured:false};
+ if(path==='/yt/accounts')return [{id:'11111111-1111-4111-8111-111111111111',name:'Synthetic channel',status:'connected'}];
+ return [];
+})}));
+import {api} from '@/lib/api';
+import YTPage from '../app/(dashboard)/YT/page';
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.mocked(api).mockClear();});
+it('local disconnect is explicit, cancelled by default and never calls a provider revoke',async()=>{
+ vi.spyOn(window,'confirm').mockImplementation(()=>fixture.confirmed);
+ fixture.confirmed=false;render(<YTPage/>);
+ const button=await screen.findByRole('button',{name:'Disconnect'});
+ await waitFor(()=>expect((button as HTMLButtonElement).disabled).toBe(false));
+ expect((screen.getByRole('button',{name:'Connect Google'}) as HTMLButtonElement).disabled).toBe(true);
+ expect(vi.mocked(api).mock.calls.filter(([,o])=>o?.method)).toHaveLength(0);
+ fireEvent.click(button);
+ expect(window.confirm).toHaveBeenCalledWith('Disconnect locally? Revoke access in Google separately.');
+ expect(vi.mocked(api).mock.calls.filter(([,o])=>o?.method)).toHaveLength(0);
+ fixture.confirmed=true;fireEvent.click(button);
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('/yt/accounts/11111111-1111-4111-8111-111111111111',expect.objectContaining({method:'DELETE'})));
+ expect(vi.mocked(api).mock.calls.filter(([,o])=>o?.method)).toHaveLength(1);
+ expect(screen.getByRole('link',{name:'Manage access in Google'}).getAttribute('href')).toBe('https://myaccount.google.com/connections');
+});
