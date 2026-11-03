@@ -54,12 +54,12 @@ async def list_mailings(
 
 @router.get("/{mailing_id}")
 async def get_mailing(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -82,13 +82,13 @@ async def get_mailing(
 @router.post("/import")
 async def import_recipients(
     body: MailingImportRequest,
-    mailing_id: str | None = None,
+    mailing_id: _uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if mailing_id:
         q = select(Mailing).where(
-            Mailing.id == _uuid.UUID(mailing_id),
+            Mailing.id == mailing_id,
             Mailing.tenant_id == current_user.tenant_id,
         )
         result = await db.execute(q)
@@ -157,12 +157,12 @@ async def import_recipients(
 
 @router.post("/{mailing_id}/start")
 async def start_mailing(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -200,12 +200,12 @@ async def start_mailing(
 
 @router.post("/{mailing_id}/pause")
 async def pause_mailing(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -223,12 +223,12 @@ async def pause_mailing(
 
 @router.post("/{mailing_id}/stop")
 async def stop_mailing(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -243,7 +243,7 @@ async def stop_mailing(
 
 @router.post("/{mailing_id}/check-read")
 async def check_read(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -251,7 +251,7 @@ async def check_read(
     from app.celery_app import celery as celery_app
 
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -259,18 +259,18 @@ async def check_read(
     if not mailing:
         raise HTTPException(404, "Mailing not found")
 
-    celery_app.send_task("app.tasks.mailer.check_read_status", args=[mailing_id])
+    celery_app.send_task("app.tasks.mailer.check_read_status", args=[str(mailing.id)])
     return {"status": "check_scheduled"}
 
 
 @router.delete("/{mailing_id}")
 async def delete_mailing(
-    mailing_id: str,
+    mailing_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(Mailing).where(
-        Mailing.id == _uuid.UUID(mailing_id),
+        Mailing.id == mailing_id,
         Mailing.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)

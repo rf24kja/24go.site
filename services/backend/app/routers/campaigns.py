@@ -182,6 +182,9 @@ async def run_campaign_now(
     if not campaign:
         raise HTTPException(404, "Campaign not found")
 
+    if not campaign.is_active:
+        raise HTTPException(400, "Cannot run inactive campaign")
+
     platform = campaign.platform
     if platform not in ("telegram", "vkontakte"):
         raise HTTPException(400, "Campaign posting is supported only for Telegram and VK")

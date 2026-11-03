@@ -410,8 +410,8 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
     """Send a password reset email. Always returns 200 to prevent email enumeration."""
     # Rate limit: 3 requests per email per 5 minutes
     try:
-        import redis as _redis
-        r = _redis.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
+        import redis as _redis_module
+        r = _redis_module.Redis.from_url(settings.REDIS_URL.replace("rediss://", "redis://"), decode_responses=True)
         key = f"reset:{body.email}"
         count = r.incr(key)
         if count == 1:

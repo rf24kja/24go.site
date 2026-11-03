@@ -408,6 +408,7 @@ async def bulk_connect_accounts(
             select(AccountPool).where(
                 AccountPool.id == account_id,
                 AccountPool.tenant_id == current_user.tenant_id,
+                AccountPool.platform == "telegram",
             )
         )
         account = result.scalar_one_or_none()
@@ -564,6 +565,7 @@ async def connect_telegram(
         select(AccountPool).where(
             AccountPool.id == account_id,
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == "telegram",
         )
     )
     account = result.scalar_one_or_none()
@@ -640,6 +642,7 @@ async def confirm_telegram(
         select(AccountPool).where(
             AccountPool.id == account_id,
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == "telegram",
         )
     )
     account = result.scalar_one_or_none()
@@ -791,6 +794,7 @@ async def confirm_password(
         select(AccountPool).where(
             AccountPool.id == account_id,
             AccountPool.tenant_id == current_user.tenant_id,
+            AccountPool.platform == "telegram",
         )
     )
     account = result.scalar_one_or_none()
