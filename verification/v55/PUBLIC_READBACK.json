@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "image": "sha256:4e134835c7db0b42bc5a47aebf981c47463b2a771022be599d5c6117e2ba0fb5",
+  "build_id": "v0rLO-_uFfdWkN4W063cj",
+  "only_dashboard_replaced": true,
+  "runtime_inventory_verified": true,
+  "public": {
+    "/": {
+      "status": 200,
+      "build_id_match": true
+    },
+    "/login": {
+      "status": 200,
+      "build_id_match": true
+    },
+    "/TG/campaigns": {
+      "status": 200,
+      "build_id_match": true
+    },
+    "/VK/mailings": {
+      "status": 200,
+      "build_id_match": true
+    },
+    "/blog": {
+      "status": 200,
+      "build_id_match": true
+    },
+    "/sitemap.xml": {
+      "status": 200,
+      "build_id_match": false
+    }
+  },
+  "health": {
+    "status": "ok",
+    "api_version": "1.0.0",
+    "uptime_seconds": 3506,
+    "ws_connections": 0,
+    "database": "ok",
+    "redis": "ok"
+  },
+  "unauthenticated_campaigns_status": 401,
+  "timestamp": 1793735278.017463
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useScopedList } from "@/lib/use-scoped-list";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { usePlatform } from "@/lib/platform";
@@ -48,8 +49,7 @@ export default function CampaignsPage() {
   const { t } = useI18n();
   const { toast } = useToast();
   const { platform } = usePlatform();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: campaigns, loading, failed: listFailed, load, capture } = useScopedList<Campaign>(auth?.token, platform, getCampaigns);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", emoji: "", base_text: "", target_geos: "", target_niches: "", media_urls: [] as string[], schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] as { name: string; text: string; weight: number; posts: number; leads: number }[] });
@@ -63,23 +63,25 @@ export default function CampaignsPage() {
 
   const scheduleOptions = getScheduleOptions(t);
 
-  const load = () => {
-    if (!auth?.token) return;
-    setLoading(true);
-    getCampaigns(auth.token, { platform }).then((res) => setCampaigns(res.items || res)).catch(() => setCampaigns([])).finally(() => setLoading(false));
-  };
 
-  useEffect(() => { load(); }, [auth?.token, platform]);
+
+  useEffect(() => {
+    setModalMode(null); setEditingId(null); setStatsCampaign(null); setLoadingStats(false); setSaving(false);
+    setCronPreview([]); setShowEmojiPicker(false);
+    setForm({ name: "", description: "", emoji: "", base_text: "", target_geos: "", target_niches: "", media_urls: [], schedule: "", posts_per_day: "5", timezone: "UTC", ab_enabled: false, ab_variants: [] });
+  }, [auth?.token, platform]);
 
   // Cron preview: show next 5 run times when editing schedule
   useEffect(() => {
     const token = auth?.token;
     if (!token || !modalMode || !form.schedule) { setCronPreview([]); return; }
+    const valid = capture();
+    let active = true;
     const timer = setTimeout(() => {
-      previewCron(token, form.schedule, form.timezone).then((res) => setCronPreview(res.runs || [])).catch(() => setCronPreview([]));
+      previewCron(token, form.schedule, form.timezone).then((res) => { if (active && valid()) setCronPreview(res.runs || []); }).catch(() => { if (active && valid()) setCronPreview([]); });
     }, 300);
-    return () => clearTimeout(timer);
-  }, [auth?.token, modalMode, form.schedule, form.timezone]);
+    return () => { active = false; clearTimeout(timer); };
+  }, [auth?.token, platform, modalMode, form.schedule, form.timezone]);
 
   const openCreate = () => {
     setModalMode("create");
@@ -107,20 +109,24 @@ export default function CampaignsPage() {
   };
 
   async function openStats(c: Campaign) {
+    const valid = capture();
     if (!auth?.token) return;
     setLoadingStats(true);
     setStatsCampaign(null);
     try {
-      const stats = await getCampaignStats(auth.token, c.id);
+      const stats = await getCampaignStats(auth.token, c.id); if (!valid()) return;
       setStatsCampaign(stats);
     } catch {
+      if (!valid()) return;
       setStatsCampaign({ error: true });
     } finally {
+      if (!valid()) return;
       setLoadingStats(false);
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
+    const valid = capture();
     e.preventDefault();
     if (!auth?.token) return;
     setSaving(true);
@@ -142,28 +148,34 @@ export default function CampaignsPage() {
         platform,
       };
       if (modalMode === "edit" && editingId) {
-        await updateCampaign(auth.token, editingId, data);
+        await updateCampaign(auth.token, editingId, data); if (!valid()) return;
       } else {
-        await createCampaign(auth.token, data);
+        await createCampaign(auth.token, data); if (!valid()) return;
       }
       setModalMode(null);
       load();
     } catch (e: any) {
+      if (!valid()) return;
       toast(e.message || t("campaigns.saveFailed"), "error");
     } finally {
+      if (!valid()) return;
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    const valid = capture();
     if (!auth?.token || !confirm(t("campaigns.deleteConfirm"))) return;
-    try { await deleteCampaign(auth.token, id); } catch { toast(t("campaigns.deleteFailed"), "error"); }
+    try { await deleteCampaign(auth.token, id); if (!valid()) return; } catch {
+      if (!valid()) return; toast(t("campaigns.deleteFailed"), "error"); }
     load();
   };
 
   const toggleActive = async (c: Campaign) => {
+    const valid = capture();
     if (!auth?.token) return;
-    try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); } catch { toast(t("campaigns.toggleFailed"), "error"); }
+    try { await updateCampaign(auth.token, c.id, { is_active: !c.is_active }); if (!valid()) return; } catch {
+      if (!valid()) return; toast(t("campaigns.toggleFailed"), "error"); }
     load();
   };
 
@@ -184,11 +196,13 @@ export default function CampaignsPage() {
   ];
 
   const handleFiles = useCallback((files: FileList | null) => {
+    const valid = capture();
     if (!files) return;
     Array.from(files).forEach((file) => {
       if (file.size > 5_000_000) { toast(t("campaigns.fileTooLarge") || "File too large (max 5MB)", "error"); return; }
       const reader = new FileReader();
       reader.onload = () => {
+        if (!valid()) return;
         const base64 = reader.result as string;
         setForm((prev) => ({ ...prev, media_urls: [...prev.media_urls, base64] }));
       };
@@ -223,9 +237,11 @@ export default function CampaignsPage() {
         </p>
       </div>
 
-      {loading ? (
+      <button onClick={load} disabled={loading}>{t("common.refresh")}</button>
+      {listFailed && <div role="alert">{t("campaigns.loadFailed")} <button onClick={load}>{t("common.retry")}</button></div>}
+      {loading && campaigns.length === 0 ? (
         <CardSkeleton count={6} />
-      ) : campaigns.length === 0 ? (
+      ) : campaigns.length === 0 && !listFailed ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
           <p className="text-zinc-300 font-medium mb-2">{t("campaigns.empty")}</p>
           <p className="text-xs text-zinc-500 mb-4 max-w-md mx-auto">
@@ -300,12 +316,13 @@ export default function CampaignsPage() {
                 <button onClick={() => openStats(c)} className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded text-xs hover:bg-zinc-700 transition min-h-[36px]">{t("campaigns.stats")}</button>
 
                 <button onClick={async () => {
+    const valid = capture();
                   if (!auth?.token || !confirm(t("campaigns.runConfirm"))) return;
                   try {
-                    const result = await runCampaign(auth.token, c.id);
+                    const result = await runCampaign(auth.token, c.id); if (!valid()) return;
                     toast(t("campaigns.runSuccess", { target: result.target, account: result.account }), "success");
                   } catch (err: any) {
-                    toast(err.message || t("campaigns.runFailed"), "error");
+                    if (valid()) toast(err.message || t("campaigns.runFailed"), "error");
                   }
                 }} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-xs hover:bg-emerald-500/20 transition min-h-[36px]">{t("campaigns.run")}</button>
                 <button onClick={() => handleDelete(c.id)} className="px-3 py-1.5 text-rose-400 hover:bg-rose-500/10 rounded text-xs transition min-h-[36px]">{t("campaigns.delete")}</button>

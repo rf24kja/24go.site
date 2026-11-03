@@ -1467,7 +1467,7 @@
   "mailings.selectFile": "Select File",
   "mailings.importResult": "Imported: {imported}, Skipped: {skipped}",
   "mailings.importFailed": "Import failed",
-  "mailings.loadFailed": "Failed to load mailing",
+  "mailings.loadFailed": "Could not load mailings. Previously loaded rows are retained.",
   "mailings.message": "Message",
   "hints.scoring.ruleName": "Internal name for this scoring rule",
   "hints.scoring.intent": "HOT = strong buying signal, WARM = interest, COLD = no intent, SPAM = irrelevant",
@@ -3068,13 +3068,15 @@
   "email.drip.day2.title": "Have you connected your first account?",
   "email.drip.day2.body": "Connect a Telegram or VK account to start intercepting leads.",
   "email.drip.day3.title": "Your trial ends in {days} days",
-  "email.drip.day3.body": "Upgrade now to keep your leads and unlock unlimited channels."
-,
+  "email.drip.day3.body": "Upgrade now to keep your leads and unlock unlimited channels.",
   "accounts.loadFailed": "Could not load accounts. Previously loaded accounts are retained.",
   "accounts.listenerFailed": "Listener status unavailable. Retry before changing listener state.",
   "accounts.proxiesFailed": "Could not load proxies. Proxy changes are unavailable.",
   "accounts.statusUnknown": "Status unknown",
   "accounts.proxyAssignFailed": "Could not assign proxy. The previous assignment is unchanged; try again.",
   "accounts.retry": "Retry",
-  "accounts.proxy": "Account proxy"
+  "accounts.proxy": "Account proxy",
+  "common.retry": "Retry",
+  "common.refresh": "Refresh",
+  "campaigns.loadFailed": "Could not load campaigns. Previously loaded rows are retained."
 }

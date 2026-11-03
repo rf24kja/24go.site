@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useScopedList } from "@/lib/use-scoped-list";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
@@ -35,28 +36,25 @@ export default function MailingsPage() {
   const { t } = useI18n();
   const { toast } = useToast();
   const { platform } = usePlatform();
-  const [mailings, setMailings] = useState<Mailing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: mailings, loading, failed: listFailed, load, capture } = useScopedList<Mailing>(auth?.token, platform, getMailings);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importMailId, setImportMailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Mailing | null>(null);
-  const [form, setForm] = useState({ name: "", message_text: "", platform: "telegram", delay_seconds: "30" });
+  const [form, setForm] = useState({ name: "", message_text: "", platform, delay_seconds: "30" });
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = () => {
-    if (!auth?.token) return;
-    setLoading(true);
-    getMailings(auth.token, { platform }).then((res) => setMailings(res.items || [])).catch(() => setMailings([])).finally(() => setLoading(false));
-  };
 
-  useEffect(() => { load(); }, [auth?.token, platform]);
 
-  useEffect(() => { setForm((f) => ({ ...f, platform })); }, [platform]);
+  useEffect(() => {
+    setShowCreate(false); setShowImport(false); setImportMailId(null); setDetail(null); setSaving(false);
+    setForm({ name: "", message_text: "", platform, delay_seconds: "30" });
+  }, [auth?.token, platform]);
 
   const handleCreate = async (e: React.FormEvent) => {
+    const valid = capture();
     e.preventDefault();
     if (!auth?.token) return;
     setSaving(true);
@@ -64,63 +62,77 @@ export default function MailingsPage() {
       await createMailing(auth.token, {
         name: form.name,
         message_text: form.message_text,
-        platform: form.platform,
+        platform,
         delay_seconds: parseInt(form.delay_seconds) || 30,
       });
+      if (!valid()) return;
       setShowCreate(false);
-      // ponytail: mailings are TG/VK-only — never seed "max" (backend would 422)
-      setForm({ name: "", message_text: "", platform: platform === "max" ? "telegram" : platform, delay_seconds: "30" });
+      setForm({ name: "", message_text: "", platform, delay_seconds: "30" });
       load();
       toast(t("mailings.created"), "success");
     } catch (e: any) {
+      if (!valid()) return;
       toast(e.message || t("mailings.createFailed"), "error");
     } finally {
+      if (!valid()) return;
       setSaving(false);
     }
   };
 
   const handleImport = async (file: File) => {
+    const valid = capture();
     if (!auth?.token) return;
-    const text = await file.text();
+    const text = await file.text(); if (!valid()) return;
     try {
-      const res = await importMailingRecipients(auth.token, text, importMailId || undefined);
+      const res = await importMailingRecipients(auth.token, text, importMailId || undefined); if (!valid()) return;
       toast(t("mailings.importResult", { imported: res.imported, skipped: res.skipped }), "success");
       setShowImport(false);
       setImportMailId(null);
       if (res.imported > 0) load();
     } catch (e: any) {
+      if (!valid()) return;
       toast(e.message || t("mailings.importFailed"), "error");
     }
   };
 
   const openDetail = async (id: string) => {
+    const valid = capture();
     if (!auth?.token) return;
     try {
-      const data = await getMailing(auth.token, id);
+      const data = await getMailing(auth.token, id); if (!valid()) return;
       setDetail(data);
     } catch (e: any) {
+      if (!valid()) return;
       toast(e.message || t("mailings.loadFailed"), "error");
     }
   };
 
   const handleStart = async (id: string) => {
+    const valid = capture();
     if (!auth?.token) return;
-    try { await startMailing(auth.token, id); toast(t("mailings.started"), "success"); load(); } catch (e: any) { toast(e.message, "error"); }
+    try { await startMailing(auth.token, id); if (!valid()) return; toast(t("mailings.started"), "success"); load(); } catch (e: any) {
+      if (!valid()) return; toast(e.message, "error"); }
   };
 
   const handlePause = async (id: string) => {
+    const valid = capture();
     if (!auth?.token) return;
-    try { await pauseMailing(auth.token, id); toast(t("mailings.paused"), "success"); load(); } catch (e: any) { toast(e.message, "error"); }
+    try { await pauseMailing(auth.token, id); if (!valid()) return; toast(t("mailings.paused"), "success"); load(); } catch (e: any) {
+      if (!valid()) return; toast(e.message, "error"); }
   };
 
   const handleStop = async (id: string) => {
+    const valid = capture();
     if (!auth?.token) return;
-    try { await stopMailing(auth.token, id); toast(t("mailings.stopped"), "success"); load(); } catch (e: any) { toast(e.message, "error"); }
+    try { await stopMailing(auth.token, id); if (!valid()) return; toast(t("mailings.stopped"), "success"); load(); } catch (e: any) {
+      if (!valid()) return; toast(e.message, "error"); }
   };
 
   const handleDelete = async (id: string) => {
+    const valid = capture();
     if (!auth?.token || !confirm(t("mailings.deleteConfirm"))) return;
-    try { await deleteMailing(auth.token, id); toast(t("mailings.deleted"), "success"); load(); setDetail(null); } catch (e: any) { toast(e.message, "error"); }
+    try { await deleteMailing(auth.token, id); if (!valid()) return; toast(t("mailings.deleted"), "success"); load(); setDetail(null); } catch (e: any) {
+      if (!valid()) return; toast(e.message, "error"); }
   };
 
   const onDrop = (e: React.DragEvent) => {
@@ -156,9 +168,11 @@ export default function MailingsPage() {
         </div>
       </div>
 
-      {loading ? (
+      <button onClick={load} disabled={loading}>{t("common.refresh")}</button>
+      {listFailed && <div role="alert">{t("mailings.loadFailed")} <button onClick={load}>{t("common.retry")}</button></div>}
+      {loading && mailings.length === 0 ? (
         <CardSkeleton count={4} />
-      ) : mailings.length === 0 ? (
+      ) : mailings.length === 0 && !listFailed ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
           <p className="text-zinc-300 font-medium mb-2">{t("mailings.empty")}</p>
           <p className="text-xs text-zinc-500 mb-4">{t("mailings.emptyDesc")}</p>
@@ -253,7 +267,7 @@ export default function MailingsPage() {
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">{t("mailings.platform")} <FieldHint hint={t("hints.mailings.platform")} /></label>
                   <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-400 capitalize">
-                    {platform === "vkontakte" ? "VKontakte" : "Telegram"}
+                    {{ telegram: "Telegram", vkontakte: "VKontakte", whatsapp: "WhatsApp", facebook: "Facebook", max: "MAX", youtube: "YouTube" }[platform]}
                   </div>
                 </div>
                 <div>
@@ -351,14 +365,18 @@ export default function MailingsPage() {
             </div>
             {detail.status === "completed" && detail.sent_count > 0 && (
               <button onClick={async () => {
+    const valid = capture();
                 if (!auth?.token) return;
                 try {
-                  await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site"}/api/v1/mailings/${detail.id}/check-read`, {
+                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://api.24go.site"}/api/v1/mailings/${detail.id}/check-read`, {
                     method: "POST",
                     headers: { Authorization: `Bearer ${auth.token}` },
                   });
-                  toast(t("mailings.readCheckScheduled"), "success");
-                } catch { toast(t("mailings.readCheckFailed"), "error"); }
+                  if (!valid()) return;
+                                    if (!response.ok) throw new Error("read_check_rejected");
+                                    toast(t("mailings.readCheckScheduled"), "success");
+                } catch {
+      if (!valid()) return; toast(t("mailings.readCheckFailed"), "error"); }
               }}
                 className="w-full py-2 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-lg text-sm hover:bg-sky-500/20 transition">
                 {t("mailings.checkReads")}
