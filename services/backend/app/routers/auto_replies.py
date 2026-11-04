@@ -96,12 +96,12 @@ async def create_auto_reply(
 
 @router.get("/{auto_reply_id}")
 async def get_auto_reply(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     ).options(selectinload(AutoReply.answers))
     result = await db.execute(q)
@@ -113,13 +113,13 @@ async def get_auto_reply(
 
 @router.put("/{auto_reply_id}", response_model=dict)
 async def update_auto_reply(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     body: AutoReplyUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -143,12 +143,12 @@ async def update_auto_reply(
 
 @router.delete("/{auto_reply_id}", status_code=204)
 async def delete_auto_reply(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -161,13 +161,13 @@ async def delete_auto_reply(
 
 @router.post("/{auto_reply_id}/answers", response_model=dict)
 async def add_answer(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     body: AutoReplyAnswerCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -191,13 +191,13 @@ async def add_answer(
 
 @router.delete("/{auto_reply_id}/answers/{answer_id}", status_code=204)
 async def delete_answer(
-    auto_reply_id: str,
-    answer_id: str,
+    auto_reply_id: _uuid.UUID,
+    answer_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -206,7 +206,7 @@ async def delete_answer(
         raise HTTPException(404, "Auto-reply not found")
 
     aq = select(AutoReplyAnswer).where(
-        AutoReplyAnswer.id == _uuid.UUID(answer_id),
+        AutoReplyAnswer.id == answer_id,
         AutoReplyAnswer.auto_reply_id == ar.id,
     )
     a_result = await db.execute(aq)
@@ -219,13 +219,13 @@ async def delete_answer(
 
 @router.post("/{auto_reply_id}/import-answers")
 async def import_answers(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     body: BulkAnswerImport,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
@@ -254,12 +254,12 @@ async def import_answers(
 
 @router.post("/{auto_reply_id}/toggle", response_model=dict)
 async def toggle_auto_reply(
-    auto_reply_id: str,
+    auto_reply_id: _uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     q = select(AutoReply).where(
-        AutoReply.id == _uuid.UUID(auto_reply_id),
+        AutoReply.id == auto_reply_id,
         AutoReply.tenant_id == current_user.tenant_id,
     )
     result = await db.execute(q)
