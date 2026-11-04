@@ -335,7 +335,7 @@ export default function CampaignsPage() {
       {/* Create/Edit modal */}
       {modalMode && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setModalMode(null)}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-h-[calc(100dvh-2rem)] overflow-y-auto max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-zinc-100">{modalMode === "edit" ? t("campaigns.editTitle") : t("campaigns.createTitle")}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>

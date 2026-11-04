@@ -1,8 +1,8 @@
 {
   "status": "EXPORTED_ACCEPTED_BYTES",
-  "frontend_image": "sha256:4e134835c7db0b42bc5a47aebf981c47463b2a771022be599d5c6117e2ba0fb5",
+  "frontend_image": "sha256:ccc8eaa69c76c51b0db52e76de99faa664ba550818beb3e515c35a3f1282029f",
   "api_image": "sha256:d5e8ab87610d90082390f067a2b955e20e6210340902c539fef84f6ac9f7054f",
-  "build_id": "v0rLO-_uFfdWkN4W063cj",
+  "build_id": "ZELiswwbGkFI7gRo8UgCr",
   "files": {
     "services/dashboard/src/middleware.ts": "da9ff5c3670fd030a5d538ff1f1c27751a5818c23ad9fd8fe5b545d5836f4562",
     "services/dashboard/src/components/Toast.tsx": "18773edf73d43d9c84189043018366c74b530ea055954ea35274d9125dc8a9ae",
@@ -149,7 +149,7 @@
     "services/dashboard/src/app/(dashboard)/groups/page.tsx": "7e5bc7dc80e035975076e0da0bc5d44f1fcbf10d387dd7246d04db6c42f77de3",
     "services/dashboard/src/app/(dashboard)/vk-settings/page.tsx": "5d4b8276bd14473727f11c487ad7571473293a0e589d28b04e14b6fee1e4271b",
     "services/dashboard/src/app/(dashboard)/analytics/page.tsx": "7ff0bc7965d7b722ff64f0b57feb9b42d29e0d1104f3007190a95537dae595f1",
-    "services/dashboard/src/app/(dashboard)/mailings/page.tsx": "b43ce40396e98961e65854e2b17143e105b797f3a2e2a5813a2431b61c86d00c",
+    "services/dashboard/src/app/(dashboard)/mailings/page.tsx": "101ab731aaba69456f212d24fc77d305d94ceff1532fd23f38a4068378df1ca4",
     "services/dashboard/src/app/(dashboard)/fb-marketplace/page.tsx": "457850b3e7e0439f310480d28fdb25b5328e017dec313494792856cda1352b43",
     "services/dashboard/src/app/(dashboard)/wa-groups/page.tsx": "f06564ebe1c3c116776654c4e5df0883dcde824e501dd4edd13a8d840927ab63",
     "services/dashboard/src/app/(dashboard)/users/page.tsx": "5db81c2c9e5e29622f2fdefe3c192aaee0122f6265df8aaed9f45f083ca35e0a",
@@ -157,7 +157,7 @@
     "services/dashboard/src/app/(dashboard)/wa-overview/page.tsx": "79affaab98cc8f7be7fc91bcd683a6bf25658c1b15767227f7e1dbf26be33212",
     "services/dashboard/src/app/(dashboard)/proxies/page.tsx": "fcccda715cce45ba63496d6d277b75a0ec1d51c5595e5546b7e0f315c68ab694",
     "services/dashboard/src/app/(dashboard)/fb-connect/page.tsx": "f6d5b0be14c9c7ca94d73eccede9a8a6f3057a8d185dd17593226158bf63e437",
-    "services/dashboard/src/app/(dashboard)/campaigns/page.tsx": "31db186049258c6d7d84a305ee8765bfa1c8f1291bff0f79001e5427d271a832",
+    "services/dashboard/src/app/(dashboard)/campaigns/page.tsx": "f86e737e896cf0e61370900ab7962d1f9b4b93e88bb273cb43032c0485664ac6",
     "services/dashboard/src/app/(dashboard)/onboarding/page.tsx": "8bd27b83125a60fd54a88f8abe7d5655b91282f9919ef3c15ed1653a7fa854ad",
     "services/dashboard/src/app/(dashboard)/targets/page.tsx": "c573163fc7226faabd3a299414dfc2115093b7f313dcb69ebc957a10178f50ae",
     "services/dashboard/src/app/(dashboard)/vk-help/page.tsx": "b6b78faad46b161726f7dd191c270e8296a6f07e4b33e924c6c7f3d2714041f9",
@@ -391,7 +391,7 @@
     "services/dashboard/src/app/(dashboard)/groups/page.tsx": "7e5bc7dc80e035975076e0da0bc5d44f1fcbf10d387dd7246d04db6c42f77de3",
     "services/dashboard/src/app/(dashboard)/vk-settings/page.tsx": "f0d658603eb3ada57e30bc556e238c0fa06673540f33a60aa26021f59c6c05a2",
     "services/dashboard/src/app/(dashboard)/analytics/page.tsx": "7ff0bc7965d7b722ff64f0b57feb9b42d29e0d1104f3007190a95537dae595f1",
-    "services/dashboard/src/app/(dashboard)/mailings/page.tsx": "9fcdd139791ff1be697b321443faf564ded35a39fd48b273746cb30ed19923a1",
+    "services/dashboard/src/app/(dashboard)/mailings/page.tsx": "101ab731aaba69456f212d24fc77d305d94ceff1532fd23f38a4068378df1ca4",
     "services/dashboard/src/app/(dashboard)/fb-marketplace/page.tsx": "15c5280841861f28543c5aed1366c35e55dadd79d0dfaf40bf324e08d73d28e8",
     "services/dashboard/src/app/(dashboard)/wa-groups/page.tsx": "d8d6bda5baca7e88a6ab33cecc3b792c0e676ee06c5fb0011c2dcae04291c1ad",
     "services/dashboard/src/app/(dashboard)/users/page.tsx": "78172c8ecef06a70550885df456a7fef73f5e95ea93d6fe7a18494bbe8626db7",
@@ -399,7 +399,7 @@
     "services/dashboard/src/app/(dashboard)/wa-overview/page.tsx": "79affaab98cc8f7be7fc91bcd683a6bf25658c1b15767227f7e1dbf26be33212",
     "services/dashboard/src/app/(dashboard)/proxies/page.tsx": "7e5f7edda7b6bac07b61c05e8a1b7856c99eb561f7e38c73b155065b24692e6f",
     "services/dashboard/src/app/(dashboard)/fb-connect/page.tsx": "ecee1fe0cfba4c875bdb14c6ccfe90c1ecb947d2ba5bb27c24ed037573e7ff61",
-    "services/dashboard/src/app/(dashboard)/campaigns/page.tsx": "908b38eaadf5c8559dbc8488ff481ad8d0ad133bb2b4e2e8d4c584c1c0d469ac",
+    "services/dashboard/src/app/(dashboard)/campaigns/page.tsx": "f86e737e896cf0e61370900ab7962d1f9b4b93e88bb273cb43032c0485664ac6",
     "services/dashboard/src/app/(dashboard)/onboarding/page.tsx": "4ed5db0b9cd7c0a2ff930a2ab3ecf78ed80c2c02c591dc130689354d1779ffa9",
     "services/dashboard/src/app/(dashboard)/targets/page.tsx": "c573163fc7226faabd3a299414dfc2115093b7f313dcb69ebc957a10178f50ae",
     "services/dashboard/src/app/(dashboard)/vk-help/page.tsx": "b6b78faad46b161726f7dd191c270e8296a6f07e4b33e924c6c7f3d2714041f9",
@@ -487,6 +487,6 @@
     "services/dashboard/src/__tests__/scoped-list-null-token.test.tsx": "ec48224757afdca6aa3839c5eb92dcccb09a80059ebe937b85e739911253527d"
   },
   "line_endings": "Installed raw SHA in files; repository LF-normalized dashboard SHA in git_files per existing .gitattributes. No product semantic edits.",
-  "latest_release": "v55",
-  "previous_release": "YT tenant settings"
+  "latest_release": "campaign-mobile-v56",
+  "previous_release": "v55"
 }
