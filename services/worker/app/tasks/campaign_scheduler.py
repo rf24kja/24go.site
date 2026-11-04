@@ -43,6 +43,9 @@ async def _run():
     dispatched = []
 
     for c in campaigns:
+        platform = c["platform"]
+        if platform not in ("telegram", "vkontakte"):
+            continue
         tz_name = c["timezone"] or "UTC"
         try:
             tz = ZoneInfo(tz_name)
@@ -51,26 +54,28 @@ async def _run():
 
         local_now = now_utc.astimezone(tz)
 
-        # ── Idempotency lock: prevent double-dispatch within 5 min window ──
-        lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
-        try:
-            r = await get_redis()
-            if await r.exists(lock_key):
-                continue
-            await r.set(lock_key, "1", ex=300)
-        except Exception:
-            pass  # If Redis unavailable, proceed (risk double-dispatch, better than blocking)
-
         # ── Cron check ─────────────────────────────────────────────
         cron_expr = c["schedule_cron"]
+        if not cron_expr:
+            continue
         if cron_expr:
-            # Campaigns without a cron are manual-only → skip
+            # Only scheduled campaigns reach the cron check.
             cron = croniter(cron_expr, local_now.replace(second=0, microsecond=0))
             prev = cron.get_prev(datetime)
             # Fire if the previous cron tick is within the last 5 minutes
             delta = (local_now - prev).total_seconds()
             if delta > 300:
                 continue
+
+        # ── Idempotency lock: prevent double-dispatch within 5 min window ──
+        lock_key = f"campaign_dispatch:{c['id']}:{local_now.strftime('%Y%m%d%H')}"
+        try:
+            r = await get_redis()
+            if not await r.set(lock_key, "1", ex=300, nx=True):
+                continue
+        except Exception:
+            log.exception("Campaign dispatch lock unavailable; skipping %s", c["id"])
+            continue
 
         # ── Daily limit check ──────────────────────────────────────
         posts_today = await fetchval(
@@ -88,38 +93,23 @@ async def _run():
         if isinstance(target_geos, str):
             import json as _json
             target_geos = _json.loads(target_geos)
+        target_niches = c["target_niches"] or []
+        if isinstance(target_niches, str):
+            import json as _json
+            target_niches = _json.loads(target_niches)
         target = await fetchrow(
             "SELECT id, target_id_code, title, platform FROM targets "
             "WHERE tenant_id = $1 AND is_active = true "
             "AND platform = $3 "
             "AND (geo_tag = ANY($2) OR $2 = '{}') "
+            "AND (niche = ANY($4) OR $4 = '{}') "
             "ORDER BY random() LIMIT 1",
             c["tenant_id"],
             target_geos,
-            # ponytail: campaigns are per-service — a VK campaign posts
-            # to VK targets (used to pick any platform, building bogus URLs)
-            c.get("platform") or "telegram",
+            platform,
+            target_niches,
         )
         if not target:
-            continue
-
-        platform = target.get("platform", "telegram")
-
-        # ponytail: explicit skip — MAX campaigns need a recipient mapping
-        # that doesn't exist yet; TG poster would build a bogus t.me URL.
-        if platform == "max":
-            log.debug(f"Campaign {c['id']}: skipping MAX target (unsupported)")
-            continue
-
-        # ponytail: same as MAX — no WA poster exists; the TG poster would
-        # send to a t.me URL built from a WA group code. Skip, don't misfire.
-        if platform == "whatsapp":
-            log.debug(f"Campaign {c['id']}: skipping WhatsApp target (unsupported)")
-            continue
-
-        # ponytail: no FB poster in v1 either — same bogus-URL class as above.
-        if platform == "facebook":
-            log.debug(f"Campaign {c['id']}: skipping Facebook target (unsupported)")
             continue
 
         # ── Pick an available account (matching platform) ────────
@@ -143,25 +133,22 @@ async def _run():
         utm_source = posting_cfg.get("utm_source", "leadgen")
         utm_medium = posting_cfg.get("utm_medium", "post")
 
+        variants = c["ab_variants"] or []
+        if isinstance(variants, str):
+            import json as _json
+            variants = _json.loads(variants)
         if platform == "vkontakte":
-            utm_url = (
-                f"https://vk.com/public{target['target_id_code']}"
-                f"?utm_source={utm_source}&utm_medium={utm_medium}"
-                f"&utm_campaign={c['id']}"
-            )
             celery.send_task(
                 "app.tasks.vk_poster.post_to_vk",
-                args=[
-                    str(c["tenant_id"]),
-                    str(account["id"]),
-                    int(target["target_id_code"].replace("vk_", "")),
-                    c["base_text"],
-                    str(c["id"]),
-                    str(target["id"]),
-                ],
                 kwargs={
+                    "tenant_id": str(c["tenant_id"]),
+                    "account_id": str(account["id"]),
+                    "group_id": int(target["target_id_code"].removeprefix("vk_")),
+                    "text": c["base_text"],
+                    "campaign_id": str(c["id"]),
+                    "target_id": str(target["id"]),
                     "ab_enabled": c.get("ab_enabled", False),
-                    "ab_variants": c.get("ab_variants") or [],
+                    "ab_variants": variants,
                 },
                 queue="poster",
             )
@@ -184,7 +171,7 @@ async def _run():
                 ],
                 kwargs={
                     "ab_enabled": c.get("ab_enabled", False),
-                    "ab_variants": c.get("ab_variants") or [],
+                    "ab_variants": variants,
                 },
                 queue="poster",
             )

@@ -1,0 +1,33 @@
+{
+  "image": "sha256:7754c2c872fd60bff08985cfbf334a5085a17eeed6a5f83df3933580bfc37d58",
+  "base": "sha256:53fd85cdd05fc7eb8215d91e029f8b8ee77c1c296effcf56014006e60e71beb5",
+  "changed_runtime": [
+    "/app/app/tasks/campaign_scheduler.py"
+  ],
+  "files": [
+    {
+      "path": "services/worker/app/tasks/campaign_scheduler.py",
+      "installed_sha256": "267646d384d8738aefb0bac928a38457dd3ca2c524af6e5a2d2a55b4fba3ada4",
+      "git_lf_sha256": "267646d384d8738aefb0bac928a38457dd3ca2c524af6e5a2d2a55b4fba3ada4"
+    },
+    {
+      "path": "tests/isolated_tg_scheduler_v68/test_scheduler.py",
+      "installed_sha256": "3fee58800ebd5a3e7765e55be424ee813b58b0dc186f40ef281fe569b89605dc",
+      "git_lf_sha256": "3fee58800ebd5a3e7765e55be424ee813b58b0dc186f40ef281fe569b89605dc"
+    },
+    {
+      "path": "tests/isolated_tg_scheduler_v68/test_producer.py",
+      "installed_sha256": "9f015066969595cb8746e53c0fd322e56bee261a9751fa6169b5d6cd9fc01894",
+      "git_lf_sha256": "9f015066969595cb8746e53c0fd322e56bee261a9751fa6169b5d6cd9fc01894"
+    },
+    {
+      "path": "tests/isolated_tg_scheduler_v68/lead_fixture.py",
+      "installed_sha256": "c7e3cfdb8a9aba6ef60b02f09730b59fc0bfddacb24e6e8a55cc56e96bd5613a",
+      "git_lf_sha256": "c7e3cfdb8a9aba6ef60b02f09730b59fc0bfddacb24e6e8a55cc56e96bd5613a"
+    }
+  ],
+  "exact_tests": 8,
+  "producer_tests": 1,
+  "full_api_worker_git_parity": false,
+  "live_provider": false
+}
