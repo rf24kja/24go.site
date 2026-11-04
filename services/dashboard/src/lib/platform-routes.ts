@@ -19,9 +19,9 @@ export function platformDestination(path: string): string {
 export const PLATFORM_PAGES: Record<Platform, readonly string[]> = {
   telegram: ["analytics", "leads", "lead-rules", "targets", "groups", "accounts", "proxies", "campaigns", "mailings", "onboarding", "help", "settings", "users", "audit", "admin", "health", "blog-admin", "auto-replies", "scoring", "contacts"],
   vkontakte: ["vk-overview", "leads", "lead-rules", "targets", "groups", "accounts", "proxies", "campaigns", "mailings", "onboarding", "vk-help", "vk-settings", "settings", "users", "audit", "admin", "health", "blog-admin", "auto-replies", "scoring", "contacts"],
-  whatsapp: ["wa-overview", "help", "leads", "wa-accounts", "wa-groups", "contacts", "campaigns", "mailings", "settings"],
-  facebook: ["groups", "help", "leads", "contacts", "fb-marketplace", "fb-connect", "settings"],
-  max: ["max-accounts", "help", "leads", "settings"],
+  whatsapp: ["wa-overview", "help", "lead-rules", "leads", "wa-accounts", "wa-groups", "contacts", "campaigns", "mailings", "settings"],
+  facebook: ["groups", "help", "lead-rules", "leads", "contacts", "fb-marketplace", "fb-connect", "settings"],
+  max: ["max-accounts", "help", "lead-rules", "leads", "settings"],
   youtube: ["accounts", "channels", "templates", "queue", "settings", "help"],
 };
 export function routePlatform(path: string): Platform | null {

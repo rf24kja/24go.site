@@ -1,0 +1,16 @@
+import React from 'react';
+import {render,screen,cleanup} from '@testing-library/react';
+import {afterEach,expect,it,vi} from 'vitest';
+let email='other@example.invalid',platform='telegram';
+vi.mock('@/lib/auth',()=>({useAuth:()=>({auth:{token:'fixture',user:{email,role:'owner',tenant_id:'fixture'}},logout:vi.fn()})}));
+vi.mock('next/navigation',()=>({usePathname:()=>'/TG/campaigns',useRouter:()=>({push:vi.fn()})}));
+vi.mock('@/components/PlatformLink',()=>({default:({children,href,...props}:any)=><a href={href} {...props}>{children}</a>}));
+vi.mock('@/lib/useWebSocket',()=>({useWebSocket:()=>({connected:false})}));
+vi.mock('@/lib/i18n',()=>({useI18n:()=>({lang:'en',t:(k:string)=>k,setLang:vi.fn()})}));
+vi.mock('@/components/Toast',()=>({useToast:()=>({toast:vi.fn()})}));
+vi.mock('@/hooks/usePlanAccess',()=>({usePlanAccess:()=>({hasAccess:()=>true})}));
+vi.mock('@/lib/platform',()=>({usePlatform:()=>({platform,setPlatform:vi.fn()})}));
+import {Sidebar} from './Sidebar';
+afterEach(cleanup);
+it('denies other tenant owners the site management links',()=>{render(<Sidebar/>);expect(screen.queryByText('Owner Dashboard')).toBeNull();expect(screen.queryByText('sidebar.team')).toBeNull();expect(screen.queryByText('sidebar.auditLog')).toBeNull()});
+it('has one campaign workspace and no Quick Start for TG VK WA',()=>{for(const p of ['telegram','vkontakte','whatsapp']){platform=p;render(<Sidebar/>);expect(screen.queryByText('Quick Start')).toBeNull();expect(screen.getByRole('link',{name:'Campaigns & mailings'})).toBeTruthy();expect(screen.queryByText('sidebar.mailings')).toBeNull();cleanup()}});

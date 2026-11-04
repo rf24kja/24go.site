@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { getOwnerUsers, getOwnerSubscriptions } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
+import Link from "@/components/PlatformLink";
 
 type OwnerUser = {
   id: string;
@@ -54,7 +55,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"users" | "subscriptions">("users");
 
-  const isOwner = auth?.user?.email === "rf24krsk@gmail.com" || auth?.user?.role === "owner";
+  const isOwner = auth?.user?.email === "rf24krsk@gmail.com";
 
   useEffect(() => {
     if (!auth?.token || !isOwner) return;
@@ -86,6 +87,7 @@ export default function AdminPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <nav className="flex flex-wrap gap-4"><Link href="/users">{t("sidebar.team")}</Link><Link href="/audit">{t("sidebar.auditLog")}</Link><Link href="/blog-admin">{t("sidebar.blog")}</Link></nav>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100">Owner Dashboard</h1>

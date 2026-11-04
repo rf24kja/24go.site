@@ -42,7 +42,7 @@ export function Sidebar() {
     { href: "/analytics", label: t("sidebar.analytics"), icon: ChartBar, feature: "analytics" },
     { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
-    { href: "/targets", label: t("sidebar.groupSearch"), icon: Radar, feature: "targets" },
+    { href: "/targets", label: lang === "ru" ? "Группы" : "Groups", icon: Radar, feature: "targets" },
     { href: "/groups", label: t("sidebar.monitoring"), icon: Radio, feature: "groups" },
     { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle, feature: "accounts" },
     { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
@@ -58,12 +58,12 @@ export function Sidebar() {
     { href: "/help", label: t("sidebar.help"), icon: FileText },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : platform === "vkontakte" ? [
-    { href: "/vk-overview", label: t("sidebar.vkOverview"), icon: ChartBar, feature: "analytics" },
-    { href: "/leads", label: t("sidebar.vkLeads"), icon: Crosshair, feature: "leads" },
+    { href: "/vk-overview", label: t("sidebar.analytics"), icon: ChartBar, feature: "analytics" },
+    { href: "/leads", label: t("sidebar.leads"), icon: Crosshair, feature: "leads" },
     { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" },
-    { href: "/targets", label: t("sidebar.vkGroupSearch"), icon: Radar, feature: "targets" },
+    { href: "/targets", label: lang === "ru" ? "Группы" : "Groups", icon: Radar, feature: "targets" },
     { href: "/groups", label: t("sidebar.vkMonitoring"), icon: Radio, feature: "groups" },
-    { href: "/accounts", label: t("sidebar.vkCommunities"), icon: UserCircle, feature: "accounts" },
+    { href: "/accounts", label: t("sidebar.accounts"), icon: UserCircle, feature: "accounts" },
     { href: "/proxies", label: t("sidebar.proxies"), icon: Cog, feature: "accounts" },
     { href: "/campaigns", label: t("sidebar.vkCampaigns"), icon: Megaphone, feature: "campaigns" },
     { href: "/mailings", label: t("sidebar.vkMailings"), icon: Send, feature: "mailings" },
@@ -74,8 +74,8 @@ export function Sidebar() {
     { href: "/audit", label: t("sidebar.auditLog"), icon: FileText, feature: "audit", ownerOnly: true },
     { href: "/admin", label: "Owner Dashboard", icon: Shield, ownerOnly: true },
     { href: "/health", label: t("sidebar.health"), icon: Heartbeat, feature: "health" },
-    { href: "/vk-help", label: t("sidebar.vkHowToUse"), icon: FileText },
-    { href: "/settings", label: t("sidebar.vkSettings"), icon: Cog },
+    { href: "/vk-help", label: t("sidebar.help"), icon: FileText },
+    { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ] : platform === "max" ? [
     // ponytail: MAX is a full 4th section — bots, shared leads/billing/settings.
     // No campaigns/mailings/targets here: those creation flows are TG/VK-only.
@@ -107,11 +107,24 @@ export function Sidebar() {
     { href: "/billing", label: t("sidebar.billing"), icon: CreditCard },
     { href: "/settings", label: t("sidebar.settings"), icon: Cog },
   ];
+  if (["whatsapp", "facebook", "max"].includes(platform)) {
+    const leadsIndex = NAV_ITEMS.findIndex(item => item.href === "/leads");
+    NAV_ITEMS.splice(leadsIndex + 1, 0, { href: "/lead-rules", label: t("sidebar.leadRules"), icon: Scales, feature: "lead-rules" });
+  }
   const NAV = NAV_ITEMS.filter((item) => {
-    if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com" && auth?.user?.role !== "owner") return false;
+    if (["telegram", "vkontakte"].includes(platform) && ["/lead-rules", "/groups", "/proxies", "/health", "/blog-admin"].includes(item.href)) return false;
+    if (["/onboarding", "/users", "/audit", "/admin", "/mailings"].includes(item.href)) return false;
+    if (item.href === "/blog-admin" && auth?.user?.email !== "rf24krsk@gmail.com") return false;
+    if ((item as any).ownerOnly && auth?.user?.email !== "rf24krsk@gmail.com") return false;
     return !item.feature || hasAccess(item.feature);
-  });
+  }).map(item => item.href === "/campaigns" ? { ...item, label: lang === "ru" ? "Кампании и рассылки" : "Campaigns & mailings" } : item);
 
+  const active = (href: string) => {
+    const path = platformHref(href, platform);
+    if (pathname === path || pathname.startsWith(path + "/")) return true;
+    if (!["telegram", "vkontakte"].includes(platform)) return false;
+    return ({"/leads": [platformHref("/lead-rules", platform)], "/targets": [platformHref("/groups", platform)], "/accounts": [platformHref("/proxies", platform)], "/settings": [platformHref("/health", platform)], "/campaigns": [platformHref("/mailings", platform)]} as Record<string, string[]>)[href]?.includes(pathname) ?? false;
+  };
   return (
     <>
       <button onClick={() => setMobileOpen(!mobileOpen)}
@@ -125,6 +138,10 @@ export function Sidebar() {
         ${mobileOpen ? "left-0 w-60" : "-left-60 md:left-0"} w-60`}>
         <div className="p-5 border-b border-zinc-800">
           <h1 className="text-lg font-bold text-zinc-100">24<span className="text-emerald-400">GO</span></h1>
+          {auth.user?.email === "rf24krsk@gmail.com" && ["telegram", "vkontakte"].includes(platform) && <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <Link href="/admin" className="rounded border border-zinc-700 px-2 py-2">Owner Dashboard</Link>
+            <Link href="/users" className="rounded border border-zinc-700 px-2 py-2">{t("sidebar.team")}</Link>
+          </div>}
           <div className="flex items-center gap-2 mt-1">
             <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`} />
             <p className="text-xs text-zinc-500">{connected ? t("sidebar.live") : t("sidebar.offline")}</p>
@@ -138,9 +155,10 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active(item.href) ? "page" : undefined}
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                  pathname === platformHref(item.href, platform) || pathname.startsWith(platformHref(item.href, platform) + "/")
+                  active(item.href)
                     ? "bg-zinc-800 text-zinc-100"
                     : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                 }`}

@@ -1,0 +1,168 @@
+{
+  "scope": "accepted installed dashboard only; API/worker reconciliation excluded",
+  "source": "/home/hermes-admin/.hermes/projects/24go-site/dev-runs/vk-navigation-v67/candidate/dashboard",
+  "image": "sha256:240c96d631476412c4fbd8d7f16e2f713e2dbd3206a39f69dc2ca561a65726c3",
+  "build_id": "a-RGCt66fke1VhhJ11-vl",
+  "base_commit": "893bb17cac6f068c83ba2caa52e0d219cdfd96ea",
+  "entries": [
+    {
+      "path": "services/dashboard/src/__tests__/service-rule-routes.test.ts",
+      "installed_raw_sha256": "c0ca4b2e15dd1477910bc8f91f14818fab5b2b2387be87f51ae211ac55f34c2c",
+      "git_lf_sha256": "c0ca4b2e15dd1477910bc8f91f14818fab5b2b2387be87f51ae211ac55f34c2c",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/__tests__/service-rules.test.tsx",
+      "installed_raw_sha256": "7be1ab770d12552e212f972b2dc6eb222956b3af3d4e8ee2299ae887475a5d5e",
+      "git_lf_sha256": "7be1ab770d12552e212f972b2dc6eb222956b3af3d4e8ee2299ae887475a5d5e",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/__tests__/tg-grouping.test.tsx",
+      "installed_raw_sha256": "ff185b42b437ff5acc68db3fc19eaf811c23dbe35519e3df6187bfdd37b18275",
+      "git_lf_sha256": "ff185b42b437ff5acc68db3fc19eaf811c23dbe35519e3df6187bfdd37b18275",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/__tests__/tg-search-v59.test.tsx",
+      "installed_raw_sha256": "0fcdc263b3f341700fec306660501629138907e87641b4197999d2ebd0215f91",
+      "git_lf_sha256": "0fcdc263b3f341700fec306660501629138907e87641b4197999d2ebd0215f91",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/__tests__/tg-tabs.test.tsx",
+      "installed_raw_sha256": "59ca3c7b4fa5d00be248bee6e13c25c98b3cdc634b4999df4ed5ac754e47afd2",
+      "git_lf_sha256": "59ca3c7b4fa5d00be248bee6e13c25c98b3cdc634b4999df4ed5ac754e47afd2",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/admin/page.tsx",
+      "installed_raw_sha256": "9e660fc8bc3dbbf75cdc8741b08f50642a9c930761c72b32eec9626b7804db02",
+      "git_lf_sha256": "9e660fc8bc3dbbf75cdc8741b08f50642a9c930761c72b32eec9626b7804db02",
+      "previous_git_sha256": "374befa386dde77567eaf9edf8780c2d12ae02a5c00553387e7df4309a436086"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/audit/page.tsx",
+      "installed_raw_sha256": "a0e616b5a6a6180b4825c0a89a6eaae08ed3ff84277b0447dec98f064f33a61c",
+      "git_lf_sha256": "86caaf080cbddb0361a7c9e01556d572f2cb748322339def8bed73ecfd33ccc8",
+      "previous_git_sha256": "0e2479daee36aa03d803fcf321d725d760d04204261c3b79a8b39ec8542493d4"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/campaigns/page.tsx",
+      "installed_raw_sha256": "e940e03c6498af1b613c33b3891d9f37e9635d0db9a97adaf4259a2804da69d6",
+      "git_lf_sha256": "e940e03c6498af1b613c33b3891d9f37e9635d0db9a97adaf4259a2804da69d6",
+      "previous_git_sha256": "f86e737e896cf0e61370900ab7962d1f9b4b93e88bb273cb43032c0485664ac6"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/help/page.tsx",
+      "installed_raw_sha256": "aadb0aadb7045a3614804989a3a0929bca932140c177d1b4a178804f7832ad78",
+      "git_lf_sha256": "aadb0aadb7045a3614804989a3a0929bca932140c177d1b4a178804f7832ad78",
+      "previous_git_sha256": "acab4bcbc4a1ab60824e8020777aa66ff95b8d450b7ea635200186a63ace8e83"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/layout.tsx",
+      "installed_raw_sha256": "911dac81aa521da30d303fa69c71b14dd2461560c0dbdd079891cd6ba3d09bc9",
+      "git_lf_sha256": "911dac81aa521da30d303fa69c71b14dd2461560c0dbdd079891cd6ba3d09bc9",
+      "previous_git_sha256": "f753e7de8c23b8e252939dd7494208b30d3f2ddfe00f5cdf5ab4efdb38e83336"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/lead-rules/page.tsx",
+      "installed_raw_sha256": "e7b52d2a492ea403d71d54712aa2897a83f78de7504aa95995992574d5c6ac52",
+      "git_lf_sha256": "a678b029290dcda2b10aa57cff3dc661aca8000c328c53317a9be76821f70f91",
+      "previous_git_sha256": "ffc6957017879fd216c5988c1f2546cff91c34f00b4a79cf1790fcfcd3eb5acb"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/mailings/page.tsx",
+      "installed_raw_sha256": "5c074af13e6e1e2a2efe196bda5fd6a8de555c697f8092b155a17c6a14553e47",
+      "git_lf_sha256": "5c074af13e6e1e2a2efe196bda5fd6a8de555c697f8092b155a17c6a14553e47",
+      "previous_git_sha256": "101ab731aaba69456f212d24fc77d305d94ceff1532fd23f38a4068378df1ca4"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/scoring/page.tsx",
+      "installed_raw_sha256": "862a3fe270a049f082b3ba69652cf867a5f45c0243823d0d88c6f796b1dbfa92",
+      "git_lf_sha256": "862a3fe270a049f082b3ba69652cf867a5f45c0243823d0d88c6f796b1dbfa92",
+      "previous_git_sha256": "2ec2f9b712b541df02d19ebc6a4db698733ebb4b8ab9f4431ea94ba2be2cd276"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/settings/page.tsx",
+      "installed_raw_sha256": "a1ec9201b0494a444428bb9a3bb141c6ff00d165142229be91a97f758d755bc3",
+      "git_lf_sha256": "576ccbae23201d03fb25321f569423d377f26f0175aee7c243bbd87e7a23e595",
+      "previous_git_sha256": "eef7207a6dd9337c40a13b028b0abdfef84f5fadf73de4bd75f2fabfb4de5a31"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/targets/page.tsx",
+      "installed_raw_sha256": "bf6409ccf66ec57feed9adc4e6eb23b8a05d8b7b252c19a8007ad364a3130efc",
+      "git_lf_sha256": "bf6409ccf66ec57feed9adc4e6eb23b8a05d8b7b252c19a8007ad364a3130efc",
+      "previous_git_sha256": "c573163fc7226faabd3a299414dfc2115093b7f313dcb69ebc957a10178f50ae"
+    },
+    {
+      "path": "services/dashboard/src/app/(dashboard)/vk-help/page.tsx",
+      "installed_raw_sha256": "57a41ce7c401a034682431d159ac976cf56ca541c40eeea1fe553351f1d43038",
+      "git_lf_sha256": "57a41ce7c401a034682431d159ac976cf56ca541c40eeea1fe553351f1d43038",
+      "previous_git_sha256": "b6b78faad46b161726f7dd191c270e8296a6f07e4b33e924c6c7f3d2714041f9"
+    },
+    {
+      "path": "services/dashboard/src/components/BatchDiscovery.tsx",
+      "installed_raw_sha256": "cd2f373a7d9313360d127956b9f09ed3e4e90578cc5eb1cbf59be94b18122d1f",
+      "git_lf_sha256": "cd2f373a7d9313360d127956b9f09ed3e4e90578cc5eb1cbf59be94b18122d1f",
+      "previous_git_sha256": "de86cb7a0ef78cdfe20d08b5481b837df6b83b75fa8b5702d9d1754f7f2a8ba6"
+    },
+    {
+      "path": "services/dashboard/src/components/CampaignWorkspaceNav.tsx",
+      "installed_raw_sha256": "363cf3eb2ac291d22537725a23b80afad6d967fd654ae9355d93ee71b20d9dad",
+      "git_lf_sha256": "363cf3eb2ac291d22537725a23b80afad6d967fd654ae9355d93ee71b20d9dad",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/components/NavigationGuide.tsx",
+      "installed_raw_sha256": "143e2458f2bd8e02a7c31f8c5044267de7fa5600b5aea4a70f39ca8734c2a27e",
+      "git_lf_sha256": "143e2458f2bd8e02a7c31f8c5044267de7fa5600b5aea4a70f39ca8734c2a27e",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/components/Sidebar.tsx",
+      "installed_raw_sha256": "af95b88cbbbd89379a397196a131a38349b78f1389301ea955d5e7f47ed90622",
+      "git_lf_sha256": "af95b88cbbbd89379a397196a131a38349b78f1389301ea955d5e7f47ed90622",
+      "previous_git_sha256": "3cc413b02a4fda006485a62f13fbd9f2529314dfdb8d20d5e1a9926c67ed25f9"
+    },
+    {
+      "path": "services/dashboard/src/components/WorkspaceTabs.tsx",
+      "installed_raw_sha256": "d4f14e5a7f1001c99838589d067109b24e00d5bc84305aac14780e830e5d4b11",
+      "git_lf_sha256": "d4f14e5a7f1001c99838589d067109b24e00d5bc84305aac14780e830e5d4b11",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/components/navigation-owner.test.tsx",
+      "installed_raw_sha256": "98e74a63954a27c7ad1e2325f9fbd4fff272f092b0362672e448da6c8979fc57",
+      "git_lf_sha256": "98e74a63954a27c7ad1e2325f9fbd4fff272f092b0362672e448da6c8979fc57",
+      "previous_git_sha256": null
+    },
+    {
+      "path": "services/dashboard/src/lib/api.ts",
+      "installed_raw_sha256": "a2b66a6c7469065ac176d01443a39a692c690972b4fd7ab3d1e725dbe3f28134",
+      "git_lf_sha256": "089097fd0589ad561dd51a65973925d539a30b6621f5678e23b2c6e0ed1b2d34",
+      "previous_git_sha256": "7a3cbed14ad63915ca57282307357d0b1465651abe1b9b5d0a3a6fd8ca4c27e5"
+    },
+    {
+      "path": "services/dashboard/src/lib/en.json",
+      "installed_raw_sha256": "81af2a4f9698bccd9d391c9a8e2e0992f0d52029f6c49cb2f13be56a6e9c814e",
+      "git_lf_sha256": "81af2a4f9698bccd9d391c9a8e2e0992f0d52029f6c49cb2f13be56a6e9c814e",
+      "previous_git_sha256": "e8d2dcdb737e51143a5ab9de55bc02cf203430f37d6dc3c0417e13e9bfd440c2"
+    },
+    {
+      "path": "services/dashboard/src/lib/platform-routes.ts",
+      "installed_raw_sha256": "6b22fa31a28383e6fce4cd0e49db463b8ae6a32c3f895449a5072c5a4417f72d",
+      "git_lf_sha256": "6b22fa31a28383e6fce4cd0e49db463b8ae6a32c3f895449a5072c5a4417f72d",
+      "previous_git_sha256": "dd3f31e0687f1ef31c2041daa25b8b3860c58d9d8697889de92aa3a36f3cca25"
+    },
+    {
+      "path": "services/dashboard/src/lib/ru.json",
+      "installed_raw_sha256": "ee2010657833762577f4eb1b6e4ee1840fe31cd6ef15fb13e87c45544720f9ff",
+      "git_lf_sha256": "ee2010657833762577f4eb1b6e4ee1840fe31cd6ef15fb13e87c45544720f9ff",
+      "previous_git_sha256": "1bd71532c901e338891c65ab741ff7ced93e58dcd5be4304657e6c1af82e1ef2"
+    }
+  ],
+  "build_manifest_sha256": "190d37ad82526f6728c3bedc7158f64f96315ec981e03ac384fc48bd003c58b7",
+  "no_main_merge": true,
+  "ci_not_claimed": true
+}

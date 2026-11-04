@@ -1,4 +1,5 @@
 "use client";
+import {NavigationGuide} from "@/components/NavigationGuide";
 
 import { PlatformHelp } from "@/components/PlatformHelp";
 import { useState } from "react";
@@ -213,4 +214,4 @@ function VkHelpPage() {
   );
 }
 
-export default function CurrentVKHelp() { return <><PlatformHelp compact/><VkHelpPage/></>; }
+export default function CurrentVKHelp() { const {lang}=useI18n(); return <><NavigationGuide/><PlatformHelp compact/><details className="mt-4"><summary>{lang === "ru" ? "Подробные инструкции VK" : "Detailed VK guides"}</summary><VkHelpPage/></details></>; }

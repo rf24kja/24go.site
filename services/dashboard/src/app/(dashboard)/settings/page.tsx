@@ -1,4 +1,5 @@
 "use client";
+import {NavigationGuide} from "@/components/NavigationGuide";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -91,6 +92,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <NavigationGuide/>
       <nav aria-label={t("settings.title")} className="flex flex-wrap items-center gap-2">
         <h1 className="font-semibold mr-3">{t("settings.title")} — {PREFIXES[platform]}</h1>
         {(Object.keys(PREFIXES) as Platform[]).map(p => <Link key={p} href={`/${PREFIXES[p]}/settings`} aria-current={p === platform ? "page" : undefined} className={`px-3 py-2 rounded-lg text-sm border ${p === platform ? "bg-zinc-800 border-zinc-500 text-zinc-100" : "border-zinc-800 text-zinc-400"}`}>{PREFIXES[p]}</Link>)}

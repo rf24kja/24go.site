@@ -1,4 +1,5 @@
 "use client";
+import {NavigationGuide} from "@/components/NavigationGuide";
 
 import { useState, useEffect } from "react";
 import { PlatformHelp } from "@/components/PlatformHelp";
@@ -359,24 +360,6 @@ function SearchSection({ t }: { t: (k: string) => string }) {
       tips={t("wiki.section.search.tip")}
       nextId="monitoring"
       nextLabel={t("wiki.nav.monitoring")}
-      extra={
-        <MockBrowser>
-          <div className="flex gap-2 mb-3">
-            <div className="flex-1 bg-zinc-900/50 rounded px-2 py-1 text-xs text-zinc-300">real estate Moscow</div>
-            <div className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded font-medium">Scan</div>
-          </div>
-          <div className="flex gap-2 mb-3">
-            <div className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] rounded font-medium">Free</div>
-            <div className="px-2 py-1 bg-zinc-700 text-zinc-400 text-[10px] rounded">TgStat (balance: 1,200)</div>
-          </div>
-          <div className="space-y-1">
-            <MockRow left="@phuket_rentals" right="12.4K members • 89 msg/day" status="found" />
-            <MockRow left="@moscow_realestate" right="8.2K members • 45 msg/day" status="found" />
-            <MockRow left="@b2b_leads_moscow" right="34.1K members • 210 msg/day" status="found" />
-          </div>
-          <div className="mt-2 text-[10px] text-zinc-600 text-center">3 groups found — click Add to start monitoring</div>
-        </MockBrowser>
-      }
     />
   );
 }
@@ -1136,4 +1119,4 @@ function TelegramHelpPage() {
   );
 }
 
-export default function HelpPage() { const { platform } = usePlatform(); return platform === "telegram" ? <><PlatformHelp compact/><TelegramHelpPage/></> : <PlatformHelp/>; }
+export default function HelpPage() { const { platform } = usePlatform(); const {lang}=useI18n(); return <><NavigationGuide/><PlatformHelp compact={platform === "telegram"}/>{platform === "telegram" && <details className="mt-4"><summary>{lang === "ru" ? "Подробные инструкции Telegram" : "Detailed Telegram guides"}</summary><TelegramHelpPage/></details>}</>; }

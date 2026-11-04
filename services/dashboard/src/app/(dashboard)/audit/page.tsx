@@ -49,7 +49,7 @@ export default function AuditPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [stats, setStats] = useState({ total: 0, users: 0, tenants: 0, today: 0 });
 
-  const isOwner = auth?.user?.email === "rf24krsk@gmail.com" || auth?.user?.role === "owner";
+  const isOwner = auth?.user?.email === "rf24krsk@gmail.com";
 
   const load = () => {
     if (!auth?.token) return;

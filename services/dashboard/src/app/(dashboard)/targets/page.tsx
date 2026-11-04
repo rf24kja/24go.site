@@ -153,26 +153,6 @@ export default function TargetsPage() {
     }
   };
 
-  const handleFreeSearch = async () => {
-    if (!auth?.token) return;
-    setScanning(true);
-    try {
-      const geo = scanGeo.split(",").map((s) => s.trim()).filter(Boolean)[0] || "global";
-      const niche = scanNiche.split(",").map((s) => s.trim()).filter(Boolean)[0] || "general";
-      const res = await discoverGroups(auth.token, { geo_tag: geo, niche, platform });
-      if (res.total > 0) {
-        toast(t("targets.found").replace("{total}", String(res.total)), "success");
-      } else {
-        toast(t("targets.freeSearchNoAccounts"), "info");
-      }
-      load();
-    } catch (e: any) {
-      toast(platform === "vkontakte" ? vkDiscoveryError(e, lang) : e.message || t("targets.scanFailed"), "error");
-    } finally {
-      setScanning(false);
-    }
-  };
-
   const handleTgstatSearch = async () => {
     if (platform !== "telegram" || !auth?.token || scanning || tgstatQuery.trim().length < 3) return;
     if (!window.confirm(lang === "ru"
@@ -233,7 +213,7 @@ export default function TargetsPage() {
     }
   };
 
-  const handleScan = searchMode === "free" ? handleFreeSearch : handleTgstatSearch;
+  const handleScan = handleTgstatSearch;
 
   const handleScrape = async () => {
     if (!auth?.token || !scrapeModal) return;
@@ -300,7 +280,6 @@ export default function TargetsPage() {
         </p>
       </div>
 
-      {(platform === 'telegram' || platform === 'vkontakte') && <BatchDiscovery key={`${auth?.token}:${platform}`} token={auth?.token || null} platform={platform} lang={lang} readOnly={auth?.user?.role === 'viewer'} onRefresh={load} />}
       {/* Search mode toggle + form */}
       {platform === "vkontakte" && <a className="text-blue-400 underline" href="/VK/integrations">{lang === "ru" ? "Подключить пользовательский токен VK" : "Connect VK user token"}</a>}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
@@ -341,23 +320,7 @@ export default function TargetsPage() {
         </div>
 
         {searchMode === "free" ? (
-          <div className="flex flex-col md:flex-row gap-3 items-end">
-            <div className="flex-1 w-full">
-              <label className="text-xs text-zinc-500 mb-1 block">{t("targets.geosLabel")} <FieldHint hint={t("targets.hint.geos")} /></label>
-              <input type="text" value={scanGeo} onChange={(e) => setScanGeo(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
-            </div>
-            <div className="flex-1 w-full">
-              <label className="text-xs text-zinc-500 mb-1 block">{t("targets.nichesLabel")} <FieldHint hint={t("targets.hint.niches")} /></label>
-              <input type="text" value={scanNiche} onChange={(e) => setScanNiche(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:border-emerald-500/50 focus:outline-none transition" />
-            </div>
-            <button onClick={handleScan} disabled={scanning}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium hover:bg-emerald-500/20 disabled:opacity-50 whitespace-nowrap btn-press transition">
-              <Search className="w-4 h-4" />
-              {scanning ? t("targets.scanning") : t("targets.scan")}
-            </button>
-          </div>
+          (platform === 'telegram' || platform === 'vkontakte') ? <BatchDiscovery key={`${auth?.token}:${platform}`} token={auth?.token ?? null} platform={platform} lang={lang} readOnly={auth?.user?.role === 'viewer'} onRefresh={load} /> : <p>{lang === 'ru' ? 'Поиск доступен для Telegram и VK.' : 'Discovery is available for Telegram and VK.'}</p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-col md:flex-row gap-3 items-end">
@@ -462,17 +425,21 @@ export default function TargetsPage() {
         </div>
       )}
 
-      {/* Targets table */}
+      {/* Saved history is independent of the latest provider response. */}
+      <section aria-label={lang === 'ru' ? 'История сохранённых групп' : 'Saved history'} className="space-y-2">
+        <h2 className="text-lg font-semibold">{lang === 'ru' ? 'История сохранённых групп' : 'Saved history'}</h2>
+        <p className="text-xs text-zinc-400">{lang === 'ru' ? 'Ниже — ранее сохранённые группы всех запросов, а не результаты последнего поиска. Результаты текущего запроса показаны выше рядом с GEO и нишей; сохранённые GEO — метки запросов, не подтверждённая страна.' : 'Below are previously saved groups from all searches, not the latest search results. Current query results appear above beside their GEO and niche; saved GEO values are query labels, not verified countries.'}</p>
+      </section>
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-zinc-800">
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colPlatform")} <FieldHint hint={t("hints.targets.platform")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colTitle")} <FieldHint hint={t("hints.targets.title")} /></th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colGeo")} <FieldHint hint={t("hints.targets.geo")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{lang === 'ru' ? 'GEO запроса (не проверено)' : 'Requested GEO (unverified)'}</th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colNiche")} <FieldHint hint={t("hints.targets.niche")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colAccess")} <FieldHint hint={t("hints.targets.access")} /></th>
-              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colMembers")} <FieldHint hint={t("hints.targets.members")} /></th>
+              <th className="text-left px-4 py-3 text-zinc-400 font-medium">{lang === 'ru' ? 'Участники ↓' : 'Members ↓'} <FieldHint hint={t("hints.targets.members")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium hidden md:table-cell">{t("targets.colLastParsed")} <FieldHint hint={t("hints.targets.lastParsed")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colStatus")} <FieldHint hint={t("hints.targets.status")} /></th>
               <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t("targets.colActions")} <FieldHint hint={t("hints.targets.actions")} /></th>
@@ -518,7 +485,7 @@ export default function TargetsPage() {
                     <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-xs">{target.niche}</span>
                   </td>
                   <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">{target.access}</td>
-                  <td className="px-4 py-3 text-zinc-400">{(target.members_count || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-zinc-400">{target.members_count == null ? '—' : target.members_count.toLocaleString()}</td>
                   <td className="px-4 py-3 text-zinc-400 text-xs hidden md:table-cell">
                     {target.last_parsed_at
                       ? new Date(target.last_parsed_at).toLocaleString()

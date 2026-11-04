@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { usePlatform } from "@/lib/platform";
 import { useAuth } from "@/lib/auth";
 import { getScoringRules, createScoringRule, deleteScoringRule } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
@@ -26,7 +27,14 @@ const INTENT_STYLES: Record<string, string> = {
 
 export default function ScoringPage() {
   const { auth } = useAuth();
-  const { t } = useI18n();
+  const { t, lang: locale } = useI18n();
+  const { platform } = usePlatform();
+  const scope = `${auth?.token ?? ""}:${platform}`;
+  const alive = useRef(true);
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const generation = useRef(0);
+  const [error, setError] = useState("");
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -36,35 +44,53 @@ export default function ScoringPage() {
   const load = () => {
     if (!auth?.token) return;
     setLoading(true);
-    getScoringRules(auth.token).then(setRules).catch(() => setRules([])).finally(() => setLoading(false));
+    const capturedScope = scope;
+    const request = ++generation.current;
+    const current = () => alive.current && scopeRef.current === capturedScope && request === generation.current;
+    getScoringRules(auth.token, platform).then((rows) => { if (current()) { setRules(rows); setError(""); } }).catch(() => { if (current()) setError(locale === "ru" ? "Не удалось загрузить правила. Повторите попытку." : "Could not load rules. Please retry."); }).finally(() => { if (current()) setLoading(false); });
   };
 
-  useEffect(() => { load(); }, [auth?.token]);
+  useEffect(() => {
+    alive.current = true;
+    setRules([]); setShowModal(false); setSaving(false); setError("");
+    setForm({ name: "", intent: "HOT", keywords: "", confidence: "0.5", priority: "5" });
+    if (!auth?.token) { ++generation.current; setLoading(false); return; }
+    load();
+    return () => { alive.current = false; ++generation.current; };
+  }, [scope]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth?.token) return;
+    const capturedScope = scope;
     setSaving(true);
     try {
       await createScoringRule(auth.token, {
+        service: platform,
         name: form.name,
         intent: form.intent,
         keywords: form.keywords.split(",").map((s) => s.trim()).filter(Boolean),
         min_confidence: parseFloat(form.confidence),
         priority: parseInt(form.priority),
       });
+      if (!alive.current || scopeRef.current !== capturedScope) return;
       setShowModal(false);
       setForm({ name: "", intent: "HOT", keywords: "", confidence: "0.5", priority: "5" });
       load();
+    } catch {
+      if (alive.current && scopeRef.current === capturedScope) setError(locale === "ru" ? "Не удалось сохранить правило." : "Could not save the rule.");
     } finally {
-      setSaving(false);
+      if (alive.current && scopeRef.current === capturedScope) setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!auth?.token || !confirm(t("scoring.deleteConfirm"))) return;
-    try { await deleteScoringRule(auth.token, id); } catch { /* empty */ }
-    load();
+    const capturedScope = scope;
+    try {
+      await deleteScoringRule(auth.token, id, platform);
+      if (alive.current && scopeRef.current === capturedScope) load();
+    } catch { if (alive.current && scopeRef.current === capturedScope) setError(locale === "ru" ? "Не удалось удалить правило." : "Could not delete the rule."); }
   };
 
   return (
@@ -80,6 +106,8 @@ export default function ScoringPage() {
         </button>
       </div>
 
+      <p className="text-sm text-zinc-400">{locale === "ru" ? "Правила только выбранного сервиса" : "Rules for the selected service only"}: {platform}</p>
+      {error && <div role="alert">{error} <button onClick={load}>{locale === "ru" ? "Повторить" : "Retry"}</button></div>}
       {/* How it works */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h2 className="text-sm font-medium text-zinc-400 mb-2">{t("scoring.howItWorks")}</h2>

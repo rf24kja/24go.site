@@ -1,4 +1,5 @@
 "use client";
+import {CampaignWorkspaceNav} from "@/components/CampaignWorkspaceNav";
 
 import { useEffect, useState, useRef } from "react";
 import { useScopedList } from "@/lib/use-scoped-list";
@@ -154,6 +155,7 @@ export default function MailingsPage() {
   return (
     <PlanGuard feature="mailings">
       <div className="space-y-6 animate-fade-slide-in">
+      <CampaignWorkspaceNav active="mailings"/>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("mailings.title")}</h1>
         <div className="flex gap-2">

@@ -1,3 +1,4 @@
+import type { Platform } from "./platform";
 /**
  * API client for LeadGen Control Plane.
  * Centralized — all API calls go through this module.
@@ -594,16 +595,16 @@ export async function updateTenant(token: string, data: { company_name?: string 
 
 // ── Scoring Rules ─────────────────────────────────────────────────────
 
-export async function getScoringRules(token: string) {
-  return api<any[]>("/api/v1/scoring/rules", { token });
+export async function getScoringRules(token: string, service: Platform) {
+  return api<any[]>(`/api/v1/scoring/rules?service=${encodeURIComponent(service)}`, { token });
 }
 
-export async function createScoringRule(token: string, data: { name: string; intent: string; keywords: string[]; min_confidence?: number; priority?: number }) {
+export async function createScoringRule(token: string, data: { service: Platform; name: string; intent: string; keywords: string[]; min_confidence?: number; priority?: number }) {
   return api<any>("/api/v1/scoring/rules", { method: "POST", body: JSON.stringify(data), token });
 }
 
-export async function deleteScoringRule(token: string, ruleId: string) {
-  return api<any>(`/api/v1/scoring/rules/${ruleId}`, { method: "DELETE", token });
+export async function deleteScoringRule(token: string, ruleId: string, service: Platform) {
+  return api<any>(`/api/v1/scoring/rules/${ruleId}?service=${encodeURIComponent(service)}`, { method: "DELETE", token });
 }
 
 export async function changePassword(token: string, currentPassword: string, newPassword: string) {

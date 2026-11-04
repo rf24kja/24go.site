@@ -41,8 +41,9 @@ export function BatchDiscovery({token, platform, lang, readOnly, onRefresh}: Pro
  }
  const style='w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm';
  return <section className="mt-4 p-4 border border-zinc-700 rounded-xl space-y-3" aria-label={ru?'Пакетный поиск':'Batch discovery'}>
-  <h3>{ru?'Пакетный поиск':'Batch discovery'} · {platform==='telegram'?'Telegram':'VK'}</h3>
-  <p className="text-xs text-zinc-400">{ru?'Через запятую: 1–3 GEO и 1–3 ниши, максимум 6 сочетаний. До 100 символов на значение, 1–20 результатов на запрос. Выполняется сразу, до 10 секунд на запрос (до 60 секунд всего), без фоновой задачи и платного TGStat. Каждый запрос сохраняется отдельно; при ошибке или таймауте часть групп уже могла сохраниться. Успешные запросы автоматически не повторяются.':'Comma-separated: 1–3 GEOs and 1–3 niches, at most 6 combinations. Up to 100 characters per value, 1–20 results per query. Runs synchronously, up to 10 seconds per query (60 seconds total), without a background job or paid TGStat. Each query saves independently; failures or timeouts may have partially saved groups. Successful queries are never retried automatically.'}</p>
+  <h3>{ru?'Поиск групп и каналов':'Search groups and channels'}</h3>
+  <p className="text-xs text-zinc-400">{ru?'Telegram: GEO и все слова ниши должны встречаться в названии или username. Это текстовое совпадение, не подтверждённое местоположение. Нет совпадений — уточните слова. Результаты сохраняются; крупнейшие известные аудитории первыми.':'Telegram: GEO and every niche word must match the title or username. This is a text match, not verified location. No matches? Refine the words. Results are saved; largest known audiences first.'}</p>
+  <details className="text-xs text-zinc-400"><summary>{ru?'Несколько GEO / ниш и ограничения':'Multiple GEOs / niches and limits'}</summary>{ru?'Через запятую: до 3 GEO и 3 ниш, максимум 6 сочетаний. 1–20 результатов на запрос. До 45 секунд на сочетание, до 270 секунд всего. Запросы сохраняются отдельными транзакциями; весь пакет не атомарен. Фоновой задачи, автоматических повторов и платного TGStat нет.':'Comma-separated: up to 3 GEOs and 3 niches, at most 6 combinations. 1–20 results per query. Up to 45 seconds per combination, 270 seconds per batch. Each query saves in its own transaction; the batch is not atomic. No background job, automatic retries or paid TGStat.'}</details>
   {readOnly && <p role="note">{ru?'Роль viewer: только чтение в рамках команды. Поиск с сохранением недоступен.':'Viewer role: tenant-wide read-only access. Discovery that saves groups is unavailable.'}</p>}
   <div className="grid gap-3 md:grid-cols-3">
    <label>{ru?'GEO пакета':'Batch GEOs'}<input className={style} value={geos} disabled={pending||readOnly} onChange={e=>setGeos(e.target.value)}/></label>
@@ -56,7 +57,7 @@ export function BatchDiscovery({token, platform, lang, readOnly, onRefresh}: Pro
    <ul>{result.queries.map((q,i)=><li key={i} className="mt-2">
     <span>{q.geo_tag} · {q.niche}: {q.status==='completed'?(ru?`Сохранено результатов: ${q.total}`:`Saved results: ${q.total}`):(q.error==='query_timeout'?(ru?'Таймаут':'Timed out'):(ru?'Ошибка поиска':'Discovery failed'))}{q.http_status?` (HTTP ${q.http_status})`:''}</span>
     {q.persistence_may_be_partial&&<p>{ru?'Часть данных могла сохраниться. Проверьте список перед повторным поиском этого сочетания.':'Some data may have persisted. Check the list before searching this combination again.'}</p>}
-    {q.results?.map((r,j)=><p key={j}>{r.title||r.target_id_code||'—'}</p>)}
+    {q.results?.map((r,j)=><p key={j}>{r.title||r.target_id_code||'—'} <span className="text-xs text-zinc-400">{r.entity_type === 'group' ? (ru?'группа':'group') : r.entity_type === 'channel' ? (ru?'канал':'channel') : (ru?'тип неизвестен':'type unknown')} · {typeof r.members_count === 'number' ? r.members_count.toLocaleString() : '—'}</span></p>)}
    </li>)}</ul>
   </div>}
  </section>;

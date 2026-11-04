@@ -1,4 +1,5 @@
 "use client";
+import {CampaignWorkspaceNav} from "@/components/CampaignWorkspaceNav";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useScopedList } from "@/lib/use-scoped-list";
@@ -218,6 +219,7 @@ export default function CampaignsPage() {
 
   return (
     <div className={`space-y-6 animate-fade-slide-in`}>
+      <CampaignWorkspaceNav active="campaigns"/>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{t("campaigns.title")}</h1>
         <button onClick={openCreate}
