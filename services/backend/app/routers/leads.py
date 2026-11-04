@@ -153,42 +153,40 @@ async def update_lead_status(
     request: Request = None,
 ):
     """Update lead status (for Kanban drag-and-drop)."""
-    import uuid
-    from fastapi import HTTPException
-    from app.config import settings
-    from app.audit import log_event
-    import asyncpg
+    import json
+    from sqlalchemy import text
+
+    try:
+        identity = UUID(lead_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid lead ID")
     q = select(Lead).where(
-        Lead.id == uuid.UUID(lead_id),
+        Lead.id == identity,
         Lead.tenant_id == current_user.tenant_id,
-    )
+    ).with_for_update()
     result = await db.execute(q)
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(404, "Lead not found")
     old_status = lead.status
-    lead.status = body.status
+    if old_status != body.status:
+        lead.status = body.status
+        # Audit and status share the request transaction: neither survives alone.
+        await db.execute(text(
+            "INSERT INTO audit_log "
+            "(tenant_id, user_id, action, entity_type, entity_id, old_value, new_value, ip_address) "
+            "VALUES (:tenant, :actor, 'status_change', 'lead', :lead, "
+            "CAST(:old AS jsonb), CAST(:new AS jsonb), :ip)"
+        ), {
+            "tenant": current_user.tenant_id,
+            "actor": current_user.id,
+            "lead": lead.id,
+            "old": json.dumps({"status": old_status}),
+            "new": json.dumps({"status": body.status}),
+            "ip": request.client.host if request and request.client else None,
+        })
     await db.commit()
     await db.refresh(lead)
-    # Audit log — reuse a single connection for the audit write
-    if old_status != body.status:
-        ip = request.client.host if request else None
-        conn_url = settings.DATABASE_URL.replace("+asyncpg", "")
-        conn = await asyncpg.connect(conn_url)
-        try:
-            await log_event(
-                tenant_id=current_user.tenant_id,
-                action="status_change",
-                entity_type="lead",
-                entity_id=lead.id,
-                old_value={"status": old_status},
-                new_value={"status": body.status},
-                user_id=current_user.id,
-                ip_address=ip,
-                conn=conn,
-            )
-        finally:
-            await conn.close()
     return lead
 
 
