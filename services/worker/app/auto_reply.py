@@ -88,7 +88,7 @@ async def _generate_ai_reply(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5, read=20)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20, connect=5)) as client:
             resp = await client.post(
                 url,
                 headers={
